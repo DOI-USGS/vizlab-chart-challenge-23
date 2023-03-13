@@ -78,12 +78,12 @@ states_proj <- states_shp |>
 
 # Clip the raster to the states boundaries to speed up processing
 sci_stack_clip <- terra::crop(x = snow_data, 
-                              y = vect(states_proj), 
+                              y = states_proj, 
                               mask = TRUE)
 
 # Extract the SCI values to each state
 extract_SCI_states <- terra::extract(x = sci_stack_clip,
-                                     y = vect(states_proj))
+                                     y = states_proj)
 
 # Calculate mean SCI by state
 SCI_by_state <- as.data.frame(extract_SCI_states) |> 
@@ -124,8 +124,7 @@ canvas <- grid::rectGrob(
 )
 
 # Load in USGS logo and colorize it using the color ramp
-usgs_logo <- magick::image_read("../usgs_logo.png") %>%
-  magick::image_colorize(100, font_color)
+usgs_logo <- magick::image_read("../usgs_logo.png") 
 
 # Main plot
 (main_plot <- ggplot() + 
