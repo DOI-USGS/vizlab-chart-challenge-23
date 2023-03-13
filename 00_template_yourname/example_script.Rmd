@@ -7,8 +7,10 @@ output: html_document
 
 ## Instructions for using this template
 
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
 1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
-2. Put all R code in the chunks. They're organized for you to do set-up first (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
 3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
 4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. 
 5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
@@ -99,7 +101,7 @@ SCI_state_level <- states_proj |>
 
 This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
 
-> Note: The hardest part of this process is getting text to be the optimum size for reading. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` and the final plot in the `html` below for true font sizing. 
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` and the final plot in the `html` for true font sizing. 
 
 ```{r plotting}
 # Load some custom fonts and set some custom settings
@@ -122,7 +124,7 @@ canvas <- grid::rectGrob(
 )
 
 # Load in USGS logo and colorize it using the color ramp
-usgs_logo <- magick::image_read("in/usgs_logo.png") %>%
+usgs_logo <- magick::image_read("../usgs_logo.png") %>%
   magick::image_colorize(100, font_color)
 
 # Main plot
