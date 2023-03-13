@@ -14,9 +14,9 @@ Submit contributions via merge requests and tag @aaarcher/@eazadpour/@hcorson-do
 ## Submitting your final chart PR
 
 When you are ready for review, submit a PR with your final chart and a brief description that includes: 
-1. Overall messaging. How does the chart connect to the day/category? What is the 1-2 sentence takeaway?
-2. The data source and variables used. Where can the data be found? Is it from USGS or elsewhere? Did you do any pre-processing?
-3. Tools & libraries used 
+1. Overall messaging. What are the key takeaways for your viz? Limit each to 1-2 sentences.
+2. The data source. Where can the data be found? 
+3. Tools & libraries used to pre-process or download your data
 
 > Note: the template RMarkdown script has space for all of these components. If you use the template, you'll easily be able to include all the components listed above.
 
