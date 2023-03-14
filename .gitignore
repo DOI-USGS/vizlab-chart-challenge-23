@@ -8,6 +8,9 @@
 */_targets/
 */scratch.R
 
+#Python
+*/.ipynb_checkpoints/
+
 .DS_Store
 
 # Large files
