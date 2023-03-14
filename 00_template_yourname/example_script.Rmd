@@ -1,0 +1,208 @@
+---
+title: "Example for Chart Challenge"
+author: "Althea Archer"
+date: "2023-03-10"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+library(terra) # here, used for raster processing
+library(spData) # state boundaries as sf object
+library(sf) # general spatial processing
+library(scico) # good color themes for mapping
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Snow data from Science Base (citation below)
+file_in <- "in/MOD10A2_SCI_2020.tif"
+if(!file.exists(file_in)){ # if files don't exist, download
+    sbtools::item_file_download(sb_id = "5f63790982ce38aaa23a3930",
+                              names = "MOD10A2_SCI_2020.tif",
+                              destinations = file_in,
+                              overwrite_file = F)
+}
+snow_data <- terra::rast(file_in)
+
+# Download US State boundaries as sf object
+states_shp <- spData::us_states
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Reproject the sf object to match the projection of the raster
+states_proj <- states_shp |> 
+  sf::st_transform(crs(snow_data))
+
+# Clip the raster to the states boundaries to speed up processing
+sci_stack_clip <- terra::crop(x = snow_data, 
+                              y = states_proj, 
+                              mask = TRUE)
+
+# Extract the SCI values to each state
+extract_SCI_states <- terra::extract(x = sci_stack_clip,
+                                     y = vect(states_proj))
+
+# Calculate mean SCI by state
+SCI_by_state <- as.data.frame(extract_SCI_states) |> 
+  group_by(ID) |> 
+  summarise(mean_2020 = mean(MOD10A2_SCI_2020, na.rm = T))
+
+# Left-join calculated SCI means to the US States sf object
+SCI_state_level <- states_proj |>
+  mutate(ID = row_number()) |>
+  left_join(SCI_by_state, by = "ID")
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Pirata One"
+sysfonts::font_add_google("Pirata One")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "#0A1927"
+font_color = "#ffffff"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+
+# Main plot
+(main_plot <- ggplot() + 
+  geom_sf(data = SCI_state_level, aes( fill = mean_2020)) +
+  scale_fill_scico(palette = "oslo", direction = 1, begin = 0.25)+
+  labs(fill = "Mean\nSnow %")+
+  theme_void()+
+  theme(plot.background = element_rect(fill = background_color),
+        legend.text = element_text(color = font_color, size = 14),
+        legend.title = element_text(color = font_color, size = 20),
+        legend.position = c(0.925, 0.25))
+ )
+
+
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = 0.01,
+            y = 0.01,
+            height = 1) +
+  # explainer text
+  draw_label("Snow Cover Index for 2020.\nData from: doi.org/10.5066/P9U7U5FP",
+             fontfamily = supporting_font,
+             x = 0.96,   
+             y = 0.05,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+  # Title
+  draw_label("\'Tis the season\nto be snowy!",
+             x = 0.04,
+             y = 0.285,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 55) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.04,
+             y = 0.05,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+ggsave(filename = "out/exampleCC_Twitter.png", 
+       width = 16, height = 9, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. The northern US has approximately 40% snow cover in 2020
+2. The southeastern US has zero snow cover in 2020
+3. There is a lot of variation in snow cover for most states north of Oklahoma, Kentucky, and West Virginia. Those states and the states below those have no snow on average.
+
+### Data source(s)
+
+U.S. State boundaries from `spData` : Bivand R, Nowosad J, Lovelace R (2023). spData: Datasets for Spatial Analysis. R package version 2.2.2, https://jakubnowosad.com/spData/.
+
+Snow data from USGS Science Base: Hammond, J.C., 2020, Contiguous U.S. annual snow persistence and trends from 2001-2020: U.S. Geological Survey data release, https://doi.org/10.5066/P9U7U5FP.
+

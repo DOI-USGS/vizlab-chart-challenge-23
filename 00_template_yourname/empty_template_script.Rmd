@@ -1,0 +1,166 @@
+---
+title: "Example for Chart Challenge"
+author: "Althea Archer"
+date: "2023-03-10"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Add your code here
+
+
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Add your processing code here
+
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Pirata One"
+sysfonts::font_add_google("Pirata One")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "#0A1927"
+font_color = "#ffffff"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+
+# Main plot
+(main_plot <- ggplot()
+ )
+
+
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = 0.01,
+            y = 0.01,
+            height = 1) +
+  # explainer text
+  draw_label("Explainer text",
+             fontfamily = supporting_font,
+             x = 0.96,   
+             y = 0.05,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+  # Title
+  draw_label("Title",
+             x = 0.04,
+             y = 0.285,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 55) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.04,
+             y = 0.05,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+ggsave(filename = "out/blankCC_Twitter.png", 
+       width = 16, height = 9, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Key takeaways here
+
+### Data source(s)
+
+Data sources here.
+
