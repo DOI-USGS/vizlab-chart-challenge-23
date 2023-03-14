@@ -83,7 +83,7 @@ sci_stack_clip <- terra::crop(x = snow_data,
 
 # Extract the SCI values to each state
 extract_SCI_states <- terra::extract(x = sci_stack_clip,
-                                     y = states_proj)
+                                     y = vect(states_proj))
 
 # Calculate mean SCI by state
 SCI_by_state <- as.data.frame(extract_SCI_states) |> 
