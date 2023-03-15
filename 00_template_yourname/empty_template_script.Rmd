@@ -154,6 +154,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
 ggsave(filename = "out/20230000_prompt_name.png", 
        width = 16, height = 9, dpi = 300)
 ```
