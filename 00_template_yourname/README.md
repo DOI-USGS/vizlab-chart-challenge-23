@@ -1,6 +1,6 @@
 # Chart Challenge Contribution
 
-Please fill out this information prior to creating a merge request, *unless you've filled out the template R or Python scripts*. After your merge request is approved, please make sure this image is linked to your final image in the `out/` folder. We will also ask you to share the final image in a sharepoint folder provided via gitlab.
+Please fill out this information prior to creating a merge request, *unless you've filled out the template R or Python scripts*. After your merge request is approved, please make sure the image linked here is your final image in the `out/` folder (the `out/` png file itself is not committed, but the README with the linked image is). We will also ask you to share the final image in a sharepoint folder provided via gitlab.
 
 Your name:
 
