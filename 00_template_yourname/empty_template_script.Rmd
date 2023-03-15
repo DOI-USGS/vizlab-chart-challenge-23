@@ -109,6 +109,8 @@ usgs_logo <- magick::image_read("../usgs_logo_white.png")
 
 Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
 
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
 ```{r cowplot, fig.width = 16, fig.height = 9}
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
@@ -150,7 +152,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              halign = 0, valign = 0)
 
 # Save the final image in Twitter's 16 by 9 format
-ggsave(filename = "out/blankCC_Twitter.png", 
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+ggsave(filename = "out/20230000_prompt_name.png", 
        width = 16, height = 9, dpi = 300)
 ```
 
