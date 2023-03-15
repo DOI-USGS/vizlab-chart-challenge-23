@@ -33,7 +33,7 @@ We will review PRs from a design/conceptual/documentation perspective and not ne
 1. On this repo's main page in Gitlab, click on the "Fork" button and then choose your username in the "Select a namespace" dropdown menu on the next page. Make sure the "Internal" visibility level is selected (should be the default).
 2. On your fork of the repo, select the blue "Clone" dropdown and copy the address under the "Clone with SSH" title. 
 3. Open Terminal on your computer in the place that you want the repository's folder to be saved. Clone the repository to your computer with `git clone` and your SSH address.
-4. Set the upstream repository to link to the Vizlab's canonical repository with `git remote add upstream` and the SSH address.
+4. Set the upstream repository to link to the Vizlab's canonical repository with `git remote add upstream` and the SSH address (pulled from the 'Clone with SSH' dropdown on the canonical repo).
 5. Copy the "00_template_yourname" folder and rename it with your prompt date, prompt title, and your name
 5. When you've got code you'd like to commit to your fork, commit it with `git add ...` and `git commmit -m "your commit message"`
 6. Once you've got code you'd like reviewed, create a merge request by pushing your changes to your fork with `git push origin main` (or use your branch in place of the "main", if applicable). Then, log into Gitlab and create a merge request. 
