@@ -32,6 +32,7 @@ library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
 
 library(sbtools)
+library(readr)
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -60,6 +61,7 @@ if(!file.exists(file_in_1921)){ # if files don't exist, download
                               destinations = file_in_1921,
                               overwrite_file = F)
 }
+t1921_raw <- readr::read_csv(file_in_1921)
 
 # 1981-2020
 file_in_1981 <- "in/1981_Drought_Properties_site.csv"
