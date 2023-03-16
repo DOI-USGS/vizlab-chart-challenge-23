@@ -1,5 +1,5 @@
 ---
-title: "Not your parent's baselines"
+title: "Not your parents' baselines"
 author: "Althea Archer"
 date: "2023-03-16"
 output: html_document
@@ -54,20 +54,20 @@ This is also a good place to load any data from other built-in packages such as 
 # Load drought properties data from ScienceBase
 authenticate_sb()
 # 1921-2020
-file_in_1921 <- "in/1921_Drought_Properties_site.csv"
+file_in_1921 <- "in/Streamflow_percentiles_national_1921/01031500.csv"
 if(!file.exists(file_in_1921)){ # if files don't exist, download
   sbtools::item_file_download(sb_id = "62f463c5d34eacf5397395d9",
-                              names = "Drought_Properties_site.csv",
+                              names = "Streamflow_percentiles_national_1921.zip",
                               destinations = file_in_1921,
                               overwrite_file = F)
 }
-t1921_raw <- readr::read_csv(file_in_1921)
+
 
 # 1981-2020
-file_in_1981 <- "in/1981_Drought_Properties_site.csv"
+file_in_1981 <- "in/Streamflow_percentiles_national_1981/01031500.csv"
 if(!file.exists(file_in_1981)){ # if files don't exist, download
-  sbtools::item_file_download(sb_id = "62f475abd34eacf5397395e8",
-                              names = "Drought_Properties_site.csv",
+  sbtools::item_file_download(sb_id = "62f463c5d34eacf5397395d9",
+                              names = "Streamflow_percentiles_national_1921.zip",
                               destinations = file_in_1981,
                               overwrite_file = F)
 }
