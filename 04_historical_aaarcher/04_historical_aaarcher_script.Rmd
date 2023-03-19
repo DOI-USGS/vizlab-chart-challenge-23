@@ -33,6 +33,8 @@ library(readr) # best for reading and writing csvs
 
 library(sbtools)
 library(readr)
+library(geofacet)
+library(scales)
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -81,7 +83,7 @@ if(!file.exists(file_in_metadata)){ # if files don't exist, download
 }
 metadata <- readr::read_csv(file_in_metadata, show_col_types = FALSE) |>
   select(StaID, STANAME, DRAIN_SQKM, HUC02, LAT_GAGE, LNG_GAGE, STATE,
-         national_1981, national_1951, national_1921)
+         national_1981, national_1951, national_1921, HCDN_2009)
 
 # Download US State boundaries as sf object
 states_sf <- spData::us_states
@@ -121,55 +123,45 @@ This next section is for doing any pre-processing steps, data joins, etc, to get
 ```{r processing}
 # Determine what sites are in both datasets using metadata
 metadata <- metadata |>
-  mutate(in_both_L5181 = case_when(national_1981 & national_1951 ~ TRUE,
-                               TRUE ~ FALSE),
-         in_both_L = case_when(national_1981 & national_1921 ~ TRUE,
+  mutate(in_both_L = case_when(national_1981 & national_1921 ~ TRUE,
                                TRUE ~ FALSE))
 
 # Determine focal sites
 focal_sites <- metadata$StaID[metadata$in_both_L]
-focal_sites5181 <- metadata$StaID[metadata$in_both_L5181]
 
 # Read in all focal sites and rowbind together for each timeframe
 ## Because I'm using site-level thresholds, only need first row for each site
 files_1921 <- sprintf("in/Streamflow_percentiles_national_1921/%s.csv", focal_sites)
 t1921_data <- purrr::map(files_1921[1], 
                          ~ readr::read_csv(files_1921, 
-                                           n_max = 1, 
+                                           n_max = 1000, 
                                            show_col_types = FALSE,
                                            col_types = list("StaID" = col_character()))) |>
-  reduce(rbind) |>
-  # only keep fields we need
-  select(StaID, thresh_20_site) |>
-  # and rename based on timeframe
-  rename(thresh_1921 = thresh_20_site) 
 
-files_1951 <- sprintf("in/Streamflow_percentiles_national_1951/%s.csv", focal_sites5181)
-t1951_data <- purrr::map(files_1951[1], 
-                         ~ readr::read_csv(files_1951, 
-                                           n_max = 1, 
-                                           show_col_types = FALSE,
-                                           col_types = list("StaID" = col_character()))) |>
   reduce(rbind) |>
+  filter(year == 1921) |>
   # only keep fields we need
-  select(StaID, thresh_20_site) |>
+  select(StaID, jd, thresh_20_jd_07d_wndw) |>
   # and rename based on timeframe
-  rename(thresh_1951 = thresh_20_site) 
+  rename(thresh_1921 = thresh_20_jd_07d_wndw) 
 
-files_1981 <- sprintf("in/Streamflow_percentiles_national_1981/%s.csv", focal_sites5181)
+
+
+files_1981 <- sprintf("in/Streamflow_percentiles_national_1981/%s.csv", focal_sites)
 t1981_data <- purrr::map(files_1981[1], 
                          ~ readr::read_csv(files_1981, 
-                                           n_max = 1, 
+                                           n_max = 1500, 
                                            show_col_types = FALSE,
                                            col_types = list("StaID" = col_character()))) |>
   reduce(rbind) |>
+  filter(year == 1983) |>
   # only keep fields we need
-  select(StaID, thresh_20_site) |>
+  select(StaID, jd, dt, thresh_20_jd_07d_wndw) |>
   # and rename based on timeframe
-  rename(thresh_1981 = thresh_20_site) 
+  rename(thresh_1981 = thresh_20_jd_07d_wndw) 
 
 # Merge data together (left join)
-thresh_data <- t1921_data |> left_join(t1981_data) |> left_join(t1951_data) |>
+thresh_data <- t1921_data |> left_join(t1981_data) |> 
   # and calculate how much threshold has changed (magnitude, absolute value, and sign)
   mutate(magnitude_change = thresh_1981 - thresh_1921,
          absolute_change = abs(magnitude_change),
@@ -178,14 +170,7 @@ thresh_data <- t1921_data |> left_join(t1981_data) |> left_join(t1951_data) |>
                                  magnitude_change == 0 ~ "no change",
                                  TRUE ~ "no data"))
 
-thresh_data5181 <- t1951_data |> left_join(t1981_data) |>
-  # and calculate how much threshold has changed (magnitude, absolute value, and sign)
-  mutate(magnitude_change = thresh_1981 - thresh_1951,
-         absolute_change = abs(magnitude_change),
-         change_text = case_when(magnitude_change > 0 ~ "increase",
-                                 magnitude_change < 0 ~ "decrease",
-                                 magnitude_change == 0 ~ "no change",
-                                 TRUE ~ "no data"))
+
 
 
 # Add in metadata for stations
@@ -202,52 +187,67 @@ all_data <- thresh_data |>
                           STATE %in% c("AZ", "CA", "UT", "NV") ~ "Southwest",
                           TRUE ~ "not sorted"))
 
-# Summarize by HUC2
-huc02_summary <- all_data |>
-  group_by(HUC02, change_text) |>
-  summarise(n = n()) |>
-  mutate(proportion = n / sum(n))
+random_sites <- c("05454500", "10337500", "02223000")#sample(focal_sites, size = 25)
+thresh_random <- all_data |>
+  filter(StaID %in% random_sites) |>
+  mutate(increase_ymin = case_when(thresh_1981 > thresh_1921 ~ pmin(thresh_1981, thresh_1921)),
+         increase_ymax = case_when(thresh_1981 > thresh_1921 ~ pmax(thresh_1981, thresh_1921)),
+         decrease_ymin = case_when(thresh_1981 < thresh_1921 ~ pmin(thresh_1981, thresh_1921)),
+         decrease_ymax = case_when(thresh_1981 < thresh_1921 ~ pmax(thresh_1981, thresh_1921)))
 
-# Summarize by State
-state_summary <- all_data |>
-  group_by(STATE, CASC, change_text) |>
-  summarise(n = n()) |>
-  mutate(proportionState = n / sum(n)) |>
-  left_join(st_crosswalk)
+# https://github.com/tidyverse/ggplot2/issues/2815
+cp <- coord_polar(theta = "x")
+cp$is_free <- function() TRUE
+ggplot(data = thresh_random, aes(y = thresh_1921, x = jd, group = StaID)) + 
+  geom_line(color = "red", alpha = 0.2) + 
+  geom_line(aes(y = thresh_1981, group = StaID), color = "mediumblue", alpha = 0.2)+
+  geom_ribbon(aes(ymin = increase_ymin,
+                  ymax = increase_ymax),
+              fill = "blue", alpha = 0.5)+
+  geom_ribbon(aes(ymin = decrease_ymin,
+                  ymax = decrease_ymax),
+              fill = "red", alpha = 0.5)+
+  #cp +
+  geofacet::facet_geo(~ STATE, scales = "free_y") + 
+  theme(
+    strip.background = element_blank(),
+    #strip.text.x = element_blank(),
+    axis.text = element_blank()
+  )
 
+ggplot(data = thresh_random, aes(y = thresh_1921, x = dt, group = StaID)) + 
+  geom_line(color = "red", alpha = 0.2) + 
+  geom_line(aes(y = thresh_1981, group = StaID), color = "blue", alpha = 0.2)+
+  geom_ribbon(aes(ymin = increase_ymin,
+                  ymax = increase_ymax),
+              fill = "blue", alpha = 0.2)+
+  geom_ribbon(aes(ymin = decrease_ymin,
+                  ymax = decrease_ymax),
+              fill = "red", alpha = 0.3)+
+  #cp +
+  facet_wrap(~ StaID, scales = "free_y", nrow = 3) + 
+  theme(
+    strip.background = element_blank(),
+    #strip.text.x = element_blank(),
+    axis.text = element_blank()
+  )+
+  theme_minimal()
 
-
-
-# Summarize by CASC
-CASC_summary <- all_data |>
-  group_by(CASC, change_text) |>
-  summarise(n = n()) |>
-  mutate(proportionCASC = n / sum(n)) 
-
-mapping_data <- states_CASC |>
-  left_join(CASC_summary |> filter(change_text == "decrease")) 
-mapping_data <- mapping_data |> 
-  left_join(state_summary |> filter(change_text == "decrease"), by = "STATE")
-ggplot(data = mapping_data, aes(group = STATE))+
-  geom_sf(aes(fill = proportionState))
-
-wyoming_example_all <- readr::read_csv("in/Streamflow_percentiles_national_1921/13011000.csv") 
-wyoming_example21 <- readr::read_csv("in/Streamflow_percentiles_national_1921/13011000.csv") |>
+california_example_all <- readr::read_csv("in/Streamflow_percentiles_national_1921/10337500.csv")  |>
+  mutate(decade = floor(year/10)*10)
+california_example21 <- readr::read_csv("in/Streamflow_percentiles_national_1921/10337500.csv") |>
   filter(year == 1985)
-wyoming_example51 <- readr::read_csv("in/Streamflow_percentiles_national_1951/13011000.csv") |>
+california_example81 <- readr::read_csv("in/Streamflow_percentiles_national_1981/10337500.csv") |>
   filter(year == 1985)
-wyoming_example81 <- readr::read_csv("in/Streamflow_percentiles_national_1981/13011000.csv") |>
-  filter(year == 1985)
-ggplot(data = wyoming_example, aes(x = jd, y = value)) + geom_line(aes(color = year), alpha = 0.2) +
-  geom_line(data = wyoming_example21, aes(y = thresh_20_jd), color = "pink") +
-  geom_line(data = wyoming_example51, aes(y = thresh_20_jd), color = "purple") + 
-  geom_line(data = wyoming_example81, aes(y = thresh_20_jd), color = "maroon") +
-  coord_polar() +
-  ylim(c(0,3000))
-
-median(wyoming_example$value)
-median(wyoming_example$value[wyoming_example$year > 1980])
-
+ggplot(data = california_example_all |> filter(year == 1990 | year == 1932), 
+       aes(x = jd, y = value, group = year)) + 
+  geom_line(aes(color = year), alpha = 0.5) +
+  geom_line(data = california_example21, aes(y = thresh_20_jd), color = "pink") +
+  geom_line(data = california_example81, aes(y = thresh_20_jd), color = "maroon") +
+  #coord_polar() +
+  #ylim(c(0,200)) +
+  #facet_wrap(~ decade) + 
+  theme_void()
 ```
 
 ## Set up main plot
