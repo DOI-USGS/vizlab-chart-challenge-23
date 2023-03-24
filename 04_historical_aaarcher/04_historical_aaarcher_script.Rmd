@@ -340,7 +340,7 @@ ggplot2::theme_set(theme_minimal())
 # Main plot
 (main_plot <- ggplot(data = plotting_data_CONUS, 
        aes(x = year, y = CONUS_annual_minflow_7d)) +
-  geom_line(color = "#999999") +
+  geom_line(color = "#ADAEB3") +
   geom_line(aes(y = CONUSmean_minflow_7d, color = is_change_negative, group = generation),
             linewidth = 2) +
   theme(legend.position = "none",
@@ -358,7 +358,7 @@ Xmargin <- 0.03
 # CASC Plots
 CASC_names <- unique(plotting_data_CASC$CASC)
 Xbase <- 1 - Xmargin
-Ybase <- Ymargin*2
+Ybase <- Ymargin*2 + 0.02
 Yjitter <- 0.25
 Xjitter <- 0.2 
 
@@ -366,7 +366,7 @@ draw_CASC_plots <- map(1:length(CASC_names), function(x){
   plot_temp <- plotting_data_CASC |>
     filter(CASC == CASC_names[x]) |> 
     ggplot(aes(x = year, y = CASC_annual_minflow_7d)) +
-    geom_line(linewidth = 0.5, color = "#999999") +
+    geom_line(linewidth = 0.5, color = "#ADAEB3") +
     geom_line(aes(y = CASCmean_minflow_7d, group = generation, color = is_change_negative),
               linewidth = 2) +
     ggtitle(CASC_names[x]) + 
@@ -405,19 +405,19 @@ draw_CASC_plots <- map(1:length(CASC_names), function(x){
 draw_CASC_labels <- map(1:length(CASC_names), function(x){
 
   if(CASC_names[x] %in% c("Southwest", "Southeast", "South Central")){
-    Y_position <- Ybase
+    Y_position <- Ybase + Yjitter - 0.1
   } else if(CASC_names[x] %in% c("California", "Northeast")){
-    Y_position <- Ybase + Yjitter
+    Y_position <- Ybase + 2*Yjitter - 0.1
   } else {
-    Y_position <- Ybase + 2*Yjitter + 0.2
+    Y_position <- Ybase + 3*Yjitter - 0.1
   }
   
   if(CASC_names[x] %in% c("Northwest", "California", "Southwest")){
-    X_position <- Xbase - (2*Xjitter)
+    X_position <- Xbase - (2*Xjitter) -0.1
   } else if(CASC_names[x] %in% c("North Central", "South Central")){
-    X_position <- Xbase - Xjitter
+    X_position <- Xbase - Xjitter - 0.1
   } else {
-    X_position <- Xbase
+    X_position <- Xbase - 0.1
   } 
 
   draw_label(sprintf("%s%%", round(
@@ -434,7 +434,7 @@ draw_CASC_labels <- map(1:length(CASC_names), function(x){
 (map_plot <- ggplot(data = mapping_data |> filter(change_in_minflow > 0)) +
     geom_sf(aes(fill = change_in_minflow), color = "white") +
     theme_void()+
-    scale_fill_gradient(low = "blue", high = "darkblue")+
+    scale_fill_gradient2(low = "#68BBE3", mid = "#68BBE3", high = "#000075")+
     geom_sf(data = mapping_data |> filter(change_in_minflow < 0), 
             fill = "red", color = "white")+ 
     theme(legend.position = "none")
@@ -484,14 +484,14 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   draw_CASC_plots + 
   draw_CASC_labels +
   # explainer text
-  draw_label("Mean Minimum Annual Streamflow values are based on 331 gages for which there are 100 years of data. Chart by A. Archer.",
+  draw_label("Minimum Streamflow values are based on annual 7-day low flows from 331 gages for which there are 100 years of data.\nData from doi.org/10.5066/P92FAASD. Chart by A. Archer.",
              fontfamily = supporting_font,
-             x = 0.96,   
+             x = 1-Xmargin,   
              y = Ymargin,
              size = 14,
              hjust = 1,
              vjust = 0,
-             color = font_color)+
+             color = "#999999")+
   # Title
   draw_label("These aren't your parents' streamflows!",
              x = Xmargin,
@@ -503,7 +503,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              color = font_color,
              size = 45) +
     # Statistics
-  draw_label("Minimum Annual Streamflow\nhas increased across the U.S. by\n\n\n\nsince the\nSilent Generation",
+  draw_label("Minimum Annual Streamflow\nhas increased across the U.S. by\n\n\n\nsince the\nSilent Generation (1920 - 1945)",
              x = Xmargin + 0.15,
              y = 0.85,
              hjust = 0.5,
