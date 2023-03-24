@@ -108,8 +108,9 @@ states_CASC <- states_sf |>
                           NAME %in% c("North Carolina", "South Carolina", "Georgia", "Alabama", 
                                        "Mississippi", "Florida", "Tennessee", 
                                        "Arkansas") ~ "Southeast",
-                          NAME %in% c("Arizona", "California", 
+                          NAME %in% c("Arizona",
                                        "Utah", "Nevada") ~ "Southwest",
+                          NAME == "California" ~ "California",
                           TRUE ~ "not sorted")) |>
   left_join(st_crosswalk)
 
@@ -124,7 +125,18 @@ This next section is for doing any pre-processing steps, data joins, etc, to get
 # Determine what sites are in both datasets using metadata
 metadata <- metadata |>
   mutate(in_both_L = case_when(national_1981 & national_1921 ~ TRUE,
-                               TRUE ~ FALSE))
+                               TRUE ~ FALSE)) |>
+  # add in Climate area 
+  mutate("CASC" = case_when(STATE %in% c("MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH") ~ "Midwest",
+                          STATE %in% c("MT", "WY", "CO", "ND", "SD", "NE", "KS") ~ "North Central",
+                          STATE %in% c("ME", "NH", "VT", "MA", "CT", "RI", "DC",
+                                       "NY", "NJ", "PA", "DE", "MD", "WV", "VA", "KY") ~ "Northeast",
+                          STATE %in% c("WA", "OR", "ID") ~ "Northwest",
+                          STATE %in% c("NM", "TX", "OK", "LA") ~ "South Central",
+                          STATE %in% c("NC", "SC", "GA", "AL", "MS", "FL", "TN", "AR") ~ "Southeast",
+                          STATE %in% c("AZ", "UT", "NV") ~ "Southwest",
+                          STATE == "CA" ~ "California",
+                          TRUE ~ "not sorted"))
 
 # Determine focal sites
 focal_sites <- metadata$StaID[metadata$in_both_L]
@@ -134,120 +146,158 @@ focal_sites <- metadata$StaID[metadata$in_both_L]
 files_1921 <- sprintf("in/Streamflow_percentiles_national_1921/%s.csv", focal_sites)
 t1921_data <- purrr::map(files_1921[1], 
                          ~ readr::read_csv(files_1921, 
-                                           n_max = 1000, 
                                            show_col_types = FALSE,
                                            col_types = list("StaID" = col_character()))) |>
 
   reduce(rbind) |>
-  filter(year == 1921) |>
   # only keep fields we need
-  select(StaID, jd, thresh_20_jd_07d_wndw) |>
+  select(StaID, jd, dt, year, value, thresh_2_jd_07d_wndw) |>
   # and rename based on timeframe
-  rename(thresh_1921 = thresh_20_jd_07d_wndw) 
+  rename(thresh_2_1921 = thresh_2_jd_07d_wndw) 
 
 
 
-files_1981 <- sprintf("in/Streamflow_percentiles_national_1981/%s.csv", focal_sites)
-t1981_data <- purrr::map(files_1981[1], 
-                         ~ readr::read_csv(files_1981, 
-                                           n_max = 1500, 
-                                           show_col_types = FALSE,
-                                           col_types = list("StaID" = col_character()))) |>
-  reduce(rbind) |>
-  filter(year == 1983) |>
-  # only keep fields we need
-  select(StaID, jd, dt, thresh_20_jd_07d_wndw) |>
-  # and rename based on timeframe
-  rename(thresh_1981 = thresh_20_jd_07d_wndw) 
+# Calculate EPA's climate change metrics for each station
+#  (https://www.epa.gov/climate-indicators/climate-change-indicators-streamflow)
+climate_metrics_site <- t1921_data |> 
+  filter(year %in% 1920:2019) |>
+  group_by(StaID) |>
+  # calculate minimum and max streamflow by site (returns Inf for empty sets)
+  mutate(min_flow_7d = zoo::rollapply(value, width = 7, function(x){min(x, na.rm = TRUE)}, fill = NA),
+         max_flow_3d =  zoo::rollapply(value, width = 3, function(x){max(x, na.rm = TRUE)}, fill = NA)) |>
+  # convert infinities to missing values
+  mutate(min_flow_7d = case_when(min_flow_7d %in% c(Inf, -Inf) ~ NA,
+                                 TRUE ~ min_flow_7d),
+         max_flow_3d = case_when(max_flow_3d %in% c(Inf, -Inf) ~ NA,
+                                 TRUE ~ max_flow_3d))
 
-# Merge data together (left join)
-thresh_data <- t1921_data |> left_join(t1981_data) |> 
-  # and calculate how much threshold has changed (magnitude, absolute value, and sign)
-  mutate(magnitude_change = thresh_1981 - thresh_1921,
-         absolute_change = abs(magnitude_change),
-         change_text = case_when(magnitude_change > 0 ~ "increase",
-                                 magnitude_change < 0 ~ "decrease",
-                                 magnitude_change == 0 ~ "no change",
-                                 TRUE ~ "no data"))
+# Extract MIN/MAX values by station and year
+climate_metrics_year_site <- climate_metrics_site |>
+  group_by(year, StaID) |> 
+  summarise(minflow_7d = min(min_flow_7d, na.rm = TRUE),
+            maxflow_3d = max(max_flow_3d, na.rm = TRUE)) |>
+  # convert infinities to missing values
+  mutate(minflow_7d = case_when(minflow_7d %in% c(Inf, -Inf) ~ NA,
+                                 TRUE ~ minflow_7d),
+         maxflow_3d = case_when(maxflow_3d %in% c(Inf, -Inf) ~ NA,
+                                 TRUE ~ maxflow_3d))
+
+
+# Add in generations 
+climate_metrics_year_site_join <- climate_metrics_year_site  |>
+  mutate(generation = case_when(year %in% 1920:1945 ~ "0 silent generation",
+                                year %in% 1946:1964 ~ "1 baby boomers",
+                                year %in% 1965:1980 ~ "2 gen x",
+                                year %in% 1981:1996 ~ "3 millenials",
+                                year %in% 1997:2021 ~ "4 gen z"))  
+
+# Get average values by station and generation
+climate_metrics_generation_site_temp <- climate_metrics_year_site_join |>
+  group_by(generation, StaID) |> 
+  summarise(minflow_7d = mean(minflow_7d, na.rm = TRUE),
+            maxflow_3d = mean(maxflow_3d, na.rm = TRUE)) 
+climate_metrics_generation_site_remove <- climate_metrics_generation_site_temp |>
+  filter(generation == "0 silent generation",
+         minflow_7d == 0)
+climate_metrics_generation_site <- climate_metrics_generation_site_temp |>
+  filter(! StaID %in% climate_metrics_generation_site_remove$StaID)
+
+# Extract baseline values to get % changes by station
+baselines <- climate_metrics_generation_site |> 
+  rename(baseline_generation = generation,
+         baseline_minflow_7d = minflow_7d,
+         baseline_maxflow_3d = maxflow_3d) |>
+  filter(baseline_generation == "0 silent generation") |>
+  select(baseline_generation, baseline_minflow_7d, baseline_maxflow_3d, StaID)
+
+# Merge baselines and join metadata and calculate percent changes
+climate_metrics_generation_site_base <- climate_metrics_generation_site |>
+  left_join(baselines, by = "StaID") |>
+  mutate(change_minflow_7d = ((minflow_7d - baseline_minflow_7d)/baseline_minflow_7d)*100,
+         change_maxflow_3d = ((maxflow_3d - baseline_maxflow_3d)/baseline_maxflow_3d)*100) |>
+  # remove infinities
+  mutate(change_minflow_7d = case_when(change_minflow_7d %in% c(Inf, -Inf) ~ NA,
+                                       TRUE ~ change_minflow_7d),
+         change_maxflow_3d = case_when(change_maxflow_3d %in% c(Inf, -Inf) ~ NA,
+                                       TRUE ~ change_maxflow_3d))
+
+# Calculate average and ranges across all sites
+climate_metrics_CONUS <- climate_metrics_generation_site_base |> 
+  group_by(generation) |> 
+  summarise(mean_change_minflow_7d = mean(change_minflow_7d, na.rm = TRUE),
+            median_change_minflow_7d = median(change_minflow_7d, na.rm = TRUE),
+            mean_change_maxflow_3d = mean(change_maxflow_3d, na.rm = TRUE),
+            median_change_maxflow_3d = median(change_maxflow_3d, na.rm = TRUE),
+            CONUSmean_minflow_7d = mean(minflow_7d, na.rm = TRUE),
+            CONUSmedian_minflow_7d = median(minflow_7d, na.rm = TRUE),
+            CONUSmean_maxflow_3d = mean(maxflow_3d, na.rm = TRUE),
+            CONUSmedian_maxflow_3d = median(maxflow_3d, na.rm = TRUE),
+            n = n(),
+            baseline_flow = 
+              climate_metrics_CONUS$CONUSmean_minflow_7d[
+                climate_metrics_CONUS$generation == "0 silent generation"],
+            change_in_minflow = ((CONUSmean_minflow_7d - baseline_flow)/baseline_flow)*100,
+         is_change_negative = case_when(change_in_minflow < 0 ~ "yes",
+                                        change_in_minflow == 0 ~ "no change",
+                                        change_in_minflow > 0 ~ "no"))
+
+
+# Calculate averages by CASC
+climate_metrics_CASC_temp <- climate_metrics_generation_site_base |> 
+  left_join(metadata, by = "StaID") |>
+  group_by(generation, CASC) |> 
+  summarise(mean_change_minflow_7d = mean(change_minflow_7d, na.rm = TRUE),
+            median_change_minflow_7d = median(change_minflow_7d, na.rm = TRUE),
+            mean_change_maxflow_3d = mean(change_maxflow_3d, na.rm = TRUE),
+            median_change_maxflow_3d = median(change_maxflow_3d, na.rm = TRUE),
+            CASCmean_minflow_7d = mean(minflow_7d, na.rm = TRUE),
+            CASCmedian_minflow_7d = median(minflow_7d, na.rm = TRUE),
+            CASCmean_maxflow_3d = mean(maxflow_3d, na.rm = TRUE),
+            CASCmedian_maxflow_3d = median(maxflow_3d, na.rm = TRUE),
+            n = n())
+climate_metrics_CASC <- climate_metrics_CASC_temp |> 
+  left_join(climate_metrics_CASC_temp |> 
+              rename(baseline_flow = CASCmean_minflow_7d,
+                     baseline_generation = generation) |>
+              filter(baseline_generation == "0 silent generation") |>
+              select(baseline_generation, CASC, baseline_flow),
+            by = "CASC") |>
+  mutate(change_in_minflow = ((CASCmean_minflow_7d - baseline_flow)/baseline_flow)*100,
+         is_change_negative = case_when(change_in_minflow < 0 ~ "yes",
+                                        change_in_minflow == 0 ~ "no change",
+                                        change_in_minflow > 0 ~ "no"))
+
+# Set up plotting data - CONUS
+plotting_data_CONUS <- climate_metrics_year_site |> 
+  filter(year %in% 1920:2019) |>
+  group_by(year) |>
+  summarise(CONUS_annual_minflow_7d = mean(minflow_7d, na.rm = TRUE),
+            CONUS_annual_maxflow_3d = mean(maxflow_3d, na.rm = TRUE)) |>
+  mutate(generation = case_when(year %in% 1920:1945 ~ "0 silent generation",
+                                year %in% 1946:1964 ~ "1 baby boomers",
+                                year %in% 1965:1980 ~ "2 gen x",
+                                year %in% 1981:1996 ~ "3 millenials",
+                                year %in% 1997:2021 ~ "4 gen z")) |>
+  left_join(climate_metrics_CONUS, by = c("generation"))
+
+plotting_data_CASC <- climate_metrics_year_site |>
+  filter(year %in% 1920:2019) |>
+  left_join(metadata, by = "StaID") |>
+  group_by(year, CASC) |> 
+  summarise(CASC_annual_minflow_7d = mean(minflow_7d, na.rm = TRUE),
+            CASC_annual_maxflow_3d = mean(maxflow_3d, na.rm = TRUE)) |>
+  mutate(generation = case_when(year %in% 1920:1945 ~ "0 silent generation",
+                                year %in% 1946:1964 ~ "1 baby boomers",
+                                year %in% 1965:1980 ~ "2 gen x",
+                                year %in% 1981:1996 ~ "3 millenials",
+                                year %in% 1997:2021 ~ "4 gen z")) |>
+  left_join(climate_metrics_CASC, by = c("generation", "CASC"))
 
 
 
+mapping_data <- states_CASC |> left_join(climate_metrics_CASC |> filter(generation == "4 gen z"),
+                                         by = "CASC")
 
-# Add in metadata for stations
-all_data <- thresh_data |> 
-  left_join(metadata) |>
-  # add in Climate area 
-  mutate("CASC" = case_when(STATE %in% c("MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH") ~ "Midwest",
-                          STATE %in% c("MT", "WY", "CO", "ND", "SD", "NE", "KS") ~ "North Central",
-                          STATE %in% c("ME", "NH", "VT", "MA", "CT", "RI", "DC",
-                                       "NY", "NJ", "PA", "DE", "MD", "WV", "VA", "KY") ~ "Northeast",
-                          STATE %in% c("WA", "OR", "ID") ~ "Northwest",
-                          STATE %in% c("NM", "TX", "OK", "LA") ~ "South Central",
-                          STATE %in% c("NC", "SC", "GA", "AL", "MS", "FL", "TN", "AR") ~ "Southeast",
-                          STATE %in% c("AZ", "CA", "UT", "NV") ~ "Southwest",
-                          TRUE ~ "not sorted"))
-
-random_sites <- c("05454500", "10337500", "02223000")#sample(focal_sites, size = 25)
-thresh_random <- all_data |>
-  filter(StaID %in% random_sites) |>
-  mutate(increase_ymin = case_when(thresh_1981 > thresh_1921 ~ pmin(thresh_1981, thresh_1921)),
-         increase_ymax = case_when(thresh_1981 > thresh_1921 ~ pmax(thresh_1981, thresh_1921)),
-         decrease_ymin = case_when(thresh_1981 < thresh_1921 ~ pmin(thresh_1981, thresh_1921)),
-         decrease_ymax = case_when(thresh_1981 < thresh_1921 ~ pmax(thresh_1981, thresh_1921)))
-
-# https://github.com/tidyverse/ggplot2/issues/2815
-cp <- coord_polar(theta = "x")
-cp$is_free <- function() TRUE
-ggplot(data = thresh_random, aes(y = thresh_1921, x = jd, group = StaID)) + 
-  geom_line(color = "red", alpha = 0.2) + 
-  geom_line(aes(y = thresh_1981, group = StaID), color = "mediumblue", alpha = 0.2)+
-  geom_ribbon(aes(ymin = increase_ymin,
-                  ymax = increase_ymax),
-              fill = "blue", alpha = 0.5)+
-  geom_ribbon(aes(ymin = decrease_ymin,
-                  ymax = decrease_ymax),
-              fill = "red", alpha = 0.5)+
-  #cp +
-  geofacet::facet_geo(~ STATE, scales = "free_y") + 
-  theme(
-    strip.background = element_blank(),
-    #strip.text.x = element_blank(),
-    axis.text = element_blank()
-  )
-
-ggplot(data = thresh_random, aes(y = thresh_1921, x = dt, group = StaID)) + 
-  geom_line(color = "red", alpha = 0.2) + 
-  geom_line(aes(y = thresh_1981, group = StaID), color = "blue", alpha = 0.2)+
-  geom_ribbon(aes(ymin = increase_ymin,
-                  ymax = increase_ymax),
-              fill = "blue", alpha = 0.2)+
-  geom_ribbon(aes(ymin = decrease_ymin,
-                  ymax = decrease_ymax),
-              fill = "red", alpha = 0.3)+
-  #cp +
-  facet_wrap(~ StaID, scales = "free_y", nrow = 3) + 
-  theme(
-    strip.background = element_blank(),
-    #strip.text.x = element_blank(),
-    axis.text = element_blank()
-  )+
-  theme_minimal()
-
-california_example_all <- readr::read_csv("in/Streamflow_percentiles_national_1921/10337500.csv")  |>
-  mutate(decade = floor(year/10)*10)
-california_example21 <- readr::read_csv("in/Streamflow_percentiles_national_1921/10337500.csv") |>
-  filter(year == 1985)
-california_example81 <- readr::read_csv("in/Streamflow_percentiles_national_1981/10337500.csv") |>
-  filter(year == 1985)
-ggplot(data = california_example_all |> filter(year == 1990 | year == 1932), 
-       aes(x = jd, y = value, group = year)) + 
-  geom_line(aes(color = year), alpha = 0.5) +
-  geom_line(data = california_example21, aes(y = thresh_20_jd), color = "pink") +
-  geom_line(data = california_example81, aes(y = thresh_20_jd), color = "maroon") +
-  #coord_polar() +
-  #ylim(c(0,200)) +
-  #facet_wrap(~ decade) + 
-  theme_void()
 ```
 
 ## Set up main plot
@@ -258,16 +308,16 @@ This chunk is where the main ggplot grob definition and set-up occurs. You may h
 
 ```{r plotting}
 # Load some custom fonts and set some custom settings
-font_legend <- "Pirata One"
-sysfonts::font_add_google("Pirata One")
+font_legend <- "Comfortaa"
+sysfonts::font_add_google("Comfortaa")
 supporting_font <- "Source Sans Pro"
 sysfonts::font_add_google("Source Sans Pro")
 showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
 showtext::showtext_auto(enable = TRUE)
 
 # Define colors
-background_color = "#0A1927"
-font_color = "#ffffff"
+background_color = "#ffffff"
+font_color = "black"
 
 # The background canvas for your viz
 canvas <- grid::rectGrob(
@@ -277,14 +327,66 @@ canvas <- grid::rectGrob(
 )
 
 # Load in USGS logo (also a black logo available)
-usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
+
+# Set default chart
+ggplot2::theme_set(theme_minimal())
 
 # Main plot
-(main_plot <- ggplot()
+(main_plot <- ggplot(data = plotting_data_CONUS, 
+       aes(x = year, y = CONUS_annual_minflow_7d)) +
+  geom_line(color = "#999999") +
+  geom_line(aes(y = CONUSmean_minflow_7d, color = is_change_negative, group = generation)) +
+  theme(legend.position = "none") +
+    ylab("Minimum Annual Streamflow")
  )
 
+CASC_names <- unique(plotting_data_CASC$CASC)
+Xbase <- 0.5
+Ybase <- 0.1
+Yjitter <- 0.2
+Xjitter <- 0.2 
 
+draw_CASC_plots <- map(1:length(CASC_names), function(x){
+  plot_temp <- plotting_data_CASC |>
+    filter(CASC == CASC_names[x]) |> 
+    ggplot(aes(x = year, y = CASC_annual_minflow_7d)) +
+    geom_line() +
+    geom_line(aes(y = CASCmean_minflow_7d, group = generation, color = is_change_negative)) +
+    ggtitle(CASC_names[x]) + 
+    theme(legend.position = "none")
+  
+  if(CASC_names[x] %in% c("California", "Southwest", "Southeast", "South Central")){
+    Y_position <- Ybase
+  } else {
+    Y_position <- Ybase + Yjitter
+  }
+  
+  if(CASC_names[x] %in% c("Northwest", "California")){
+    X_position <- Xbase
+  } else if(CASC_names[x] %in% c("North Central", "Southwest")){
+    X_position <- Xbase + Xjitter
+  } else if(CASC_names[x] %in% c("Midwest", "South Central")){
+    X_position <- Xbase + 2*Xjitter
+  } else{
+    X_position <- Xbase + 3*Xjitter
+  }
+  
+  draw_plot(plot_temp,
+            x = X_position,
+            y = Y_position,
+            height = 0.2,
+            width = 0.2)
+})
+(map_plot <- ggplot(data = mapping_data) +
+    geom_sf(aes(fill = change_in_minflow), color = "white") +
+    theme_void()+
+  scico::scale_fill_scico(palette = "vik", direction = -1,
+                          limits = c(-1, 1) * max(abs(mapping_data$change_in_minflow)))
+)
 
+# Chart settings
+margin <-  0.04
 ```
 
 
@@ -304,32 +406,35 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             hjust = 0, vjust = 1) +
   # the main plot
   draw_plot(main_plot,
-            x = 0.01,
-            y = 0.01,
-            height = 1) +
+            x = margin,
+            y = 0.15,
+            height = 0.45,
+            width = 0.4,
+            hjust = 0) +
   # explainer text
   draw_label("Explainer text",
              fontfamily = supporting_font,
              x = 0.96,   
-             y = 0.05,
+             y = margin,
              size = 14,
              hjust = 1,
              vjust = 0,
              color = font_color)+
   # Title
   draw_label("Title",
-             x = 0.04,
-             y = 0.285,
+             x = margin,
+             y = 1-margin,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
              fontfamily = font_legend,
              color = font_color,
              size = 55) +
+  draw_CASC_plots + 
   # Add logo
   draw_image(usgs_logo, 
-             x = 0.04,
-             y = 0.05,
+             x = margin,
+             y = margin,
              width = 0.1, 
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)
@@ -338,7 +443,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
 # e.g. `20230101_part-to-whole-cnell.png`
-ggsave(filename = "out/20230000_prompt_name.png", 
+ggsave(filename = "out/20230404_historical_aaarcher.png", 
        width = 16, height = 9, dpi = 300)
 ```
 
