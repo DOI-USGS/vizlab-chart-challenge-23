@@ -10,7 +10,7 @@ Date for your prompt in April: TBD
 
 Image: 
 
-![tadaa](out/tadaaaaa_pp.png)
+![2000 Years of Droughts!](https://code.usgs.gov/ewhite/chart-challenge-23/-/blob/bfc4e9c9c8286df3fd5c324a2e7810d65dc5582c/00_ewhite/out/tadaaaaa_pp.png)
 
 Your key takeaways (1-2 sentences each):
 
