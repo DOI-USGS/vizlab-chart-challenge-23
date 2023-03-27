@@ -37,9 +37,11 @@ plot_timeseries <- function(dai_data, out_folder, region_num, region_name){
   return(out_folder)
 }
 
+# library(extrafont)
+# font_import()
+# loadfonts(device = "win")
 
-
-plot_points <- function(pooled_data = p2_pooled, out_folder){
+plot_points <- function(pooled_data, out_folder){
   
   ggplot(data = pooled_data, aes(x = end, y = duration)) +
     geom_point(aes(size = severity, col = region_name, alpha = 0.7)) +
@@ -47,23 +49,26 @@ plot_points <- function(pooled_data = p2_pooled, out_folder){
     # facet_wrap(~region_num) +
     scale_size_binned(range = c(0, 6), guide = "none") +
     # scale_radius(trans = "log") +
-    scale_color_brewer(palette = "Paired", labels = str_pad(sort(unique(pooled_data$region_name)), 30, "right")) + # need to sort labels here cause ggplot sorts
+    scale_color_brewer(palette = "Paired", 
+                       labels = str_pad(sort(unique(pooled_data$region_name)), 30, "right"),  # need to sort labels here cause ggplot sorts
+                       ) + 
     geom_segment(aes(x = start , y = 0, xend = end, yend = duration), col = "lightgrey") +
     labs(x = "TIMELINE (0-2017 CE)", 
          y = "DURATION (years)",
-         # title = "2000-ish Years of Drought Durations", 
+         # title = "2000 Years of Droughts", 
          # subtitle = "Underlying data are tree-ring drought atlases that reconstruct modern drought indices and provide a paleoclimate analog.",
          # caption = "Data Source: Living Blended Drought Atlas (LBDA V2). 
-         # https://doi.org/10.25921/7xm8-jn36. Accessed 03/20/2023. 
          # Code: available upon request.
          # Ellie White <ewhite@usgs.gov>"
-         ) +
+         color = "WATER RESOURCES REGIONS IN WESTERN UNITED STATES") +
     theme_usgsmod()+
     theme(legend.position="bottom", 
           legend.box = "horizontal", 
           legend.text = element_text(margin = margin (l = -5)), 
           legend.margin = margin(-20, 0, 0, 0)) +
-    guides(colour = guide_legend(nrow = 1)) +
+    guides(colour = guide_legend(nrow = 1, 
+                                 title.position = "top",
+                                 title.hjust = 0)) +
     scale_alpha(guide = "none")
   
     # scale_size(range = c(0, 10),
@@ -71,7 +76,7 @@ plot_points <- function(pooled_data = p2_pooled, out_folder){
                # name = "Severity \nMax PMDI\nacross years",
                # guide = "legend") 
   out_file <- file.path(out_folder, "tadaaaaa.png")
-  ggsave(out_file, width = 26, height = 8, units = "in")
+  ggsave(out_file, width = 16, height = 9, units = "in", dpi = 300)
                
   return(out_file)
 }
