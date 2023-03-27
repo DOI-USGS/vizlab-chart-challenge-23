@@ -9,37 +9,37 @@ output: html_document
 
 > Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
 
-1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
-2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
-3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
-4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
-5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+1.  Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "\`" marks) to explain your process to Vizlab reviewers
+2.  Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3.  You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function.
+4.  To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5.  When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
 
-This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+This website has great information on how to use RMarkdown: <https://yihui.org/knitr/>
 
 # adjust working dir for targets
+
 ```{r}
 setwd("~/Desktop/chart-challenge-demo/chart-challenge-23/00_template_elmera_azadpour")
 ```
 
-
 ### To get all data:
-- lets first run a targets pipeline to 1) get the data from sbtools and 2) do some munging/wrangling
-- to do this open `_targets.R` and run lines 1-10, if you do not have targets installed, run `install.packages("targets")`
-- now run `tar_make()`, you should see the pipeline buukd wuth outputs in `00_template_elmera_azadpour/out` folder
+
+-   lets first run a targets pipeline to 1) get the data from sbtools and 2) do some munging/wrangling
+-   to do this open `_targets.R` and run lines 1-10, if you do not have targets installed, run `install.packages("targets")`
+-   now run `tar_make()`, you should see the pipeline buukd wuth outputs in `00_template_elmera_azadpour/out` folder
 
 ## Set up - lets load
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-tar_make()
 ```
 
-
-
-Define libraries here. 
+Define libraries here.
 
 ```{r libraries, warning=FALSE, message=FALSE}
 # Load libraries
+library(targets) # for water quality data
 library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
 
@@ -59,8 +59,6 @@ library(raster)
 library(scico)
 ```
 
-
-
 ## Load files
 
 Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
@@ -68,18 +66,17 @@ Save any files that you are using directly in the `in` folder. Then read them in
 This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
 
 ```{r load}
+tar_make()
 tar_load(threshold_decadal_gw)
 tar_load(wells_centroid_csv)
 ```
 
 ## Get data ready for plotting
-  
+
 This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
 
-
 ```{r processing}
-## lets add a column in `p2_threshold_decadal_gw` using case when to then group networks by 4 contiguous U.S regions: West, Central, Midwest, East
-
+# lets add a column in `p2_threshold_decadal_gw` using case when to then group networks by 4 contiguous U.S regions: West, Central, Midwest, East
 threshold_decadal_gw_reg <- threshold_decadal_gw |> 
   mutate(region = case_when(study_unit_abbreviation == 'acad'~ 'central',
                             study_unit_abbreviation == 'acfb'~ "east",
@@ -98,11 +95,11 @@ threshold_decadal_gw_reg <- threshold_decadal_gw |>
                             study_unit_abbreviation == 'lirb' ~ 'midwest',
                             study_unit_abbreviation == 'miam' ~ 'midwest',
                             study_unit_abbreviation == 'mise' ~ 'midwest',
-                            study_unit_abbreviation == 'mobl' ~ 'east', #maybe?
+                            study_unit_abbreviation == 'mobl' ~ 'east',
                             study_unit_abbreviation == 'necb' ~ 'east',
                             study_unit_abbreviation == 'nvbr' ~ 'west',
                             study_unit_abbreviation == 'ozrk' ~ 'central',
-                            study_unit_abbreviation == 'podl' ~ 'east', #hmm
+                            study_unit_abbreviation == 'podl' ~ 'east',
                             study_unit_abbreviation == 'poto' ~ 'east',
                             study_unit_abbreviation == 'pugt' ~ 'west',
                             study_unit_abbreviation == 'riog' ~ 'west',
@@ -126,7 +123,7 @@ threshold_decadal_gw_reg_grp <- threshold_decadal_gw_reg |>
   summarise(count_bins_sum=sum(count_bins),
             count_obs_sum = sum(count_obs))  |> 
   mutate(ratio = round(count_bins_sum/count_obs_sum*100)) |> 
-  filter(parameter %in% c("DO", "Fe", "Li_dw", "Li_hhb", "Mo", "NO3", "Pb", "Sr")) |>
+  filter(parameter %in% c("pH", "DO","As", "Fe", "Li_dw", "Li_hhb", "Mo", "NO3", "Pb", "Sr")) |>
   #capitalize regions
   mutate(region = str_to_title(gsub(",", " ", region))) |> 
   arrange(match(bins, c("high", "moderate", "low")))
@@ -141,41 +138,58 @@ wells_centroid <-readr::read_csv(wells_centroid_csv,show_col_types = FALSE)  |>
 threshold_decadal_gw_reg_grp_sf <- threshold_decadal_gw_reg |> 
   left_join(wells_centroid, by = c("su_code")) |> 
   dplyr::select(su_code, region, geometry) |> 
-  st_as_sf(crs = "epsg:4269") |> 
-  filter(region %in% "midwest") 
+  st_as_sf(crs = "epsg:4269") 
 
-states <- spData::us_states |> st_transform(crs = st_crs(wells_centroid)) |> 
-  st_crop(threshold_decadal_gw_reg_grp_sf) 
+# just get state outlines
+states_outline <-  spData::us_states |>
+  st_transform(crs = st_crs(wells_centroid))
 
+states_thresholds <- spData::us_states |> 
+  st_transform(crs = st_crs(wells_centroid)) |> 
+  st_intersection(threshold_decadal_gw_reg_grp_sf) 
 ```
 
 ## Set up main plot
 
 This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
 
-> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition.
 
 ```{r plotting}
+# unique regions
+uniq_reg <- unique(states_thresholds$region)
+
+# loop sf region plots for each unique region
+for (i in seq_along(uniq_reg)) {
+    data_sub = subset(
+      states_thresholds, 
+      region==uniq_reg[[i]])
+      
+      data_crop <- states_outline |> st_crop(data_sub)
+      
+    if (nrow(data) == 0) {
+      next
+    }
 # sf plots 
 ggplot() + 
-  geom_sf(data = states,
+  geom_sf(data = data_crop ,
           fill = NA,
           color = 'black',
           linewidth = 0.3) +
-  geom_sf(data = threshold_decadal_gw_reg_grp_sf,
+  geom_sf(data = data_sub,
           fill = '#e45c5c',
             color = '#e45c5c',
           size = 1.5,
           alpha = 0.5) +
   theme_void() 
 
-ggsave(file = paste0("out/midwest_networks", ".svg"),
+ggsave(file = paste0("out/",uniq_reg[i], ".svg"),
        width = 1.2, 
        height = 1.2,
        units = "in",
        bg = "white")
 
-
+}
 # Load some custom fonts and set some custom settings
 font_legend <- 'Merriweather Sans'
 font_add_google(font_legend)
@@ -194,7 +208,8 @@ for (i in seq_along(uniq_parms)) {
       next
     }
   
-# waffle charts - but! theres a bug, cant facet_grid :( see here: https://github.com/hrbrmstr/waffle/issues/66
+# waffle charts - bug on facet_grid see here: https://github.com/hrbrmstr/waffle/issues/66
+# save as svgs and rearrange in adobe illustrator
 plt <- ggplot(data, aes(values = ratio, fill = bins)) +
   geom_waffle(color = "white", size=1.125, n_rows = 10, 
               make_proportional = TRUE,
@@ -203,7 +218,8 @@ plt <- ggplot(data, aes(values = ratio, fill = bins)) +
   coord_equal() + 
   scale_x_discrete(expand=c(0,0)) +
   scale_y_discrete(expand=c(0,0)) +
-  scale_fill_manual(name=NULL, values = c("#556240", "#819561","#b9c5a6"), breaks=c('high', 'moderate', 'low'), labels = c("High concentration", "Moderate concentration", "Low concentration")) +
+  scale_fill_manual(name=NULL, values = c("#37402a", "#798c5b","#b9c5a6"), breaks=c('high', 'moderate', 'low'),
+                    labels = c("High concentration", "Moderate concentration", "Low concentration")) +
   labs(
     title = paste(uniq_parms[i]),
     subtitle = "Proportion of study area" 
@@ -220,13 +236,6 @@ plt <- ggplot(data, aes(values = ratio, fill = bins)) +
             plot.title = element_text(hjust = 0.5),
             plot.subtitle = element_text(hjust = 0.5, size = 20)) +
       guides(fill = guide_legend(title.position = "top", title.hjust=0.5)) 
-  # geom_text(aes(x= 2, y=1, fill = factor(bins, levels = c('high', 'moderate', 'low')), group = bins, label= paste0(ratio, "%")), 
-  #           position = position_dodge(width = 4),
-  #           size=5, 
-  #           color = "black", show.legend = F,
-  #           ylim = c(1, NA),
-  #           family = font_legend,
-  #           fontface = 'bold') 
     
     ggsave(file = paste0("out/","region", "_", uniq_parms[i], ".svg"), plot = plt,
            width = 12, 
@@ -252,11 +261,7 @@ plt <- ggplot(data, aes(values = ratio, fill = bins)) +
 # # Main plot
 # (main_plot <- ggplot()
 #  )
-
-
-
 ```
-
 
 ## Produce final plot
 
@@ -316,9 +321,13 @@ ggsave(filename = "out/20230000_prompt_name.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Key takeaways here
+1. High DO in Western region - thought not necessarily a bad thing. High DO levels improve teh taste of drinking water but may cause corrosion in pipes. Alternatively, low DO levels may create hypoxic conditions.
+2. High Pb in the East - Pb contamination may occur from metal plumbing; [Jurgens et al., 2019](https://pubs.acs.org/doi/10.1021/acs.est.8b04475) found that the majority of elevated and high Pb tended to occur in clusters in the Eastern U.S.
+3. High NO3- in Central U.S. - shallow aquifers, [like the Ogallala](https://sites.tufts.edu/gis/files/2013/11/Gill_John.pdf), that underlie agricultural areas can lead to high NO3- concentrations due to high levels of fertilizer use and permeable soils.
+4. High Fe in the East - Fe deposits in surrounding [limestone and dolomite](https://longsecowater.com/blog/effects-of-iron-in-water) can lead to increased Fe concentrations.
 
 ### Data source(s)
 
-Data sources here.
+Lindsey, B.D., May, A.N., and Johnson, T.D., 2022, Data from Decadal Change in Groundwater Quality Web Site, 1988-2021: U.S. Geological Survey data release, https://doi.org/10.5066/P9FZT1WO.
 
+Belitz, K., Fram, M. S., Lindsey, B. D., Stackelberg, P. E., Bexfield, L. M., Johnson, T. D., ... & Dubrovsky, N. M. (2022). Quality of Groundwater Used for Public Supply in the Continental United States: A Comprehensive Assessment. ACS ES&T Water, 2(12), 2645-2656. https://doi.org/10.1021/acs.est.2c08061 
