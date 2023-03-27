@@ -10,7 +10,7 @@ Date for your prompt in April: TBD
 
 Image: 
 
-![tadaa](/out/tadaaaaa_pp.png)
+![tadaa](./out/tadaaaaa_pp.png)
 
 Your key takeaways (1-2 sentences each):
 
