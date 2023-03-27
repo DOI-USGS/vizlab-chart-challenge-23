@@ -20,7 +20,8 @@ This website has great information on how to use RMarkdown: <https://yihui.org/k
 # adjust working dir for targets
 
 ```{r}
-setwd("~/Desktop/chart-challenge-demo/chart-challenge-23/00_template_elmera_azadpour")
+library(here)
+setwd(here("00_template_elmera_azadpour"))
 ```
 
 ### To get all data:
@@ -66,9 +67,9 @@ Save any files that you are using directly in the `in` folder. Then read them in
 This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
 
 ```{r load}
-tar_make()
-tar_load(threshold_decadal_gw)
-tar_load(wells_centroid_csv)
+tar_make() # run pipeline
+tar_load(threshold_decadal_gw) #load threshold data target for plotting
+tar_load(wells_centroid_csv) #load spatial data for plotting 
 ```
 
 ## Get data ready for plotting
