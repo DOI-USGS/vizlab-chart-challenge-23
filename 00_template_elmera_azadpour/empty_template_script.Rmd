@@ -197,21 +197,12 @@ font_add_google(font_legend)
 showtext_opts(dpi = 300, regular.wt = 300, bold.wt = 800)
 showtext_auto(enable = TRUE)
 
-uniq_parms <- unique(threshold_decadal_gw_reg_grp$parameter)
-
-# run for loop to output svg waffle charts for each constituent faceted by region 
-for (i in seq_along(uniq_parms)) {
-    data=subset(
-      threshold_decadal_gw_reg_grp, 
-      parameter==uniq_parms[[i]]
-    )
-    if (nrow(data) == 0) {
-      next
-    }
   
 # waffle charts - bug on facet_grid see here: https://github.com/hrbrmstr/waffle/issues/66
 # save as svgs and rearrange in adobe illustrator
-plt <- ggplot(data, aes(values = ratio, fill = bins)) +
+plt <- threshold_decadal_gw_reg_grp |> 
+  split(threshold_decadal_gw_reg_grp$parameter) |> 
+  map(~ggplot(.x, aes(values = ratio, fill = bins)) +
   geom_waffle(color = "white", size=1.125, n_rows = 10, 
               make_proportional = TRUE,
               stat = "identity") +
@@ -222,12 +213,12 @@ plt <- ggplot(data, aes(values = ratio, fill = bins)) +
   scale_fill_manual(name=NULL, values = c("#37402a", "#798c5b","#b9c5a6"), breaks=c('high', 'moderate', 'low'),
                     labels = c("High concentration", "Moderate concentration", "Low concentration")) +
   labs(
-    title = paste(uniq_parms[i]),
+    title = .x |> pull(parameter) |> unique(),
     subtitle = "Proportion of study area" 
   ) +
   theme_void() +
       theme(strip.text = element_text(size = 26,
-                                      margin=margin(b=5)), 
+                                      margin=margin(b=5)),
             legend.key.width = unit(0.75, "cm"),
             legend.text = element_text(size = 16),
             legend.title = element_text(size = 26),
@@ -236,14 +227,15 @@ plt <- ggplot(data, aes(values = ratio, fill = bins)) +
             text = element_text(size=22,family = font_legend, color = "black", face= "bold"),
             plot.title = element_text(hjust = 0.5),
             plot.subtitle = element_text(hjust = 0.5, size = 20)) +
-      guides(fill = guide_legend(title.position = "top", title.hjust=0.5)) 
-    
-    ggsave(file = paste0("out/","region", "_", uniq_parms[i], ".svg"), plot = plt,
-           width = 12, 
-           height = 12,
-           units = "in",
-           bg = "white")
-  }
+      guides(fill = guide_legend(title.position = "top", title.hjust=0.5))) 
+
+  pwalk(list(paste0("out/", "region", "_", stringr::str_c(names(plt), ".svg")), plt),
+        ggsave, 
+        width=12, 
+        height=12,
+        units = "in",
+        bg = "white",
+        path = ".")
 
 # # Define colors
 # background_color = "#0A1927"
@@ -271,51 +263,51 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 **Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
 ```{r cowplot, fig.width = 16, fig.height = 9}
-ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
-       xlim = c(0,1)) +
-  # a background
-  draw_grob(canvas,
-            x = 0, y = 1,
-            height = 9, width = 16,
-            hjust = 0, vjust = 1) +
-  # the main plot
-  draw_plot(main_plot,
-            x = 0.01,
-            y = 0.01,
-            height = 1) +
-  # explainer text
-  draw_label("Explainer text",
-             fontfamily = supporting_font,
-             x = 0.96,   
-             y = 0.05,
-             size = 14,
-             hjust = 1,
-             vjust = 0,
-             color = font_color)+
-  # Title
-  draw_label("Title",
-             x = 0.04,
-             y = 0.285,
-             hjust = 0,
-             vjust = 1,
-             lineheight = 0.75,
-             fontfamily = font_legend,
-             color = font_color,
-             size = 55) +
-  # Add logo
-  draw_image(usgs_logo, 
-             x = 0.04,
-             y = 0.05,
-             width = 0.1, 
-             hjust = 0, vjust = 0, 
-             halign = 0, valign = 0)
+# ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+#        xlim = c(0,1)) +
+#   # a background
+#   draw_grob(canvas,
+#             x = 0, y = 1,
+#             height = 9, width = 16,
+#             hjust = 0, vjust = 1) +
+#   # the main plot
+#   draw_plot(main_plot,
+#             x = 0.01,
+#             y = 0.01,
+#             height = 1) +
+#   # explainer text
+#   draw_label("Explainer text",
+#              fontfamily = supporting_font,
+#              x = 0.96,   
+#              y = 0.05,
+#              size = 14,
+#              hjust = 1,
+#              vjust = 0,
+#              color = font_color)+
+#   # Title
+#   draw_label("Title",
+#              x = 0.04,
+#              y = 0.285,
+#              hjust = 0,
+#              vjust = 1,
+#              lineheight = 0.75,
+#              fontfamily = font_legend,
+#              color = font_color,
+#              size = 55) +
+#   # Add logo
+#   draw_image(usgs_logo, 
+#              x = 0.04,
+#              y = 0.05,
+#              width = 0.1, 
+#              hjust = 0, vjust = 0, 
+#              halign = 0, valign = 0)
 
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
 # e.g. `20230101_part-to-whole-cnell.png`
-ggsave(filename = "out/20230000_prompt_name.png", 
-       width = 16, height = 9, dpi = 300)
+# ggsave(filename = "out/20230000_prompt_name.png", 
+#        width = 16, height = 9, dpi = 300)
 ```
 
 ## Supporting information
