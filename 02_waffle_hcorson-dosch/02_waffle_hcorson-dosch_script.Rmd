@@ -20,7 +20,8 @@ Define libraries here.
 # Load libraries
 library(tidyverse) # includes ggplot
 library(rvest)
-library(ggwaffle)
+library(ggwaffle) # install.packages("devtools") devtools::install_github("liamgilbey/ggwaffle")
+library(RColorBrewer)
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -86,7 +87,7 @@ wu_2015_expanded <- wu_2015 %>%
   mutate(vol_bgd_rounded = round(vol_bgd)) %>%
   uncount(vol_bgd_rounded, .remove = FALSE)
 
-# Use the ggwaffle function `waffle_uron()` to prep the data for plotting
+# Use the ggwaffle function `waffle_iron()` to prep the data for plotting
 wu_waffle <- waffle_iron(wu_2015_expanded, mapping = aes_d(group = wu_category), row = 13)
 
 ```
@@ -115,7 +116,7 @@ canvas <- grid::rectGrob(
 usgs_logo <- magick::image_read("../usgs_logo_black.png") 
 
 # Generate sections of waffle chart for each category of water use, coloring one category per ggplot grob
-(plot_list <- purrr::map(seq(1:length(wu_category_order)), function(category_id) {
+plot_list <- purrr::map(seq(1:length(wu_category_order)), function(category_id) {
   color_list <- rep(NA, length(wu_category_order))
   color_list[category_id] <- waffle_colors[category_id]
   ggplot(wu_waffle, aes(x, y, fill = group)) +
@@ -127,7 +128,6 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png")
       legend.position = 'None'
     )
 })
- )
 
 
 
