@@ -151,6 +151,10 @@ sysfonts::font_add_google(supporting_font)
 showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 900)
 showtext::showtext_auto(enable = TRUE)
 
+get_annotation_text <- function(category) {
+  sprintf('%s (%s)', category, filter(wu_2015, wu_category == category) %>% pull(vol_bgd) %>% round(1))
+}
+
 # set plot spacing parameters
 element_width <- 0.7
 spacing <- 0.015
@@ -187,8 +191,24 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              hjust = 0, 
              vjust = 0.5,
              color = font_color) +
+  # give total
+  draw_label(paste('Total water', sprintf('use = %s', sum(wu_2015$vol_bgd) %>% round(0)),'billion gallons', 'per day', sep = "\n"),
+             fontfamily = annotation_font,
+             x = left_margin/4,   
+             y = 0.26, 
+             size = annotation_font_size,
+             hjust = 0, 
+             vjust = 0.5,
+             color = font_color) +
+  draw_line(
+      x = c(left_margin/4 - 0.01, left_margin/4 - 0.01, 0.88, 0.88),
+      y = c(0.18, 0.17, 0.17, 0.18),
+      color = 'grey40', 
+      size = 0.5,
+      linetype = 'solid'
+  ) +
   # label thermo
-  draw_label(wu_category_order[[1]],
+  draw_label(get_annotation_text(wu_category_order[[1]]),
              fontfamily = annotation_font,
              x = 0.26,   
              y = 0.8, 
@@ -197,7 +217,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0.5,
              color = font_color) +
   # label irrigation
-  draw_label(wu_category_order[[2]],
+  draw_label(get_annotation_text(wu_category_order[[2]]),
              fontfamily = annotation_font,
              x = 0.515,   
              y = 0.8, 
@@ -213,7 +233,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              angle = 55,
              color = font_color,
              lineend = 'round') +
-  draw_label(wu_category_order[[3]],
+  draw_label(get_annotation_text(wu_category_order[[3]]),
              fontfamily = annotation_font,
              x = 0.722,   
              y = 0.89, 
@@ -229,7 +249,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              angle = 55,
              color = font_color,
              lineend = 'round') +
-  draw_label(wu_category_order[[4]],
+  draw_label(get_annotation_text(wu_category_order[[4]]),
              fontfamily = annotation_font,
              x = 0.782,   
              y = 0.83, 
@@ -245,7 +265,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              angle = -35,
              color = font_color,
              lineend = 'round') +
-  draw_label(wu_category_order[[5]],
+  draw_label(get_annotation_text(wu_category_order[[5]]),
              fontfamily = annotation_font,
              x = 0.83,   
              y = 0.755, 
@@ -261,7 +281,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              angle = -35,
              color = font_color,
              lineend = 'round') +
-  draw_label(wu_category_order[[6]],
+  draw_label(get_annotation_text(wu_category_order[[6]]),
              fontfamily = annotation_font,
              x = 0.87,   
              y = 0.35, 
@@ -277,7 +297,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              angle = -35,
              color = font_color,
              lineend = 'round') +
-  draw_label(stringr::str_wrap(wu_category_order[[7]], 20),
+  draw_label(stringr::str_wrap(get_annotation_text(wu_category_order[[7]]), 20),
              fontfamily = annotation_font,
              x = 0.885,   
              y = 0.51, 
@@ -293,9 +313,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              angle = -35,
              color = font_color,
              lineend = 'round') +
-  draw_label(wu_category_order[[8]],
+  draw_label(get_annotation_text(wu_category_order[[8]]),
              fontfamily = annotation_font,
-             x = 0.9,   
+             x = 0.89,   
              y = 0.665, 
              size = annotation_font_size,
              hjust = 0, 
