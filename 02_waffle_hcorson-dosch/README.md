@@ -8,7 +8,7 @@ Date for your prompt in April: April 2
 
 Image: 
 
-![](out/20230402_waffle_hcorson-dosch.png)
+![20230402_waffle_hcorson-dosch](/uploads/8c943f389e7f2509f840e5cbb0865261/20230402_waffle_hcorson-dosch.png)
 
 Your key takeaways (1-2 sentences each):
 
