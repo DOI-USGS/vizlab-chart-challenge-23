@@ -4,7 +4,7 @@ Your name: Hayley Corson-Dosch
 
 Your prompt: waffle
 
-Date for your prompt in April: April 4
+Date for your prompt in April: April 2
 
 Image: 
 
