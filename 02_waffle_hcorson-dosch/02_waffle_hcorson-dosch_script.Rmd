@@ -177,7 +177,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   }) +
   # legend
   geom_curve(aes(xend = 0.125, x = left_margin/2,
-                 yend = 0.74, y = 0.695),
+                 yend = 0.74, y = 0.69),
              arrow = grid::arrow(length = unit(1, 'lines')), 
              curvature = -0.3,
              angle = -35,
@@ -192,16 +192,16 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0.5,
              color = font_color) +
   # give total
-  draw_label(paste('Total water', sprintf('use = %s', sum(wu_2015$vol_bgd) %>% round(0)),'billion gallons', 'per day', sep = "\n"),
+  draw_label(sprintf('Total water use = %s billion gallons per day', sum(wu_2015$vol_bgd) %>% round(0)),
              fontfamily = annotation_font,
-             x = left_margin/4,   
-             y = 0.26, 
+             x = 0.5,   
+             y = 0.14, 
              size = annotation_font_size,
-             hjust = 0, 
+             hjust = 0.5, 
              vjust = 0.5,
              color = font_color) +
   draw_line(
-      x = c(left_margin/4 - 0.01, left_margin/4 - 0.01, 0.88, 0.88),
+      x = c(0.126, 0.126, 0.88, 0.88),
       y = c(0.18, 0.17, 0.17, 0.18),
       color = 'grey40', 
       size = 0.5,
@@ -329,7 +329,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              size = 14,
              hjust = 1,
              vjust = 0,
-             color = font_color)+
+             color = '#6E6E6E')+
   # Title
   draw_label("U.S. water use - 2015",
              x = 0.04,
@@ -340,7 +340,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = supporting_font,
              fontface = 'bold',
              color = font_color,
-             size = 55) +
+             size = 65) +
   # Add logo
   draw_image(usgs_logo, 
              x = 0.04,
