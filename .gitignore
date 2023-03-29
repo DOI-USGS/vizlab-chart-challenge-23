@@ -21,8 +21,8 @@
 
 # Subdirectory specific files
 # ADD AS USERS SUBMIT CODE IN SUBDIRECTORIES
-*/in/*
-*/out/*
+#*/in/*
+#*/out/*
 *.html
 
 # Spatial
