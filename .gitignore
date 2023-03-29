@@ -25,6 +25,10 @@
 */out/*
 *.html
 
+# allow empty files to be committed
+!*/in/.empty
+!*/out/.empty
+
 # Spatial
 *.cpg
 *.dbf
