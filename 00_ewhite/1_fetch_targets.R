@@ -24,7 +24,7 @@ p1_targets_list <- list(
     brick('1_fetch/in/lbda-v2_kddm_pmdi_2017.nc', varname = "PMDI")
   ), 
   
-  # # unpublished data from Edward R. Cook <drdendro@ldeo.columbia.edu> in personal communications, 03/2023
+  # # unpublished data from Edward R. Cook <drdendro@ldeo.columbia.edu> in personal communications, 03/2023, didn't get this data
   # # spans 2017-2020
   # tar_target(
   #   p1_nada, 
@@ -46,10 +46,16 @@ p1_targets_list <- list(
                     crs = st_crs(p1_lbda))
   ), 
   
+  # state boundaries for plots 
+  tar_target(
+    p1_states, 
+    st_read("1_fetch/in/cb_2018_us_state_500k/cb_2018_us_state_500k.shp")
+  ), 
+  
   # needed for plots made from dynamically branched targets
   tar_target(
     p1_region_nums, 
-    13:18
+    c(13, 14, 15, 16, 17, 18) 
   ), 
   
   tar_target(

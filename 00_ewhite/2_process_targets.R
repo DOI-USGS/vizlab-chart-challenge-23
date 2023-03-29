@@ -32,7 +32,8 @@ p2_targets_list <- list(
   tar_target(
     p2_pooled,
     pool_droughts(dai_data = p2_dai, 
-                  inter_event_duration = 2),
+                  inter_event_duration = 2, 
+                  loess_span = 0.01),
     pattern = map(p2_dai),
     iteration = "list"
   ),

@@ -32,7 +32,8 @@ calc_dai <- function(data_prepped){
   intervals <- list(c(4, 100), 
                     c(3, 4),
                     c(2, 3), 
-                    c(-2, 2), 
+                    c(-2, 0), # -2 to 2 is near normal                   
+                    c(0, 2), 
                     c(-3, -2), 
                     c(-4, -3), 
                     c(-100, -4))
@@ -65,7 +66,7 @@ calc_dai <- function(data_prepped){
   }
   
   # format row names 
-  rownames(dai) <- list("interval_pos4", "interval_pos3", "interval_pos2", "interval_neg2", "interval_neg3", "interval_neg4", "interval_neginf")
+  rownames(dai) <- list("interval_pos4", "interval_pos3", "interval_pos2", "interval_zero", "interval_neg2", "interval_neg3", "interval_neg4", "interval_neginf")
   
   # format column names to date
   colnames(dai) <- paste0("X", as.numeric(str_sub(colnames(dai), 2))-1)
@@ -79,6 +80,7 @@ calc_dai <- function(data_prepped){
     pos4 = dai$interval_pos4/sum_counts_in_intervals*100,
     pos3 = dai$interval_pos3/sum_counts_in_intervals*100,
     pos2 = dai$interval_pos2/sum_counts_in_intervals*100,
+    zero = dai$interval_zero/sum_counts_in_intervals*100,
     neg2 = dai$interval_neg2/sum_counts_in_intervals*100,
     neg3 = dai$interval_neg3/sum_counts_in_intervals*100,
     neg4 = dai$interval_neg4/sum_counts_in_intervals*100,
@@ -93,17 +95,28 @@ calc_dai <- function(data_prepped){
 
 # pooling droughts 
 # courtesy of Caelan Simeone
-pool_droughts <- function(dai_data, inter_event_duration){                   # , pooling_severity_ratio = 0.01, not using this for now
+pool_droughts <- function(dai_data, inter_event_duration, loess_span){          
+  # smooth first ----------------------------
+  dai_data_smoothed <- dai_data |>
+    mutate(wet = pos4 + pos3 + pos2 + neg2 + zero, 
+           dry = -1*(zero + neg2 + neg3 + neg4 + neginf)) |>
+    mutate(wet_plus_dry = wet + dry) 
+  
+  # fit a smooth line
+  loess_fit <- loess(dai_data_smoothed$wet_plus_dry ~ dai_data_smoothed$date, span = loess_span)
+  
+  dai_data_smoothed <- dai_data_smoothed |>
+    mutate(loess = predict(loess_fit))
+  # ----------------------------------------
+  
   # 1. find drought events
-  df_events <- dai_data |>
+  df_events <- dai_data_smoothed |>
     arrange(date) |>
-    mutate(percent_drought = neg2/2 + neg3 + neg4 + neginf,                      # negative intervals droughts
-           # percent_near_normal <- neg2,                                        # -2 to 2 
-           percent_wetspell = neg2/2 + pos4 + pos3 + pos2,                       # positive intervals
-           percent_severe_extreme_drought = neg3 + neg4 + neginf,                # make is_drought a stricter rule
-           percent_its_all_cool = neg2 + pos2 + pos3 + pos4, 
-           is_drought = ifelse(percent_drought >= percent_wetspell, 1, 0),     # add drought classification, 1 is drought, 0 is not
-           # is_drought = ifelse(percent_severe_extreme_drought >= percent_its_all_cool, 1, 0), 
+    mutate(wet = pos4 + pos3 + pos2 + neg2 + zero,                                    # positive is wetspell, split middle interval evenly
+           dry = -1*(zero + neg2 + neg3 + neg4 + neginf),                             # negative is dryspell, split middle interval evenly
+           wet_plus_dry = pos4 + pos3 + pos2 + neg2/2 -1*(zero + neg2 + neg3 + neg4 + neginf), 
+           # is_drought = ifelse(wet_plus_dry <= 0, 1, 0),                         # add drought classification, 1 is drought, 0 is not
+           is_drought = ifelse(loess <= 0, 1, 0),                         # use loess for drought classification
            drought_id = data.table::rleid(is_drought))                           # find the consecutive years in and out of drought and use a ticking counter to assign a drought_id
   
   # 2. summarize drought events  
@@ -111,34 +124,26 @@ pool_droughts <- function(dai_data, inter_event_duration){                   # ,
     group_by(drought_id) |>
     summarize(duration = length(is_drought),                                     # get duration of each event
               drought_bool = mean(is_drought),                                   # pull drought condition, 1 is drought, 0 is not
-              severity = mean(percent_drought),                                  
-              # severity = sum(percent_severe_extreme_drought),
               .groups = "drop") |>                                               # keep for now, we need to decide how many events to look back on when pooling
-    mutate(previous_duration = lag(duration, n = 1),                             # add a column with duration/severity of previous event
-           previous_duration_2 = lag(previous_duration, n = 1),
-           previous_severity = lag(severity, n = 1),
-           severity_ratio = severity / previous_severity)
-    
+    mutate(previous_duration = lag(duration, n = 1),                             
+           previous_duration_2 = lag(previous_duration, n = 1))
+  
   # 3. extract "small" events to be dropped
-  # inter-event time criterion only. Here it is events less than n days, that are shorter than previous drought. 
+  # inter-event time criterion only. Here it is events less than n days, that are shorter than previous drought.
   df_summary_IT <- df_summary |> filter(duration < inter_event_duration & previous_duration > duration & drought_bool == 0)
-  
-  # # inter-event time AND severity criterion, based on duration AND severity. 
-  # df_summary_IC <- df_summary |>
-  #   filter(((duration < inter_event_duration & previous_duration > duration) | severity_ratio < pooling_severity_ratio) & drought_bool == 0)
-  
+
   # 4. drop "small" events
   df_pooled <- filter(df_events, !drought_id %in% df_summary_IT$drought_id) |>   # pool now that small inter periods are out
     arrange(date) |>
     mutate(drought_id = data.table::rleid(is_drought))                           # re-run rleid to count droughts
-  
-  # 5. extract only events below threshold 
+
+  # 5. extract only events below threshold
   df_drought <- filter(df_pooled, is_drought == 1)
-  
-  # 6. make a summary of pooled events 
+
+  # 6. make a summary of pooled events
   df_drought_summary <- df_drought |>
-    group_by(drought_id) |>                   
-    summarize(severity = max(percent_drought),                                   # summarize important characteristics for each drought 
+    group_by(drought_id) |>
+    summarize(severity = abs(sum(dry)),        # -1*(sum(wet_plus_dry)          # summarize important characteristics for each drought
               duration = length(is_drought),
               start = first(date),
               end = last(date),
@@ -148,6 +153,7 @@ pool_droughts <- function(dai_data, inter_event_duration){                   # ,
     mutate(previous_end = lag(end, n = 1),
            days_since_previous_drought = start - previous_end)
   
+  return(df_drought_summary)
 }
 
 

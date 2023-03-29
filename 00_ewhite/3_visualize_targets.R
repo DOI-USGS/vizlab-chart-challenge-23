@@ -1,5 +1,5 @@
 # options
-tar_option_set(packages = c("ggplot2", "lubridate", "tidyverse", "RColorBrewer"))
+tar_option_set(packages = c("ggplot2", "lubridate", "tidyverse", "RColorBrewer", "scales", "sfheaders", "ggimage", "magick"))
 
 # scripts
 source('3_visualize/src/ggplot_visualize.R')
@@ -28,20 +28,41 @@ p3_targets_list <- list(
   
   # # drought area index
   # tar_target(
-  #   p3_dai_timeseries_png, 
-  #   plot_timeseries(dai_data = p2_dai,
-  #                   out_folder = "3_visualize/out/", 
-  #                   region_num = p1_region_nums, 
-  #                   region_name = p1_region_names), 
-  #   pattern = map(p2_dai, p1_region_nums, p1_region_names), 
+  #   p3_dai_timeseries_png,
+  #   plot_timeseries_dai(dai_data = p2_dai,
+  #                   out_folder = "3_visualize/out/",
+  #                   region_num = p1_region_nums,
+  #                   region_name = p1_region_names),
+  #   pattern = map(p2_dai, p1_region_nums, p1_region_names),
   #   format = "file"
-  # ), 
+  # ),
+  
+  # # dai smoothed
+  # tar_target(
+  #   p3_dais_timeseries_png,
+  #   plot_timeseries_dai_smoothed(dai_data = p2_dai,
+  #                       out_folder = "3_visualize/out/",
+  #                       region_num = p1_region_nums,
+  #                       region_name = p1_region_names),
+  #   pattern = map(p2_dai, p1_region_nums, p1_region_names),
+  #   format = "file"
+  # ),
   
   # pooled drought 
   tar_target(
     p3_drought_png, 
     plot_points(pooled_data = p2_drought, 
                 out_folder = "3_visualize/out/"), 
+    format = "file"
+    # cue = tar_cue(mode = "always")
+  ),
+  
+  # boundaries in legend
+  tar_target(
+    p3_boundaries_png,
+    plot_boundaries_legend(boundaries = p1_wbd_west, 
+                           state_boundaries = p1_states, 
+                           out_folder = "3_visualize/out/"), 
     format = "file"
   )
 )
