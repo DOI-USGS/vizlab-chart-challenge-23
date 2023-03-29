@@ -1,0 +1,349 @@
+---
+title: "Water use waffle"
+author: "Hayley Corson-Dosch"
+date: "2023-03-27"
+output: html_document
+---
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(rvest)
+library(ggwaffle)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Scrape water use data
+
+
+```{r load}
+# Scrape water use data
+national_wu_url <- 'https://waterdata.usgs.gov/nwis/water_use?format=html_table&rdb_compression=file&wu_year=ALL&wu_category=ALL&wu_category_nms=--ALL%2BCategories--'
+# start session
+session <- rvest::session(national_wu_url)
+# pull data tables
+site_tables <- rvest::html_table(session)
+# wu data is in table 2
+wu_table <- site_tables[[2]]
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Munge water use data
+# pivot to long format
+wu_long <- wu_table %>%
+  pivot_longer(!`National Totals`, names_to = 'year', values_to = 'vol_bgd', values_transform = list(vol_bgd = as.character))
+
+# Filter out population and water source rows
+wu_all <- wu_long %>%
+  filter(!(`National Totals`) %in% c('Population, in millions', 'Total withdrawals, in Bgal/d',
+                                     'Total Groundwater, fresh, in Bgal/d', 'Total Groundwater, saline, in Bgal/d',
+                                     'Total Surface water, fresh, in Bgal/d', 'Total Surface water, saline, in Bgal/d')) %>%
+  rename(wu_category = `National Totals`) %>%
+  mutate(wu_category = gsub(', in Bgal/d|, In Bgal/d', '', wu_category))
+
+# Get 2015 subset of data, omitting the commercial water use category, which has no data in 2015
+wu_2015 <- wu_all %>%
+  filter(year == 2015) %>%
+  filter(!(wu_category == 'Commercial')) %>%
+  mutate(vol_bgd = as.numeric(vol_bgd))
+
+# Get an ordered list of water use categories (from high to low total volume of use)
+wu_category_order <- wu_2015 %>%
+  arrange(desc(vol_bgd)) %>%
+  pull(wu_category)
+
+# Use the ordered list to make water use category a factor in the 2015 water use data
+wu_2015 <- mutate(wu_2015, wu_category = factor(wu_category, levels = wu_category_order))
+
+# For use with ggwaffle, expand the data, so that the # of rows for each category = bgd of use (rounded to nearest whole value)
+wu_2015_expanded <- wu_2015 %>%
+  mutate(vol_bgd_rounded = round(vol_bgd)) %>%
+  uncount(vol_bgd_rounded, .remove = FALSE)
+
+# Use the ggwaffle function `waffle_uron()` to prep the data for plotting
+wu_waffle <- waffle_iron(wu_2015_expanded, mapping = aes_d(group = wu_category), row = 13)
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting, warning=FALSE}
+
+# Define colors
+background_color = "#ffffff"
+font_color = "grey20"
+waffle_colors <- RColorBrewer::brewer.pal(8, 'Paired')
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
+
+# Generate sections of waffle chart for each category of water use, coloring one category per ggplot grob
+(plot_list <- purrr::map(seq(1:length(wu_category_order)), function(category_id) {
+  color_list <- rep(NA, length(wu_category_order))
+  color_list[category_id] <- waffle_colors[category_id]
+  ggplot(wu_waffle, aes(x, y, fill = group)) +
+    geom_waffle() +
+    coord_equal() +
+    scale_fill_manual(values = color_list, na.value = NA) +
+    theme_void() +
+    theme(
+      legend.position = 'None'
+    )
+})
+ )
+
+
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+
+# Load some custom fonts and set some custom settings
+annotation_font <- 'Shadows Into Light'
+sysfonts::font_add_google(annotation_font)
+annotation_font_size <- 22
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google(supporting_font)
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 900)
+showtext::showtext_auto(enable = TRUE)
+
+# set plot spacing parameters
+element_width <- 0.7
+spacing <- 0.015
+left_margin <- 0.1
+
+# build plot
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  purrr::map(seq(1:length(plot_list)), function(plot_id) {
+    draw_plot(plot_list[[plot_id]],
+              x = left_margin + spacing*(plot_id - 1),
+              y = -0.03,
+              width = element_width)
+  }) +
+  # legend
+  geom_curve(aes(xend = 0.125, x = left_margin/2,
+                 yend = 0.74, y = 0.695),
+             arrow = grid::arrow(length = unit(1, 'lines')), 
+             curvature = -0.3,
+             angle = -35,
+             color = font_color,
+             lineend = 'round') +
+  draw_label(paste('1 square =','1 billion gallons','per day', sep = "\n"),
+             fontfamily = annotation_font,
+             x = left_margin/4,   
+             y = 0.63, 
+             size = annotation_font_size,
+             hjust = 0, 
+             vjust = 0.5,
+             color = font_color) +
+  # label thermo
+  draw_label(wu_category_order[[1]],
+             fontfamily = annotation_font,
+             x = 0.26,   
+             y = 0.8, 
+             size = annotation_font_size,
+             hjust = 0.5, 
+             vjust = 0.5,
+             color = font_color) +
+  # label irrigation
+  draw_label(wu_category_order[[2]],
+             fontfamily = annotation_font,
+             x = 0.515,   
+             y = 0.8, 
+             size = annotation_font_size,
+             hjust = 0.5, 
+             vjust = 0.5,
+             color = font_color) +
+  # label public supply
+  geom_curve(aes(xend = 0.685, x = 0.715,
+                 yend = 0.775, y = 0.885),
+             arrow = grid::arrow(length = unit(1, 'lines')), 
+             curvature = 0.25,
+             angle = 55,
+             color = font_color,
+             lineend = 'round') +
+  draw_label(wu_category_order[[3]],
+             fontfamily = annotation_font,
+             x = 0.722,   
+             y = 0.89, 
+             size = annotation_font_size,
+             hjust = 0, 
+             vjust = 0.5,
+             color = font_color) +
+  # label industrial
+  geom_curve(aes(xend = 0.75, x = 0.775,
+                 yend = 0.775, y = 0.83),
+             arrow = grid::arrow(length = unit(1, 'lines')), 
+             curvature = 0.25,
+             angle = 55,
+             color = font_color,
+             lineend = 'round') +
+  draw_label(wu_category_order[[4]],
+             fontfamily = annotation_font,
+             x = 0.782,   
+             y = 0.83, 
+             size = annotation_font_size,
+             hjust = 0, 
+             vjust = 0.5,
+             color = font_color) +
+  # label Aquaculture
+  geom_curve(aes(xend = 0.81, x = 0.85,
+                 yend = 0.69, y = 0.73),
+             arrow = grid::arrow(length = unit(1, 'lines')), 
+             curvature = -0.3,
+             angle = -35,
+             color = font_color,
+             lineend = 'round') +
+  draw_label(wu_category_order[[5]],
+             fontfamily = annotation_font,
+             x = 0.83,   
+             y = 0.755, 
+             size = annotation_font_size,
+             hjust = 0, 
+             vjust = 0.5,
+             color = font_color) +
+  # label mining
+  geom_curve(aes(xend = 0.85, x = 0.89,
+                 yend = 0.285, y = 0.325),
+             arrow = grid::arrow(length = unit(1, 'lines')), 
+             curvature = -0.3,
+             angle = -35,
+             color = font_color,
+             lineend = 'round') +
+  draw_label(wu_category_order[[6]],
+             fontfamily = annotation_font,
+             x = 0.87,   
+             y = 0.35, 
+             size = annotation_font_size,
+             hjust = 0, 
+             vjust = 0.5,
+             color = font_color) +
+  # label domestic
+  geom_curve(aes(xend = 0.865, x = 0.905,
+                 yend = 0.425, y = 0.465),
+             arrow = grid::arrow(length = unit(1, 'lines')), 
+             curvature = -0.3,
+             angle = -35,
+             color = font_color,
+             lineend = 'round') +
+  draw_label(stringr::str_wrap(wu_category_order[[7]], 20),
+             fontfamily = annotation_font,
+             x = 0.885,   
+             y = 0.51, 
+             size = annotation_font_size,
+             hjust = 0, 
+             vjust = 0.5,
+             color = font_color) +
+  # label livestock
+  geom_curve(aes(xend = 0.88, x = 0.92,
+                 yend = 0.6, y = 0.64),
+             arrow = grid::arrow(length = unit(1, 'lines')), 
+             curvature = -0.3,
+             angle = -35,
+             color = font_color,
+             lineend = 'round') +
+  draw_label(wu_category_order[[8]],
+             fontfamily = annotation_font,
+             x = 0.9,   
+             y = 0.665, 
+             size = annotation_font_size,
+             hjust = 0, 
+             vjust = 0.5,
+             color = font_color) +
+  # explainer text
+  draw_label("National water use data: https://waterdata.usgs.gov/nwis/wu",
+             fontfamily = supporting_font,
+             x = 0.96,   
+             y = 0.05,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+  # Title
+  draw_label("Annual U.S. water use - 2015",
+             x = 0.04,
+             y = 0.9,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             color = font_color,
+             size = 55) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.04,
+             y = 0.05,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230402_waffle_hcorson-dosch.png", 
+       width = 16, height = 9, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. As of 2015, thermoelectric power generation was the single largest category of water use in the United States, using 133 billion gallons per day. Water for thermoelectric power is used in the process of generating electricity with steam-driven turbine generators.
+
+### Data source(s)
+
+[National water use data](https://waterdata.usgs.gov/nwis/wu)
+
