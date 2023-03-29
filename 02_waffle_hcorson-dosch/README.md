@@ -8,8 +8,6 @@ Date for your prompt in April: April 2
 
 Image: 
 
-Share the link in this document with the format `![](out/20230000_prompt-example_name.png)`:
-
 ![](out/20230402_waffle_hcorson-dosch.png)
 
 Your key takeaways (1-2 sentences each):
