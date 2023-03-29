@@ -259,7 +259,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              color = font_color) +
   # label Aquaculture
   geom_curve(aes(xend = 0.81, x = 0.85,
-                 yend = 0.69, y = 0.73),
+                 yend = 0.693, y = 0.733),
              arrow = grid::arrow(length = unit(1, 'lines')), 
              curvature = -0.3,
              angle = -35,
@@ -268,7 +268,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   draw_label(get_annotation_text(wu_category_order[[5]]),
              fontfamily = annotation_font,
              x = 0.83,   
-             y = 0.755, 
+             y = 0.758, 
              size = annotation_font_size,
              hjust = 0, 
              vjust = 0.5,
@@ -331,9 +331,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0,
              color = font_color)+
   # Title
-  draw_label("Annual U.S. water use - 2015",
+  draw_label("U.S. water use - 2015",
              x = 0.04,
-             y = 0.9,
+             y = 0.885,
              hjust = 0,
              vjust = 0,
              lineheight = 0.75,
