@@ -336,9 +336,15 @@ magick::image_write_gif(magick::image_read(img_frames),
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Key takeaways here
+1. Hurricane Ida impacted southeastern Pennsylvania in September 2021, causing major flooding along rivers including Brandywine Creek, Perkiomen Creek, and Schuylkill River.
+2. This animation uses gage height data to create an inundation map for each timestep that data was collected at the Schuylkill River at Norristown (USGS 01473500) throughout the event.
+3. The animation was created using the rayshader R package, which allows for 2- and 3D rendering of geospatial data.
 
 ### Data source(s)
+Elevation data: https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage
+Imagery data: https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task/execute
+Streamflow data: https://waterdata.usgs.gov/monitoring-location/01473500/
+
 
 Data sources here.
 
