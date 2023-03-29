@@ -341,8 +341,8 @@ magick::image_write_gif(magick::image_read(img_frames),
 3. The animation was created using the rayshader R package, which allows for 2- and 3D rendering of geospatial data.
 
 ### Data source(s)
-Elevation data: https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage
-Imagery data: https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task/execute
+Elevation data: https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage <br>
+Imagery data: https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task/execute <br>
 Streamflow data: https://waterdata.usgs.gov/monitoring-location/01473500/
 
 
