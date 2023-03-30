@@ -261,7 +261,29 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png")
 # Main plot
 # CHANGE CONSTITUENT HERE 
 # For the purposes of this markdown, I'm just displaying one constituents regional varation. Final plot with small multiples is craeted in illustrator due to faceting bug. 
-(main_plot <- plt$Fe + theme(plot.margin = unit(c(2, -25, 2, -25), "cm")))
+annotate_text <-"Shadows Into Light"
+font_add_google(annotate_text)
+showtext_opts(dpi = 300, regular.wt = 300, bold.wt = 800)
+showtext_auto(enable = TRUE)
+
+(main_plot <- plt$Fe + theme(plot.margin = unit(c(2, -25, 2, -25), "cm"),
+                             strip.text.x = element_text(hjust = 0.25)) +
+      # Add iron label and arrow
+       geom_curve(data =threshold_decadal_gw_reg_grp |>  filter(region %in% c("East")),
+                  aes(x = 14.8,
+                  xend = 11.6,
+                  yend = 3.2, y = 5.4),
+               arrow = grid::arrow(length = unit(0.5, 'lines')), 
+               curvature = -0.5,
+               angle = 34,
+               color ='black') +
+    geom_text(data =threshold_decadal_gw_reg_grp |>  filter(region %in% c("East")),
+              aes(x = 16, y = 7.2),
+                  label = "Fe deposits in\nnearby limestone\nand dolomite",
+              family = annotate_text,
+              hjust = 1, vjust = 0.5,
+              color = 'black', size = 5)
+  )
 ```
 
 ## Produce final plot
