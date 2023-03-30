@@ -1,3 +1,5 @@
+library(here)
+setwd(here("00_template_elmera_azadpour"))
 library(targets)
 
 options(tidyverse.quiet = TRUE)
@@ -8,8 +10,6 @@ tar_option_set(packages = c('tidyverse', 'sbtools',
                             'showtext', 'scico'))
 
 source("src/data_utils.R")
-#source("src/plot_utils.R")
-
 
 list(
 
@@ -57,29 +57,25 @@ list(
   # Water quality thresholds data - adapted from Belitz et al., 2022, Table S4
   tar_target(
     wq_thresholds_csv,
-    "in/Water_Quality_Thresholds.csv",
-    format = "file"
+    "https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/Water_Quality_Thresholds.csv"
   ),
 
   # Water quality thresholds metadata - adapted from Belitz et al., 2022, Table S4 Notes
   tar_target(
     wq_thresholds_meta_csv,
-    "in/Metadata_Water_Quality_Thresholds.csv",
-    format = "file"
+    "https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/Metadata_Water_Quality_Thresholds.csv"
   ),
 
   # Water quality thresholds pH/DO
   tar_target(
     wq_thresholds_pH_DO_csv,
-    "in/Water_Quality_Thresholds_pH_DO.csv",
-    format = "file"
+    "https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/Water_Quality_Thresholds_pH_DO.csv"
   ),
 
-  # NAWQA Study unit names and abbreviations crosswalk for donut chart
+  # NAWQA Study unit names and abbreviations crosswalk
   tar_target(
     nawqa_study_unit_xwalk_csv,
-    "in/NAWQA_map_study_unit.csv",
-    format = "file"
+    "https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/NAWQA_map_study_unit.csv"
   ),
 
   tar_target(
