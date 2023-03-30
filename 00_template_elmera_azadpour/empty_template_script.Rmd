@@ -185,8 +185,8 @@ ggplot() +
   theme_void() 
 
 ggsave(file = paste0("out/",uniq_reg[i], ".svg"),
-       width = 1.2, 
-       height = 1.2,
+       width = 1.6, 
+       height = 1.6,
        units = "in",
        bg = "white")
 
@@ -210,8 +210,12 @@ plt <- threshold_decadal_gw_reg_grp |>
   coord_equal() + 
   scale_x_discrete(expand=c(0,0)) +
   scale_y_discrete(expand=c(0,0)) +
-  scale_fill_manual(name=NULL, values = c("#37402a", "#798c5b","#b9c5a6"), breaks=c('high', 'moderate', 'low'),
-                    labels = c("High concentration", "Moderate concentration", "Low concentration")) +
+  scale_fill_manual(name=NULL, values = c('#3A3A3A', "#808080","#BDBDBD"), breaks=c('high', 'moderate', 'low'),
+                    labels = c("High", "Moderate", "Low")) +
+  # pink scale, iron: '#36161a', "#b54a56","#e9c9cc"
+  # blue scale, strontium : '#162336', "#3b5d91","#b7c8e1"  
+  # brown sclae, lead : '#52402d', "#947352","#c9b39c" 
+  # green scale, nitrate : "#37402a", "#798c5b","#b9c5a6"
   labs(
     title = .x |> pull(parameter) |> unique(),
     subtitle = "Proportion of study area" 
@@ -220,6 +224,8 @@ plt <- threshold_decadal_gw_reg_grp |>
       theme(strip.text = element_text(size = 26,
                                       margin=margin(b=5)),
             legend.key.width = unit(0.75, "cm"),
+            legend.key.height = unit(0.75, "cm"),
+            legend.spacing.x = unit(0.5, 'cm'),
             legend.text = element_text(size = 16),
             legend.title = element_text(size = 26),
             legend.direction = "horizontal",
@@ -237,23 +243,25 @@ plt <- threshold_decadal_gw_reg_grp |>
         bg = "white",
         path = ".")
 
-# # Define colors
-# background_color = "#0A1927"
-# font_color = "#ffffff"
-# 
-# # The background canvas for your viz
-# canvas <- grid::rectGrob(
-#   x = 0, y = 0, 
-#   width = 16, height = 9,
-#   gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
-# )
-# 
-# # Load in USGS logo (also a black logo available)
-# usgs_logo <- magick::image_read("../usgs_logo_white.png") 
-# 
-# # Main plot
-# (main_plot <- ggplot()
-#  )
+# Plotting just one constituent concentrations regionally  
+# Define colors
+background_color = "#ffffff"
+font_color =  "#000000"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0,
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png")
+
+# Main plot
+# CHANGE CONSTITUENT HERE 
+# For the purposes of this markdown, I'm just displaying one constituents regional varation. Final plot with small multiples is craeted in illustrator due to faceting bug. 
+(main_plot <- plt$Fe + theme(plot.margin = unit(c(2, -25, 2, -25), "cm")))
 ```
 
 ## Produce final plot
@@ -263,51 +271,51 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 **Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
 ```{r cowplot, fig.width = 16, fig.height = 9}
-# ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
-#        xlim = c(0,1)) +
-#   # a background
-#   draw_grob(canvas,
-#             x = 0, y = 1,
-#             height = 9, width = 16,
-#             hjust = 0, vjust = 1) +
-#   # the main plot
-#   draw_plot(main_plot,
-#             x = 0.01,
-#             y = 0.01,
-#             height = 1) +
-#   # explainer text
-#   draw_label("Explainer text",
-#              fontfamily = supporting_font,
-#              x = 0.96,   
-#              y = 0.05,
-#              size = 14,
-#              hjust = 1,
-#              vjust = 0,
-#              color = font_color)+
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = 0.01,
+            y = 0.01,
+            height = 1) +
+  # explainer text
+  draw_label("Elmera Azadpour, USGS\nData from doi.org/10.5066/P9FZT1WO &\ndoi.org/10.1021/acsestwater.2c00390",
+             fontfamily = font_legend,
+             x = 0.96,
+             y = 0.05,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = font_color) +
 #   # Title
-#   draw_label("Title",
-#              x = 0.04,
-#              y = 0.285,
-#              hjust = 0,
-#              vjust = 1,
-#              lineheight = 0.75,
-#              fontfamily = font_legend,
-#              color = font_color,
-#              size = 55) +
-#   # Add logo
-#   draw_image(usgs_logo, 
-#              x = 0.04,
-#              y = 0.05,
-#              width = 0.1, 
-#              hjust = 0, vjust = 0, 
-#              halign = 0, valign = 0)
+  draw_label("Groundwater\ncontaminant\nconcentrations\n(2012 - 2021)",
+             x = 0.04,
+             y = 0.95,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 34) +
+  # Add logo
+  draw_image(usgs_logo,
+             x = 0.04,
+             y = 0.05,
+             width = 0.1,
+             hjust = 0, vjust = 0,
+             halign = 0, valign = 0)
 
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
 # e.g. `20230101_part-to-whole-cnell.png`
-# ggsave(filename = "out/20230000_prompt_name.png", 
-#        width = 16, height = 9, dpi = 300)
+ggsave(filename = "out/20230402_waffle_eazadpour.png",
+       width = 16, height = 9, dpi = 300)
 ```
 
 ## Supporting information
