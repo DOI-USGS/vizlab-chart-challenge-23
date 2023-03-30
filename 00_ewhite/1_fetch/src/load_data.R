@@ -15,6 +15,7 @@ read_boundaries <- function(in_file, layer = "WBDHU2", regions = NULL, crs = NUL
   # pick the regions of interest (here, it's the west)
   if(!is.null(regions)){
     boundaries <-  boundaries[boundaries$huc2 %in% regions, ] 
+    boundaries$huc2 <- as.factor(boundaries$huc2)
   }
   
   # change CRS to raster CRS if needed

@@ -55,7 +55,7 @@ p1_targets_list <- list(
   # needed for plots made from dynamically branched targets
   tar_target(
     p1_region_nums, 
-    c(13, 14, 15, 16, 17, 18) 
+    13:18
   ), 
   
   tar_target(
@@ -68,6 +68,6 @@ p1_targets_list <- list(
   
   tar_target(
     p1_region_names, 
-    word(p1_wbd_west$name, 1, -2) # taking the word region out of the name as it is redundant
+    word(p1_wbd_west$name, 1, -2)[order(p1_wbd_west$huc2)] # taking the word region out of the name and ordering
   )
 )

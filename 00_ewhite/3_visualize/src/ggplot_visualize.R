@@ -23,9 +23,9 @@ plot_timeseries_dai <- function(dai_data, out_folder, region_num, region_name){
   
   # sum intervals into positive and negative PMDI (wet and dry)
   dai_data_plot <- dai_data |>
-    mutate(wet = pos4 + pos3 + pos2 + neg2/2, 
-           dry = -1*(neg2/2 + neg3 + neg4 + neginf)) |>
-    select(-c(pos4, pos3, pos2, neg2, neg3, neg4, neginf)) |>
+    mutate(wet = pos4 + pos3 + pos2 + neg2 + zero, 
+           dry = -1*(zero + neg2 + neg3 + neg4 + neginf)) |>
+    select(-c(pos4, pos3, pos2, zero, neg2, neg3, neg4, neginf)) |>
     mutate(wet_dry_for_plot = ifelse(wet>abs(dry), wet, dry))
   
   dai_data_long <- gather(dai_data_plot, "intervals", "percent", wet, dry, factor_key = TRUE) |>
@@ -46,8 +46,8 @@ plot_timeseries_dai <- function(dai_data, out_folder, region_num, region_name){
 plot_timeseries_dai_smoothed <- function(dai_data, out_folder, region_num, region_name){
   # sum intervals into positive and negative PMDI (wet and dry)
   dai_data_plot <- dai_data |>
-    mutate(wet = pos4 + pos3 + pos2 + neg2/2, 
-           dry = -1*(neg2/2 + neg3 + neg4 + neginf)) |>
+    mutate(wet = pos4 + pos3 + pos2 + neg2 + zero, 
+           dry = -1*(zero + neg2 + neg3 + neg4 + neginf)) |>
     select(-c(pos4, pos3, pos2, neg2, neg3, neg4, neginf)) |>
     mutate(wet_plus_dry = wet + dry) 
   
@@ -58,7 +58,6 @@ plot_timeseries_dai_smoothed <- function(dai_data, out_folder, region_num, regio
     mutate(loess = predict(loess_fit))
   
   # pool based on loess line
-  
   ggplot(dai_data_plot)+
     geom_col(aes(x = date, y = wet_plus_dry, fill = wet_plus_dry < 0), alpha = 0.9, show.legend = FALSE)+
     geom_line(aes(x = date, y = loess)) +
@@ -79,12 +78,12 @@ plot_timeseries_dai_smoothed <- function(dai_data, out_folder, region_num, regio
 plot_points <- function(pooled_data, out_folder){
   # points as images
   images <- data.frame(images = paste0("3_visualize/in/", list.files("3_visualize/in/"))) # make sure they are coming in alphabetically cause that is how ggplot sorts
-  images$region_num <- 13:18
+  images$region_num <- c(18, 16, 15, 17, 13, 14)
   pooled_data <- merge(pooled_data, images, by = "region_num") 
-  
+  pooled_data$size_scaled <- rescale(pooled_data$severity, to = c(1, 10))
   # for transparent flowers 
   transparent <- function(img) {
-    magick::image_fx(img, expression = "0.5*a", channel = "alpha")
+    magick::image_fx(img, expression = "0.65*a", channel = "alpha")
   }
   
   ggplot(data = pooled_data, aes(x = end, y = duration)) +
@@ -92,18 +91,18 @@ plot_points <- function(pooled_data, out_folder){
                        labels = label_at(500),  # add more labels to x axis
                        # expand = expand_scale(mult=c(0.04,0.04))
                        ) + 
-    scale_color_manual(values = c("#FDBF6F", "#A6CEE3", "#B15928", "#FB9A99", "#33A02C", "#6A3D9A"), 
-                       labels = str_pad(sort(unique(pooled_data$region_name)), 12, "right")) +  # need to sort labels here
     ylim(0, 100) +
     geom_segment(aes(x = start , y = 0, xend = end, yend = duration), col = "grey", alpha = 0.7) +
     # geom_point(aes(size = rescale(severity, to = c(0, 10)), col = region_name, alpha = 0.7)) +
-    geom_image(aes(image = images, size = rescale(severity, to = c(0, 0.01))), image_fun = transparent, asp = 1.7) + 
-    scale_size(range = c(1, 10), guide = "none") +
+    # scale_size(range = c(1, 10), guide = "none") +
+    # scale_color_manual(values = c("#FDBF6F", "#A6CEE3", "#B15928", "#FB9A99", "#33A02C", "#6A3D9A"),
+    #                    labels = str_pad(sort(unique(pooled_data$region_name)), 12, "right")) +  # need to sort labels here
+    geom_image(aes(image = images, size = I(size_scaled/50)), by = "height", asp = 3.5, image_fun = transparent) +
     # facet_wrap(~region_num) +
-    labs(x = "TIMELINE (0-2017 CE)", 
+    labs(x = "", # "TIMELINE (0-2017 CE)"
          y = "DURATION (YR)",
          title = "BEYOND A REASONABLE DROUGHT: 2000 YEARS OF OBSERVED AND RECONSTRUCTED DROUGHTS", 
-         subtitle = "Historic megadroughts lasted nearly a century. Even though we are in a relatively wet period now, much of the western U.S. is still dealing with water shortages. Could future droughts last for decades like the \nmegadroughts of the distant past? Such a scenario would eclipse anything the west has seen recently.",
+         subtitle = "Historic megadroughts lasted nearly a century. Could future droughts last just as long? Such a scenario would eclipse anything the west has seen recently.",
          # caption = "Data Source: Living Blended Drought Atlas (LBDA V2).
          # Code: available upon request.
          # Ellie White <ewhite@usgs.gov>",
@@ -113,7 +112,7 @@ plot_points <- function(pooled_data, out_folder){
           legend.box = "horizontal", 
           legend.text = element_text(margin = margin (l = -5)), 
           legend.margin = margin(-20, 40, 0, 0)) +
-    guides(colour = guide_legend(nrow = 1, 
+    guides(colour = guide_legend(nrow = 1,
                                  title.position = "top",
                                  title.hjust = 0)) +
     scale_alpha(guide = "none")
