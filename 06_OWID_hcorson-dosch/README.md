@@ -10,7 +10,7 @@ Date for your prompt in April: Aril 6
 
 Image: 
 
-![](out/20230406_OWID_hcorson-dosch.png)
+![20230406_OWID_hcorson-dosch](/uploads/52a36eee1e178fb50d2a063327782d97/20230406_OWID_hcorson-dosch.png)
 
 Your key takeaways (1-2 sentences each):
 
