@@ -18,11 +18,12 @@
 *.gif
 *.psd
 *.nc
+*.svg
+*.csv
 
 # Subdirectory specific files
 # ADD AS USERS SUBMIT CODE IN SUBDIRECTORIES
 */in/*
-*/out/*
 *.html
 
 # Spatial
