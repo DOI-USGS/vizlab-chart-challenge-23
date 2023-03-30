@@ -291,14 +291,15 @@ draw_label("1980 heat wave",
              lineend = 'round',
              linewidth = grey_arrow_linewidth) +
   # explainer text
-  draw_label("Data: https://ourworldindata.org/natural-disasters",
+  draw_label(paste('Hayley Corson-Dosch, USGS',"Data: https://ourworldindata.org/natural-disasters", sep = '\n'),
              fontfamily = supporting_font,
              x = 0.96,   
              y = 0.05,
-             size = 14,
+             size = 12,
              hjust = 1,
              vjust = 0,
-             color = font_color)+
+             color = font_color,
+             fontface = 'italic')+
   # Title
   draw_label("Lives lost in U.S. natural disasters",
              x = 0.04,
