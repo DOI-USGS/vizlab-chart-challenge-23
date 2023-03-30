@@ -50,7 +50,7 @@ library(sysfonts) # for text editing
 library(showtext) # for adding in google fonts
 library(magick) # for adding logo
 
-# for waffle charats
+# for waffle charts
 # devtools::install_github("hrbrmstr/waffle")
 library(waffle)
 # for region maps
@@ -210,12 +210,13 @@ plt <- threshold_decadal_gw_reg_grp |>
   coord_equal() + 
   scale_x_discrete(expand=c(0,0)) +
   scale_y_discrete(expand=c(0,0)) +
-  scale_fill_manual(name=NULL, values = c('#3A3A3A', "#808080","#BDBDBD"), breaks=c('high', 'moderate', 'low'),
+  scale_fill_manual(name=NULL, values = c('#36161a', "#b54a56","#e9c9cc"), breaks=c('high', 'moderate', 'low'),
                     labels = c("High", "Moderate", "Low")) +
   # pink scale, iron: '#36161a', "#b54a56","#e9c9cc"
   # blue scale, strontium : '#162336', "#3b5d91","#b7c8e1"  
   # brown sclae, lead : '#52402d', "#947352","#c9b39c" 
   # green scale, nitrate : "#37402a", "#798c5b","#b9c5a6"
+  # gray scale, legend: '#3A3A3A', "#808080","#BDBDBD"
   labs(
     title = .x |> pull(parameter) |> unique(),
     subtitle = "Proportion of study area" 
