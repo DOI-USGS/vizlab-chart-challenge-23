@@ -41,8 +41,8 @@ natural_disasters <- readr::read_csv('in/natural-disasters.csv', col_types = col
 # Munge US data here
 us_natural_disaster_deaths <- natural_disasters %>%
   filter(`Country name` == 'United States') %>% # filter to US
-  select(country=`Country name`, year = Year, contains('Number of deaths')) %>% # Select death totals
-  select(where(~sum(!is.na(.x)) > 0)) %>% # drop columns w/ NA values for all years
+  dplyr::select(country=`Country name`, year = Year, contains('Number of deaths')) %>% # Select death totals
+  dplyr::select(where(~sum(!is.na(.x)) > 0)) %>% # drop columns w/ NA values for all years
   pivot_longer(starts_with('Number of deaths'), names_to = 'natural_hazard', values_to = 'deaths',
                names_pattern = 'Number of deaths from (.*)') %>% # pivot to long format
   filter(!(natural_hazard == 'disasters')) %>% # filter out the category for all disasters
@@ -56,17 +56,21 @@ us_natural_disaster_deaths <- natural_disasters %>%
 
 ```{r plotting}
 # Load some custom fonts and set some custom settings
-font_legend <- "Pirata One"
-sysfonts::font_add_google(font_legend)
+annotation_font <- "Shadows Into Light"
+sysfonts::font_add_google(annotation_font)
+annotation_font_size <- 22
 supporting_font <- "Source Sans Pro"
 sysfonts::font_add_google(supporting_font)
 showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
 showtext::showtext_auto(enable = TRUE)
+plot_font_size <- 16
 
 # Define colors
-background_color = "#ffffff"
-font_color = "grey20"
-colors = MetBrewer::met.brewer('Tiepolo', 8)
+background_color <- "#ffffff"
+font_color <- "#6E6E6E"
+annotation_font_color <- "#1A1A1A"
+title_font_color <- "#4F4F4F"
+colors <- MetBrewer::met.brewer('Tiepolo', 8)
 names(colors) <- c('wildfires', 'drought', 'extreme temperatures', 'landslides', 'volcanic activity', 'earthquakes', 'storms', 'floods')
 
 # order data by color order
@@ -90,25 +94,29 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png")
     labels = scales::label_date_short(),
     expand = c(0,0),
     name = '') +
-  scale_fill_manual(values = colors, name  = '') +
+  scale_fill_manual(values = colors,
+                    name  = '') +
   scale_y_continuous(name = '',
                      limits = c(0, 2100),
                      breaks = c(500, 1000, 1500, 2000), 
                      labels = c(500, 1000, 1500, stringr::str_wrap('2000 deaths', 10)),
                      expand = c(0,0)) +
-  theme(axis.text.y = element_text(hjust = 1, size = 16),
+  theme(axis.text.y = element_text(hjust = 1, color = font_color, size = plot_font_size, family = supporting_font),
         axis.ticks.y = element_blank(),
-        axis.text.x = element_text(size = 16),
+        axis.text.x = element_text(color = font_color, size = plot_font_size, family = supporting_font),
         plot.background = element_blank(),
         panel.background = element_blank(),
-        panel.grid.major.y = element_line(color = 'grey80', size = 0.25),
+        panel.grid.major.y = element_line(color = 'grey70', linewidth = 0.25, linetype = 'dotted'),
         panel.grid.major.x = element_blank(),
-        legend.position = c(0.8, 1.03),
-        legend.text = element_text(color = font_color, size = 16),
-        legend.spacing.y = unit(0.3, 'cm'),
-        legend.spacing.x = unit(0.4, 'cm'),
+        legend.position = c(1.29, 0.71),
+        legend.text = element_text(color = font_color, family = supporting_font, size = plot_font_size, margin = margin(r = 17)),
+        legend.spacing.y = unit(3.2, 'cm'),
+        legend.spacing.x = unit(0.18, 'cm'),
+        legend.key.width = unit(0.5, 'cm'),
+        legend.key.height = unit(0.2, 'cm'),
         legend.background = element_blank()) +
-  guides(fill = guide_legend(nrow=1, byrow = TRUE))
+  guides(fill = guide_legend(nrow=4, 
+                             byrow = TRUE))
  )
 
 # build sub plots
@@ -121,7 +129,7 @@ plot_list <- purrr::map(seq(1, length(colors)), function(hazard_id) {
   plot_colors[length(plot_colors)] <- colors[hazard_id]
 
   ggplot(us_natural_disaster_deaths) +
-    geom_alluvium(aes(date, deaths, fill = natural_hazard, alluvium = natural_hazard), decreasing = FALSE, alpha = 1) +
+    geom_alluvium(aes(date, deaths, fill = natural_hazard, alluvium = natural_hazard), decreasing = FALSE, alpha = 0.8) +
     scale_x_date(
       breaks = scales::date_breaks(width = '5 years'),
       labels = scales::label_date_short(),
@@ -143,7 +151,11 @@ plot_list <- purrr::map(seq(1, length(colors)), function(hazard_id) {
 
 ## Produce final plot
 
-```{r cowplot, fig.width = 16, fig.height = 9}
+```{r cowplot, fig.width = 16, fig.height = 9, warning=FALSE}
+white_arrow_linewidth <- 1.3
+grey_arrow_linewidth <- 0.7
+arrow_length <- 0.75
+
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
   # a background
@@ -151,17 +163,133 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             x = 0, y = 1,
             height = 9, width = 16,
             hjust = 0, vjust = 1) +
+  # small multiples
+  draw_plot(plot_grid(plotlist = plot_list, nrow = 4),
+            x = 0.64,
+            y = 0.190,
+            width = 0.325,
+            height = 0.66) +
   # the main plot
   draw_plot(main_plot,
-            x = 0.01,
-            y = 0.13,
+            x = 0.028,
+            y = 0.15,
             height = 0.7,
             width = 0.6) +
-  draw_plot(plot_grid(plotlist = plot_list, nrow = 4),
-            x = 0.65,
-            y = 0.17,
-            width = 0.3,
-            height = 0.65) +
+  # annotations
+  # heat wave
+draw_label("1980 heat wave",
+             x = 0.195,
+             y = 0.57,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = annotation_font,
+             color = annotation_font_color,
+             size = annotation_font_size) +
+  geom_curve(aes(xend = 0.184, x = 0.212,
+                 yend = 0.52, y = 0.555),
+             arrow = grid::arrow(length = unit(arrow_length, 'lines')),
+             curvature = -0.35,
+             angle = -25,
+             color = title_font_color,
+             lineend = 'round',
+             linewidth = grey_arrow_linewidth) +
+  # mount st helens
+  draw_label(stringr::str_wrap("Mount St. Helens eruption", 20),
+             x = 0.195,
+             y = 0.42,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = annotation_font,
+             color = annotation_font_color,
+             size = annotation_font_size) +
+  geom_curve(aes(xend = 0.174, x = 0.188,
+                 yend = 0.255, y = 0.435),
+             arrow = grid::arrow(length = unit(arrow_length, 'lines')), 
+             curvature = 0.22,
+             angle = -25,
+             color = background_color,
+             lineend = 'round',
+             linewidth = white_arrow_linewidth) +
+  geom_curve(aes(xend = 0.174, x = 0.188,
+                 yend = 0.255, y = 0.435),
+             arrow = grid::arrow(length = unit(arrow_length, 'lines')), 
+             curvature = 0.22,
+             angle = -25,
+             color = title_font_color,
+             lineend = 'round',
+             linewidth = grey_arrow_linewidth) +
+  # hurricane katrina
+  draw_label("Hurricane Katrina",
+             x = 0.42,
+             y = 0.7,
+             hjust = 1,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = annotation_font,
+             color = annotation_font_color,
+             size = annotation_font_size) +
+  geom_curve(aes(xend = 0.43, x = 0.4,
+                 yend = 0.62, y = 0.685),
+             arrow = grid::arrow(length = unit(arrow_length, 'lines')), 
+             curvature = 0.25,
+             angle = -55,
+             color = title_font_color,
+             lineend = 'round',
+             linewidth = grey_arrow_linewidth) +
+  # Oso mudslide
+  draw_label("2014 Oso mudslide",
+             x = 0.47,
+             y = 0.47,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = annotation_font,
+             color = annotation_font_color,
+             size = annotation_font_size) +
+   geom_curve(aes(xend = 0.532, x = 0.485,
+                 yend = 0.225, y = 0.453),
+             arrow = grid::arrow(length = unit(arrow_length, 'lines')), 
+             curvature = 0.35,
+             angle = -25,
+             color = background_color,
+             lineend = 'round',
+             linewidth = white_arrow_linewidth) +
+  geom_curve(aes(xend = 0.532, x = 0.485,
+                 yend = 0.225, y = 0.453),
+             arrow = grid::arrow(length = unit(arrow_length, 'lines')), 
+             curvature = 0.35,
+             angle = -25,
+             color = title_font_color,
+             lineend = 'round',
+             linewidth = grey_arrow_linewidth) +
+  # Camp fire
+  draw_label(paste("2018", "Camp fire", sep = '\n'),
+             x = 0.52,
+             y = 0.325,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = annotation_font,
+             color = annotation_font_color,
+             size = annotation_font_size) +
+  geom_curve(aes(xend = 0.571, x = 0.54,
+                 yend = 0.24, y = 0.307),
+             arrow = grid::arrow(length = unit(arrow_length, 'lines')), 
+             curvature = 0.3,
+             angle = -45,
+             color = background_color,
+             lineend = 'round',
+             linewidth = white_arrow_linewidth) +
+  geom_curve(aes(xend = 0.571, x = 0.54,
+                 yend = 0.24, y = 0.307),
+             arrow = grid::arrow(length = unit(arrow_length, 'lines')), 
+             curvature = 0.3,
+             angle = -45,
+             color = title_font_color,
+             lineend = 'round',
+             linewidth = grey_arrow_linewidth) +
   # explainer text
   draw_label("Data: https://ourworldindata.org/natural-disasters",
              fontfamily = supporting_font,
@@ -172,14 +300,15 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0,
              color = font_color)+
   # Title
-  draw_label("50 years of lives lost in U.S. natural disasters",
+  draw_label("Lives lost in U.S. natural disasters",
              x = 0.04,
              y = 0.95,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
              fontfamily = supporting_font,
-             color = font_color,
+             fontface = 'bold',
+             color = title_font_color,
              size = 45) +
   # Add logo
   draw_image(usgs_logo, 
