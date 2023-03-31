@@ -311,8 +311,8 @@ for (i in seq_len(n_frames)){#seq_len(n_frames)) {
   rgl::plot3d(x = (logo$x)*0.035+160, y = rev(logo$y)*0.05+3, z = (logo$z)*0.035 +190, col = logo$value, add = TRUE) # move to front face 
   
   # Add site name
-  render_label(elev_matrix, x = site_x_img, y = site_y_img, z = 250, zscale=zscale, 
-               text = site_info$station_nm, freetype = F, textcolor = "white")
+  render_label(elev_matrix, x = site_x_img, y = site_y_img, z = 300, zscale=zscale, 
+               text = "", freetype = F, linecolor = "white")
   
   # Timestamp
   render_label(elev_matrix, x = 100, y = 300, z = 1500, zscale=zscale, adjustvec = c(0.5,0.5),
@@ -326,10 +326,13 @@ for (i in seq_len(n_frames)){#seq_len(n_frames)) {
   render_snapshot(filename = img_frames[i], clear=TRUE)
 }
 
-# Build GIF using cached images
-magick::image_write_gif(magick::image_read(img_frames), 
-                        path = "20230407_hazards_conlon_colgin.gif", 
-                        delay = 12/n_frames) # Number here is duration
+# Build GIF using cached images - add labels here to control size better
+magick::image_read(img_frames) %>%
+  magick::image_annotate('Flooding in Norristown, Pennsylvania during Hurricane Ida \nSeptember 2021', 
+                         location = "+35+35", color = "white", size = 40) %>%
+  magick::image_annotate('Schuylkill River at Norristown, PA \n USGS 01473500',location="+460+420", 
+                         color='#00264c',boxcolor = "gray80",size=22) %>%
+  magick::image_write_gif(path="20230407_hazards_conlon_colgin.gif",delay=12/n_frames) # Number here is duration
 
 ### End
 ```
