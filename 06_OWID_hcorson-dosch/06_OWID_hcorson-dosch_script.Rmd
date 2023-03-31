@@ -32,7 +32,10 @@ library(magick) # for adding logo
 
 ```{r load, warning=FALSE}
 # Add your code here
-natural_disasters <- readr::read_csv('in/natural-disasters.csv', col_types = cols())
+input_filename <- 'in/natural_disasters.csv'
+natural_disasters_csv <- download.file('https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/natural-disasters.csv',
+                                       destfile = input_filename)
+natural_disasters <- readr::read_csv(input_filename, col_types = cols())
 ```
 
 ## Get data ready for plotting
