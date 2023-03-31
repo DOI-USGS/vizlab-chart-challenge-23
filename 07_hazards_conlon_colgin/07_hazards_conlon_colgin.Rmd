@@ -48,6 +48,8 @@ library(dataRetrieval) # streamflow data from event
 library(readr)
 library(dplyr) # organize data
 library(imager) # for organizing image
+
+library(rgl) # added 
 ```
 
 
@@ -282,7 +284,7 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 ```{r}
 ##### Create 3D GIF for output #####
 
-# Set up parameters for loop to craete GIF
+# Set up parameters for loop to create GIF
 n_frames <- nrow(river_data)
 img_frames <- paste0("out/cache/ida_norristown_flood_", seq_len(n_frames), ".png")
 
@@ -326,7 +328,7 @@ for (i in seq_len(n_frames)){#seq_len(n_frames)) {
 
 # Build GIF using cached images
 magick::image_write_gif(magick::image_read(img_frames), 
-                        path = "out/img/Norristown.gif", 
+                        path = "20230407_hazards_conlon_colgin.gif", 
                         delay = 12/n_frames) # Number here is duration
 
 ### End
@@ -336,9 +338,15 @@ magick::image_write_gif(magick::image_read(img_frames),
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Key takeaways here
+1. Hurricane Ida impacted southeastern Pennsylvania in September 2021, causing major flooding along rivers including Brandywine Creek, Perkiomen Creek, and Schuylkill River.
+
+2. This animation uses gage height data to create an inundation map for each timestep that data was collected at the Schuylkill River at Norristown (USGS 01473500) throughout the event.
+
+3. The animation was created using the rayshader R package, which allows for 2- and 3D rendering of geospatial data.
 
 ### Data source(s)
 
-Data sources here.
+Elevation data: https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage 
+Imagery data: https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task/execute 
+Streamflow data: https://waterdata.usgs.gov/monitoring-location/01473500/
 

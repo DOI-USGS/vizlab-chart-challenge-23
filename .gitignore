@@ -21,9 +21,11 @@
 
 # Subdirectory specific files
 # ADD AS USERS SUBMIT CODE IN SUBDIRECTORIES
-#*/in/*
-#*/out/*
+*/in/*
+*/out/*
 *.html
+!07_hazards_conlon_colgin/in/*
+!07_hazards_conlon_colgin/out/*
 
 # Spatial
 *.cpg
