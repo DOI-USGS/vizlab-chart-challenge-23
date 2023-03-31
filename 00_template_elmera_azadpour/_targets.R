@@ -91,8 +91,7 @@ list(
       wq_tidy_data = munge_decadal_gw,
       wells_data = wells_csv,
       data_dic = data_dictionary_csv,
-      filter_parm = c("do", "ph", "as", "co", "f", "fe", "li", "mn", "mo", "sr", "u", "pb", "ra226", "ra228", "ra_226_228", "no3"),
-      remove_missing_values = TRUE
+      filter_parm = c("do", "ph", "as", "co", "f", "fe", "li", "mn", "mo", "sr", "u", "pb", "ra226", "ra228", "ra_226_228", "no3")
     )
   ),
   tar_target(
