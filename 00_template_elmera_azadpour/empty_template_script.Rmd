@@ -28,7 +28,7 @@ setwd(here("00_template_elmera_azadpour"))
 
 -   lets first run a targets pipeline to 1) get the data from sbtools and 2) do some munging/wrangling
 -   to do this open `_targets.R` and run lines 1-10, if you do not have targets installed, run `install.packages("targets")`
--   now run `tar_make()`, you should see the pipeline buukd wuth outputs in `00_template_elmera_azadpour/out` folder
+-   now run `tar_make()`, you should see the pipeline build with outputs in `02_waffle_eazadpour/out` folder
 
 ## Set up - lets load
 
