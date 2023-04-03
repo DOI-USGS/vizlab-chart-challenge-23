@@ -12,10 +12,7 @@ Image: ![](out/20230402_waffle_eazadpour.png) ![](out/20230402_waffle_eazadpour_
 
 Your key takeaways (1-2 sentences each):
 
-1.  High DO in Western region - thought not necessarily a bad thing. High DO levels improve teh taste of drinking water but may cause corrosion in pipes. Alternatively, low DO levels may create hypoxic conditions.
-2.  High Pb in the East - Pb contamination may occur from metal plumbing; [Jurgens et al., 2019](https://pubs.acs.org/doi/10.1021/acs.est.8b04475) found that the majority of elevated and high Pb tended to occur in clusters in the Eastern U.S.
-3.  High NO3- in Central U.S. - shallow aquifers, [like the Ogallala](https://sites.tufts.edu/gis/files/2013/11/Gill_John.pdf), that underlie agricultural areas can lead to high NO3- concentrations due to high levels of fertilizer use and permeable soils.
-4.  High Fe in the East - Fe deposits in surrounding [limestone and dolomite](https://longsecowater.com/blog/effects-of-iron-in-water) can lead to increased Fe concentrations.
+Waffle charts are colorized and faceted by contaminant (Pb, Fe, NO3-, and Sr) and region (West, Central, Midwest, East). Each 10 x 10 waffle charts shows the proportion of study area that contains high, moderate, and low concentrations where 1 square = 1 % of region. 
 
 Your data sources:
 
