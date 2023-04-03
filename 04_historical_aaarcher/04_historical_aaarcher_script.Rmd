@@ -33,7 +33,6 @@ library(readr) # best for reading and writing csvs
 
 library(sbtools)
 library(readr)
-library(geofacet)
 library(scales)
 library(zoo)
 library(scico)
@@ -66,16 +65,6 @@ if(!file.exists(file_in_1921)){ # if files don't exist, download
                               overwrite_file = F)
 }
 
-
-# 1981-2020
-file_in_1981 <- "in/Streamflow_percentiles_national_1981/01031500.csv"
-if(!file.exists(file_in_1981)){ # if files don't exist, download
-  sbtools::item_file_download(sb_id = "62f475abd34eacf5397395e8",
-                              names = "Streamflow_percentiles_national_1921.zip",
-                              destinations = file_in_1981,
-                              overwrite_file = F)
-}
-
 file_in_metadata <- "in/study_watersheds_metadata.csv"
 if(!file.exists(file_in_metadata)){ # if files don't exist, download
   sbtools::item_file_download(sb_id = "62793493d34e8d45aa6e3ba9",
@@ -90,8 +79,8 @@ metadata <- readr::read_csv(file_in_metadata, show_col_types = FALSE) |>
 # Download US State boundaries as sf object
 states_sf <- spData::us_states
 # add in state names, too
-st_crosswalk <- tibble(NAME = state.name) %>%
-  bind_cols(tibble(STATE = state.abb)) 
+st_crosswalk <- data_frame(NAME = state.name,
+                           STATE = state.abb)
 # Merge in CASC info
 states_CASC <- states_sf |>
   mutate("CASC" = case_when(NAME %in% c("Minnesota", "Iowa", "Missouri", 
@@ -113,8 +102,10 @@ states_CASC <- states_sf |>
                           NAME %in% c("Arizona",
                                        "Utah", "Nevada") ~ "Southwest",
                           NAME == "California" ~ "California",
-                          TRUE ~ "not sorted")) |>
-  left_join(st_crosswalk)
+                          TRUE ~ "not sorted")) 
+# Not working, not sure why - worked before latest update to dplyr, I think?
+states_CASC <- states_CASC |>
+  left_join(st_crosswalk, by = "NAME")
 
 ```
 
@@ -164,14 +155,14 @@ t1921_data <- purrr::map(files_1921[1],
 climate_metrics_site <- t1921_data |> 
   filter(year %in% 1920:2019) |>
   group_by(StaID) |>
-  # calculate minimum and max streamflow by site (returns Inf for empty sets)
+  # calculate 7-day minimum streamflow by site (returns Inf for empty sets)
   mutate(min_flow_7d = zoo::rollapply(value, width = 7, 
                                       function(x){min(x, na.rm = TRUE)}, fill = NA)) |>
   # convert infinities to missing values
   mutate(min_flow_7d = case_when(min_flow_7d %in% c(Inf, -Inf) ~ NA,
                                  TRUE ~ min_flow_7d))
 
-# Extract MIN/MAX values by station and year
+# Extract MIN values by station and year to get "Annual Minimum Streamflow"
 climate_metrics_year_site <- climate_metrics_site |>
   group_by(year, StaID) |> 
   summarise(minflow_7d = min(min_flow_7d, na.rm = TRUE)) |>
@@ -200,26 +191,10 @@ climate_metrics_generation_site_remove <- climate_metrics_generation_site_temp |
 climate_metrics_generation_site <- climate_metrics_generation_site_temp |>
   filter(! StaID %in% climate_metrics_generation_site_remove$StaID)
 
-# Extract baseline values to get % changes by station
-baselines <- climate_metrics_generation_site |> 
-  rename(baseline_generation = generation,
-         baseline_minflow_7d = minflow_7d) |>
-  filter(baseline_generation == "0 silent generation") |>
-  select(baseline_generation, baseline_minflow_7d, StaID)
-
-# Merge baselines and join metadata and calculate percent change by station
-climate_metrics_generation_site_base <- climate_metrics_generation_site |>
-  left_join(baselines, by = "StaID") |>
-  mutate(change_minflow_7d = ((minflow_7d - baseline_minflow_7d)/baseline_minflow_7d)*100) |>
-  # remove infinities
-  mutate(change_minflow_7d = case_when(change_minflow_7d %in% c(Inf, -Inf) ~ NA,
-                                       TRUE ~ change_minflow_7d))
-
-# Calculate average and ranges across all sites by generation
-climate_metrics_CONUS_temp <- climate_metrics_generation_site_base |> 
+# Calculate average across all sites by generation
+climate_metrics_CONUS_temp <- climate_metrics_generation_site |> 
   group_by(generation) |> 
   summarise(CONUSmean_minflow_7d = mean(minflow_7d, na.rm = TRUE),
-            #CONUSmedian_minflow_7d = median(minflow_7d, na.rm = TRUE),
             n = n())
 # Add in baseline flows
 climate_metrics_CONUS <- climate_metrics_CONUS_temp |>
@@ -234,7 +209,7 @@ CONUS_statistic <- round(
   climate_metrics_CONUS$change_in_minflow[climate_metrics_CONUS$generation == "4 gen z"],0)
 
 # Calculate averages by CASC
-climate_metrics_CASC_temp <- climate_metrics_generation_site_base |> 
+climate_metrics_CASC_temp <- climate_metrics_generation_site |> 
   left_join(metadata, by = "StaID") |>
   group_by(generation, CASC) |> 
   summarise(CASCmean_minflow_7d = mean(minflow_7d, na.rm = TRUE),
@@ -344,11 +319,12 @@ ggplot2::theme_set(theme_minimal())
               aes(y = CONUSmean_minflow_7d, group = generation),
               color = "#999999",
               linewidth = 2) +
+    ylab("Minimum Annual Streamflow (cfs)") +
     theme(legend.position = "none",
           panel.grid = element_blank(),
           axis.title.x = element_blank(),
-          axis.title.y = element_text(size = 18)) +
-    ylab("Minimum Annual Streamflow") +
+          axis.title.y = element_text(size = 14),
+          axis.ticks = element_line()) +
     scale_x_continuous(breaks = c(1920, 1946, 1964, 1980, 1997, 2020))#+
   #scale_color_manual(values = c("blue","#999999","red")) #order: above, baseline, below
 )
@@ -373,7 +349,14 @@ draw_CASC_plots <- map(1:length(CASC_names), function(x){
               aes(y = CASCmean_minflow_7d, group = generation, 
                   color = change_in_minflow),
               linewidth = 2) +
-    scale_color_viridis_c(limits = c(0,147), direction = -1, end = 0.7) +
+    scale_color_viridis_c(limits = c(0,100), direction = -1, end = 0.7) +
+    {if(CASC_names[x] == "South Central"){
+              geom_line(data = plotting_data_CASC |> 
+                    filter(CASC == CASC_names[x], generation == "3 millenials"),
+                  aes(y = CASCmean_minflow_7d, group = generation),
+                  color = "blue",
+              linewidth = 2) 
+    }} +
         geom_line(data = plotting_data_CASC |> 
                     filter(CASC == CASC_names[x], generation == "0 silent generation"),
                   aes(y = CASCmean_minflow_7d, group = generation),
@@ -439,15 +422,14 @@ draw_CASC_labels <- map(1:length(CASC_names), function(x){
             x = X_position,
             y = Y_position,
     fontfamily = font_legend,
-    size = 20,
+    size = 18,
     color = ifelse(CASC_names[x] %in% c("Southwest", "Southeast"), "#ef8a62", "#1F9E89FF"))
 })
-
 
 (map_plot <- ggplot(data = mapping_data) +
     geom_sf(aes(fill = change_in_minflow), color = "white") +
     theme_void()+
-    scale_fill_viridis_c(limits = c(0,147), direction = -1, end = 0.7) +
+    scale_fill_viridis_c(limits = c(0,100), direction = -1, end = 0.7) +
     geom_sf(data = mapping_data |> filter(change_in_minflow < 0), 
             fill = "#ef8a62", color = "white")+ 
     geom_sf(data = mapping_data_regions, color = "white", fill = NA, linewidth = 1)+
@@ -531,7 +513,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0,
              color = "#999999")+
   # Title
-  draw_label("These aren't your parents' streamflows!",
+  draw_label("Not your parents' streamflows!",
              x = Xmargin,
              y = 1-Ymargin,
              hjust = 0,
@@ -539,18 +521,19 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              lineheight = 0.75,
              fontfamily = font_legend,
              color = "#31688EFF",
-             size = 45) +
+             size = 45,
+             fontface="bold") +
     # Statistics
-  draw_label("Minimum Annual Streamflow\nduring Gen Z (1997-2020)\nwas\n\n\n\non average than during the\nSilent Generation (1920-1945)",
+  draw_label("Across CONUS,\nMinimum Annual Streamflow\nduring Gen Z was\n\n\n\non average than during the\nSilent Generation",
              x = Xmargin + 0.15,
-             y = 0.85,
+             y = 0.86,
              hjust = 0.5,
              vjust = 1,
              lineheight = 0.8,
              fontfamily = supporting_font,
              color = font_color,
              size = 25) +
-  draw_label(sprintf("%s%% higher", CONUS_statistic), x = Xmargin + 0.15, y = 0.66,
+  draw_label(sprintf("%s%% higher", CONUS_statistic), x = Xmargin + 0.15, y = 0.67,
             hjust = 0.5, vjust = 0, size = 52, fontfamily = font_legend, color = "#1F9E89FF")+
   draw_label("These changes in Minimum Annual Streamflow vary by region",
              x = Xmargin + 0.35,
@@ -583,6 +566,8 @@ ggsave(filename = "out/20230404_historical_aaarcher.png",
        width = 16, height = 9, dpi = 300)
 
 ```
+
+
 
 ## Supporting information
 
