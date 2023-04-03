@@ -165,7 +165,7 @@ climate_metrics_year_site <- climate_metrics_site |>
   group_by(year, StaID) |> 
   summarise(minflow_7d = min(min_flow_7d, na.rm = TRUE)) |>
   # convert infinities to missing values
-  mutate(minflow_7d = case_when(minflow_7d %in% c(Inf, -Inf) ~ NA,
+  mutate(minflow_7d = case_when(minflow_7d %in% c(Inf, -Inf) ~ NA_real_,
                                  TRUE ~ minflow_7d))
 
 
