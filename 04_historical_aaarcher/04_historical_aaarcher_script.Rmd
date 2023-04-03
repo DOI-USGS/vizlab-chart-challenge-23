@@ -57,12 +57,15 @@ This is also a good place to load any data from other built-in packages such as 
 # Load drought properties data from ScienceBase
 #authenticate_sb()
 # 1921-2020
-file_in_1921 <- "in/Streamflow_percentiles_national_1921/01031500.csv"
-if(!file.exists(file_in_1921)){ # if files don't exist, download
+file_to_check_1921 <- "in/Streamflow_percentiles_national_1921/01031500.csv"
+if(!file.exists(file_to_check_1921)){ # if files don't exist, download
   sbtools::item_file_download(sb_id = "62f463c5d34eacf5397395d9",
                               names = "Streamflow_percentiles_national_1921.zip",
-                              destinations = file_in_1921,
+                              destinations =  "in/Streamflow_percentiles_national_1921.zip",
                               overwrite_file = F)
+  # unzip it, too
+  unzip(zipfile = "in/Streamflow_percentiles_national_1921.zip",
+        exdir = "in/Streamflow_percentiles_national_1921")
 }
 
 file_in_metadata <- "in/study_watersheds_metadata.csv"
