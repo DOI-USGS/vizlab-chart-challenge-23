@@ -67,6 +67,7 @@ list(
   ),
 
   # Water quality thresholds pH/DO
+  # pH data adapted from National Secondary Drinking Water Regulations (NSDWRs), EPA and DO data adapted from McMahon & Chapelle, 2007 and McMahon et al., 2008
   tar_target(
     wq_thresholds_pH_DO_csv,
     "https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/Water_Quality_Thresholds_pH_DO.csv"

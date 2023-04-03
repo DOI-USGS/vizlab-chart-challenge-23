@@ -60,7 +60,7 @@ tidy_decadal_gw_wq <- function(wq_data, sampling_event_subset){
 #' @param wq_tidy_data RDS of munged Water_Quality_V6 data
 #' @param wells_data character string to the path where Decadal_Change_Network_Wells_V6.csv lives
 #' @param data_dic character string to the path where Decadal_Data_Dictionary_V6.csv lives
-#' @param out_file A character string of the path and name for the RDS to be output.
+#' @param filter_parm A character string select paramaters to filter water quality data by
 #' @return A RDS of field and lab water quality data with parameter, su_code, staid, well_depth, date, value, comm, rmk, latitude_nad83_dd, longitude_nad83_dd, long_name, type, filtered, units, pcode, cal, recode_comm_column
 filter_wells_wq <-  function(wq_tidy_data, wells_data, data_dic, filter_parm){
 
@@ -102,17 +102,19 @@ filter_wells_wq <-  function(wq_tidy_data, wells_data, data_dic, filter_parm){
 #' Thresholds data incorporation to decadal wq data
 #'
 #' @param thresholds_data csv of thresholds data adapted from Belitz et al., 2022, Table S4
+#' @param ph_do_thresholds_data csv of Water quality thresholds pH/DO data with pH data adapted from National Secondary Drinking Water Regulations (NSDWRs), EPA and DO data adapted from McMahon & Chapelle, 2007 and McMahon et al., 2008
 #' @param filtered_data RDS of filtered Water_Quality_V6 data
-#' @param  organic_thresh numeric, user-specified threshold value for geogenic constituents
+#' @param organic_thresh numeric, user-specified threshold value for geogenic constituents
 #' @param inorganic_thresh numeric, user-specified threshold value for inorganic constituents
 #' @param do_low_thresh numeric, user-specified low dissolved oxygen (do) value threshold
 #' @param do_high_thresh numeric, user-specified high dissolved oxygen (do) value threshold
 #' @param ph_low_thresh numeric, user-specified low pH value threshold
 #' @param ph_high_thresh numeric, user-specified high pH value threshold
 #' @param constituents_of_interest characters, list of constituents of interest to filter by
+#' @param constituent_abv characters, list of abbreviations for constituents of interest to mutate by
 #' @param nawqa_xwalk csv path, NAWQA Study unit names and abbreviations crosswalk for donut chart
 #' @return A summary RDS of count, mean, max, min of well_depth, date, and value, grouped by parameter and su_code
-thresholds_wq <-  function(thresholds_data, ph_do_thresholds_data, filtered_data, organic_thresh, inorganic_thresh, do_low_thresh, do_high_thresh, ph_low_thresh, ph_high_thresh, constituents_of_interest ,constituent_abv, nawqa_xwalk){
+thresholds_wq <-  function(thresholds_data, ph_do_thresholds_data, filtered_data, organic_thresh, inorganic_thresh, do_low_thresh, do_high_thresh, ph_low_thresh, ph_high_thresh, constituents_of_interest,constituent_abv, nawqa_xwalk){
   #  quote each element in list for case when below
   case_categories <- list(
     rlang::quo(constituent == constituents_of_interest ~ constituent_abv))
@@ -347,7 +349,7 @@ pivot_vars_wide_to_long <- function(tbl, variable, type = c("field", "lab")) {
 #' This is a helper function used to validate column names for decadal groundwater data
 #'
 #' @param df a data.frame
-#'
+#' @param expected_col_names, used to purrr::map df by
 validate_column_names <- function(df, expected_col_names) {
   df[expected_col_names[!(expected_col_names %in% colnames(df))]] <- NA
   return(df)
@@ -358,7 +360,6 @@ validate_column_names <- function(df, expected_col_names) {
 #' This is a helper function used to remove descriptive data from column names
 #'
 #' @param df a data.frame
-#'
 normalize_colnames <- function(df) {
   names(df) <- stringr::str_extract(names(df), pattern = "(?<=_)([^_]+)")
   return(df)
