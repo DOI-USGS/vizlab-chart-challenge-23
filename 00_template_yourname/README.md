@@ -6,9 +6,9 @@ Your name:
 
 Your prompt:
 
-Date for your prompt in April:
+Date for your prompt in April: 
 
-Image:
+Image: 
 
 Share the link in this document with the format `![](out/20230000_prompt-example_name.png)`:
 
