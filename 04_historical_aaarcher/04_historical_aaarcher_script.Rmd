@@ -32,10 +32,10 @@ library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
 
 library(sbtools)
+library(sf)
 library(readr)
 library(scales)
 library(zoo)
-library(scico)
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -55,7 +55,7 @@ This is also a good place to load any data from other built-in packages such as 
 
 ```{r load}
 # Load drought properties data from ScienceBase
-authenticate_sb()
+#authenticate_sb()
 # 1921-2020
 file_in_1921 <- "in/Streamflow_percentiles_national_1921/01031500.csv"
 if(!file.exists(file_in_1921)){ # if files don't exist, download
@@ -102,9 +102,7 @@ states_CASC <- states_sf |>
                           NAME %in% c("Arizona",
                                        "Utah", "Nevada") ~ "Southwest",
                           NAME == "California" ~ "California",
-                          TRUE ~ "not sorted")) 
-# Not working, not sure why - worked before latest update to dplyr, I think?
-states_CASC <- states_CASC |>
+                          TRUE ~ "not sorted")) |>
   left_join(st_crosswalk, by = "NAME")
 
 ```
@@ -131,11 +129,10 @@ metadata <- metadata |>
                           STATE == "CA" ~ "California",
                           TRUE ~ "not sorted"))
 
-# Determine focal sites
+# Determine focal sites (these 331 sites have data for 100 years)
 focal_sites <- metadata$StaID[metadata$in_both_L]
 
 # Read in all focal sites and rowbind together for each timeframe
-## Because I'm using site-level thresholds, only need first row for each site
 files_1921 <- sprintf("in/Streamflow_percentiles_national_1921/%s.csv", focal_sites)
 t1921_data <- purrr::map(files_1921[1], 
                          ~ readr::read_csv(files_1921, 
@@ -143,10 +140,8 @@ t1921_data <- purrr::map(files_1921[1],
                                            col_types = list("StaID" = col_character()))) |>
 
   reduce(rbind) |>
-  # only keep fields we need
-  select(StaID, jd, dt, year, value, thresh_2_jd_07d_wndw) |>
-  # and rename based on timeframe
-  rename(thresh_2_1921 = thresh_2_jd_07d_wndw) 
+  # only keep fields we need (value = mean daily streamflow in cfs)
+  select(StaID, dt, year, value)
 
 
 
@@ -196,7 +191,8 @@ climate_metrics_CONUS_temp <- climate_metrics_generation_site |>
   group_by(generation) |> 
   summarise(CONUSmean_minflow_7d = mean(minflow_7d, na.rm = TRUE),
             n = n())
-# Add in baseline flows
+
+# Add in baseline flows for comparisons
 climate_metrics_CONUS <- climate_metrics_CONUS_temp |>
   mutate(baseline_flow = 
            climate_metrics_CONUS_temp$CONUSmean_minflow_7d[
@@ -260,7 +256,7 @@ mapping_data <- states_CASC |>
   left_join(climate_metrics_CASC |> filter(generation == "4 gen z"),
                                          by = "CASC")
 
-# convert id to CASC for mapping just regions
+# convert id to CASC for mapping just regions to make them look "exploded"
 mapping_data_regions <- mapping_data |>
   group_by(CASC) |>
   summarise(id = unique(CASC))
@@ -325,8 +321,7 @@ ggplot2::theme_set(theme_minimal())
           axis.title.x = element_blank(),
           axis.title.y = element_text(size = 14),
           axis.ticks = element_line()) +
-    scale_x_continuous(breaks = c(1920, 1946, 1964, 1980, 1997, 2020))#+
-  #scale_color_manual(values = c("blue","#999999","red")) #order: above, baseline, below
+    scale_x_continuous(breaks = c(1920, 1946, 1964, 1980, 1997, 2020))
 )
 # Chart settings
 Ymargin <-  0.04
@@ -339,6 +334,7 @@ Ybase <- Ymargin*2 + 0.02
 Yjitter <- 0.25
 Xjitter <- 0.2 
 
+# Function to make regional plots
 draw_CASC_plots <- map(1:length(CASC_names), function(x){
   plot_temp <- plotting_data_CASC |>
     filter(CASC == CASC_names[x]) |> 
@@ -398,6 +394,8 @@ draw_CASC_plots <- map(1:length(CASC_names), function(x){
             width = 0.2) 
 
 })
+
+# Function to make the labels for each regional plot
 draw_CASC_labels <- map(1:length(CASC_names), function(x){
 
   if(CASC_names[x] %in% c("Southwest", "Southeast", "South Central")){
@@ -426,6 +424,7 @@ draw_CASC_labels <- map(1:length(CASC_names), function(x){
     color = ifelse(CASC_names[x] %in% c("Southwest", "Southeast"), "#ef8a62", "#1F9E89FF"))
 })
 
+# Regional map
 (map_plot <- ggplot(data = mapping_data) +
     geom_sf(aes(fill = change_in_minflow), color = "white") +
     theme_void()+
@@ -573,9 +572,14 @@ ggsave(filename = "out/20230404_historical_aaarcher.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Key takeaways here
+1. Shows the minimum annual streamflow averaged by generation for 331 USGS gages that have 100 years of near complete data, by CONUS and by region 
+2. Almost everywhere in the US, minimum annual streamflow levels have increased during the last few generations compared to the “Silent Generation” 
+3. Minimum annual streamflow during Gen Z generation was 22% higher on average across the CONUS than it was during the Silent generation 
+4. Two regions, southwest and southeast have slightly lower minimum annual streamflow levels now than they did during the silent generation 
+5. Data from doi.org/10.5066/P92FAASD 
+6. Uses #rstats and #OpenData 
 
 ### Data source(s)
 
-Data sources here.
+Simeone, C.E., 2022, Streamflow Drought Metrics for Select United States Geological Survey Streamgages for Three Different Time Periods from 1921 - 2020: U.S. Geological Survey data release, https://doi.org/10.5066/P92FAASD.
 
