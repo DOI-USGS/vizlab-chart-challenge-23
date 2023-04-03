@@ -24,11 +24,6 @@
 */in/*
 */out/*
 *.html
-!07_hazards_conlon_colgin/in/*
-
-# allow empty files to be committed
-!*/in/.empty
-!*/out/.empty
 
 # Spatial
 *.cpg
