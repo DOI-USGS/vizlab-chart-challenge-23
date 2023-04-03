@@ -2,9 +2,7 @@
 title: "Example for Chart Challenge"
 author: "Althea Archer"
 date: "2023-03-10"
-output:
-  pdf_document: default
-  html_document: default
+output: html_document
 ---
 
 ## Instructions for using this template
@@ -34,10 +32,8 @@ Define libraries here.
 # Load libraries
 library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
-library(terra) # here, used for raster processing
-library(spData) # state boundaries as sf object
-library(sf) # general spatial processing
-library(scico) # good color themes for mapping
+
+# These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
 library(sysfonts) # for text editing
 library(showtext) # for adding in google fonts
@@ -54,18 +50,10 @@ This is also a good place to load any data from other built-in packages such as 
 
 
 ```{r load}
-# Snow data from Science Base (citation below)
-file_in <- "in/MOD10A2_SCI_2020.tif"
-if(!file.exists(file_in)){ # if files don't exist, download
-    sbtools::item_file_download(sb_id = "5f63790982ce38aaa23a3930",
-                              names = "MOD10A2_SCI_2020.tif",
-                              destinations = file_in,
-                              overwrite_file = F)
-}
-snow_data <- terra::rast(file_in)
+# Add your code here
 
-# Download US State boundaries as sf object
-states_shp <- spData::us_states
+
+
 ```
 
 ## Get data ready for plotting
@@ -74,28 +62,8 @@ This next section is for doing any pre-processing steps, data joins, etc, to get
 
 
 ```{r processing}
-# Reproject the sf object to match the projection of the raster
-states_proj <- states_shp |> 
-  sf::st_transform(crs(snow_data))
+# Add your processing code here
 
-# Clip the raster to the states boundaries to speed up processing
-sci_stack_clip <- terra::crop(x = snow_data, 
-                              y = states_proj, 
-                              mask = TRUE)
-
-# Extract the SCI values to each state
-extract_SCI_states <- terra::extract(x = sci_stack_clip,
-                                     y = vect(states_proj))
-
-# Calculate mean SCI by state
-SCI_by_state <- as.data.frame(extract_SCI_states) |> 
-  group_by(ID) |> 
-  summarise(mean_2020 = mean(MOD10A2_SCI_2020, na.rm = T))
-
-# Left-join calculated SCI means to the US States sf object
-SCI_state_level <- states_proj |>
-  mutate(ID = row_number()) |>
-  left_join(SCI_by_state, by = "ID")
 
 ```
 
@@ -129,15 +97,7 @@ canvas <- grid::rectGrob(
 usgs_logo <- magick::image_read("../usgs_logo_white.png") 
 
 # Main plot
-(main_plot <- ggplot() + 
-  geom_sf(data = SCI_state_level, aes( fill = mean_2020)) +
-  scale_fill_scico(palette = "oslo", direction = 1, begin = 0.25)+
-  labs(fill = "Mean\nSnow %")+
-  theme_void()+
-  theme(plot.background = element_rect(fill = background_color),
-        legend.text = element_text(color = font_color, size = 14),
-        legend.title = element_text(color = font_color, size = 20),
-        legend.position = c(0.925, 0.25))
+(main_plot <- ggplot()
  )
 
 
@@ -149,7 +109,7 @@ usgs_logo <- magick::image_read("../usgs_logo_white.png")
 
 Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
 
-**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230101_part-to-whole_cnell.png`)
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
 ```{r cowplot, fig.width = 16, fig.height = 9}
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
@@ -165,7 +125,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             y = 0.01,
             height = 1) +
   # explainer text
-  draw_label("Snow Cover Index for 2020.\nData from: doi.org/10.5066/P9U7U5FP",
+  draw_label("Explainer text",
              fontfamily = supporting_font,
              x = 0.96,   
              y = 0.05,
@@ -174,7 +134,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0,
              color = font_color)+
   # Title
-  draw_label("\'Tis the season\nto be snowy!",
+  draw_label("Title",
              x = 0.04,
              y = 0.285,
              hjust = 0,
@@ -194,7 +154,8 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
-ggsave(filename = "out/20230000_prompt-example_name.png", 
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230000_prompt_name.png", 
        width = 16, height = 9, dpi = 300)
 ```
 
@@ -202,13 +163,9 @@ ggsave(filename = "out/20230000_prompt-example_name.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. The northern US has approximately 40% snow cover in 2020
-2. The southeastern US has zero snow cover in 2020
-3. There is a lot of variation in snow cover for most states north of Oklahoma, Kentucky, and West Virginia. Those states and the states below those have no snow on average.
+1. Key takeaways here
 
 ### Data source(s)
 
-U.S. State boundaries from `spData` : Bivand R, Nowosad J, Lovelace R (2023). spData: Datasets for Spatial Analysis. R package version 2.2.2, https://jakubnowosad.com/spData/.
-
-Snow data from USGS Science Base: Hammond, J.C., 2020, Contiguous U.S. annual snow persistence and trends from 2001-2020: U.S. Geological Survey data release, https://doi.org/10.5066/P9U7U5FP.
+Data sources here.
 
