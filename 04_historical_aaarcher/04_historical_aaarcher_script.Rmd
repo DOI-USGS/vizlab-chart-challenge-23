@@ -65,7 +65,7 @@ if(!file.exists(file_to_check_1921)){ # if files don't exist, download
                               overwrite_file = F)
   # unzip it, too
   unzip(zipfile = "in/Streamflow_percentiles_national_1921.zip",
-        exdir = "in/Streamflow_percentiles_national_1921")
+        exdir = "in")
 }
 
 file_in_metadata <- "in/study_watersheds_metadata.csv"
@@ -157,7 +157,7 @@ climate_metrics_site <- t1921_data |>
   mutate(min_flow_7d = zoo::rollapply(value, width = 7, 
                                       function(x){min(x, na.rm = TRUE)}, fill = NA)) |>
   # convert infinities to missing values
-  mutate(min_flow_7d = case_when(min_flow_7d %in% c(Inf, -Inf) ~ NA,
+  mutate(min_flow_7d = case_when(min_flow_7d %in% c(Inf, -Inf) ~ NA_real_,
                                  TRUE ~ min_flow_7d))
 
 # Extract MIN values by station and year to get "Annual Minimum Streamflow"
