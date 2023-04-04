@@ -1,0 +1,287 @@
+---
+title: "Example for Chart Challenge"
+author: "Althea Archer"
+date: "2023-03-10"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+library(ggimage)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Snow data from Science Base (citation below)
+file_in <- "in/Heat_allDfsLanduse_processed_2016_urbanAreas_v2.csv"
+if(!file.exists(file_in)){ # if files don't exist, download
+    sbtools::item_file_download(sb_id = "5f6e4cf282ce38aaa24a4bd5",
+                              names = "Heat_allDfsLanduse_processed_2016_urbanAreas_v2.csv",
+                              destinations = file_in,
+                              overwrite_file = FALSE)
+}
+
+raw_data <- readr::read_csv(file_in)
+
+rain_file_in <- "in/Rainfall_allDfsLandcover_processe_2016_urbanAreas_v4.csv"
+if(!file.exists(rain_file_in)){ # if files don't exist, download
+    sbtools::item_file_download(sb_id = "5f6e4cf282ce38aaa24a4bd5",
+                              names = "Rainfall_allDfsLandcover_processe_2016_urbanAreas_v4.csv",
+                              destinations = rain_file_in,
+                              overwrite_file = FALSE)
+}
+
+rain_data <- readr::read_csv(rain_file_in)
+
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Sum up energy by city
+energy_sum <- raw_data |>
+  group_by(eaa_name, GISjoins) |>
+  summarise(sumEnergy = sum(EnergyValue)) |>
+  arrange(sumEnergy) 
+
+# Sum up rainfall interception by city
+rain_sum <- rain_data |>
+  group_by(Name, GISJoin) |>
+  summarise(sumRainfall = sum(interception_mean)) |>
+  arrange(-sumRainfall) 
+
+# Sum up energy by state
+energy_sum_state <- raw_data |>
+  group_by(State) |>
+  summarise(sumEnergy = sum(EnergyValue)) |>
+  arrange(sumEnergy) 
+
+# Sum up rainfall interception by state
+rain_sum_state <- rain_data |>
+  group_by(State) |>
+  summarise(sumRainfall = sum(interception_mean),
+            totalRainfall = sum(Total_Annual_Canopy_Rainfall),
+            meanRainfall = mean(interception_mean)) |>
+  arrange(-sumRainfall) 
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Averia Libre"
+sysfonts::font_add_google("Averia Libre")
+supporting_font <- "Shadows Into Light"
+sysfonts::font_add_google("Shadows Into Light")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "white"
+font_color = "#6495ed"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = "transparent", alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
+
+transparent <- function(img) {
+  magick::image_fx(img, expression = "0.95*a", channel = "alpha")
+}
+transparent_rain <- function(img) {
+  magick::image_fx(img, expression = "0.65*a", channel = "alpha")
+}
+
+
+# Random seed to make sure this is reproduced
+set.seed(86753092)
+
+
+
+# Set random values for placement so they land in a circle
+#stackoverflow.com/questions/68619095/how-to-randomly-scatter-points-inside-a-circle-with-ggplot-without-clustering-a
+energy_q <- quantile(energy_sum$sumEnergy, probs = c(seq(0.1,0.9,by=0.1),0.99))
+plotting_data <- energy_sum |>
+  mutate(r = runif(1), 
+         th = runif(1, 0, 2*pi),
+         random_x = sqrt(r) * cos(th),
+         random_y = sqrt(r) * sin(th),
+         # make breaks for sizing of flowers using quantiles
+         image_size = case_when(sumEnergy <= energy_q[1] ~ 0.005,
+                                sumEnergy <= energy_q[2] ~ 0.010,
+                                sumEnergy <= energy_q[3] ~ 0.015,
+                                sumEnergy <= energy_q[4] ~ 0.020,
+                                sumEnergy <= energy_q[5] ~ 0.025,
+                                sumEnergy <= energy_q[6] ~ 0.030,
+                                sumEnergy <= energy_q[7] ~ 0.035,
+                                sumEnergy <= energy_q[8] ~ 0.040,
+                                sumEnergy <= energy_q[9] ~ 0.05,
+                                sumEnergy <= energy_q[10] ~ 0.07,
+                                sumEnergy > energy_q[10] ~ 0.1,
+                                TRUE ~ NA_real_)) 
+
+
+# Main plot
+(main_plot <- ggplot(data = plotting_data,
+                     aes(x = random_x, y = random_y))+
+    ggimage::geom_image(aes(image = "in/treeEnergy-03.png", 
+                            size = I(image_size/1.1)),
+                        image_fun = transparent,
+                        asp = 1.42)+
+        ggimage::geom_image(data = plotting_data |> filter(eaa_name == "Los Angeles city"),
+          aes(image = "in/treeEnergy-03.png", 
+                            size = I(image_size/0.7)),
+                        image_fun = transparent,
+                        asp = 1.42)+
+    ylim(c(-1.2,1.2))+
+    theme_void()
+ )
+
+```
+
+```{r}
+linetype <- c("dashed", "dotted", "dotdash", "longdash", "twodash",
+              "1F", "4C88C488", "12345678")
+state_lookup <- data.frame(State = c(state.name, "District Of Columbia"),
+                           State.abbr = c(state.abb, "DC"))
+rain_q <- quantile(rain_sum_state$meanRainfall, probs = seq(0.1,0.9,by=0.2))
+plotting_rain <- rain_sum_state |>
+  mutate(# resize based on quantiles
+         image_size = case_when(meanRainfall <= rain_q[1] ~ 0.01,
+                                meanRainfall <= rain_q[2] ~ 0.02,
+                                meanRainfall <= rain_q[3] ~ 0.03,
+                                meanRainfall <= rain_q[4] ~ 0.04,
+                                meanRainfall <= rain_q[5] ~ 0.05,
+                                meanRainfall > rain_q[5] ~ 0.07,
+                                TRUE ~ NA_real_),
+         linetype = sample(linetype, n(), replace = T)) |>
+  left_join(state_lookup, by = "State") 
+
+(rain_plot <- ggplot(data = plotting_rain, 
+                     aes(x = State, y = meanRainfall))+
+    geom_linerange(aes(ymin = 0, ymax = meanRainfall, linetype = linetype),
+                   color = "#7FCDEE")+
+    ggimage::geom_image(aes(size = I(image_size/3), 
+                            image = "in/treeEnergy-10.png"), 
+                        asp = 1.9
+                        )+
+    geom_text(aes(label = State.abbr, y = 0), size = 4, 
+              color = "#38B5DF", vjust = -0.2)+
+    scale_y_reverse()+
+    theme_void() +
+    theme(legend.position = "none")
+)
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  draw_plot(main_plot,
+            x = 0.6,
+            y = 0.200,
+            height = 0.75,
+            width = 0.43,
+            hjust = 0.5) 
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230403_flora-fauna_aaarcherTree.png", 
+       width = 16, height = 9, dpi = 300, bg = "transparent")
+```
+
+```{r cowplot2, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  draw_plot(rain_plot,
+            x = 0.5,
+            y = 0,
+            height = 0.80,
+            width =0.8,
+            hjust = 0.5) 
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230403_flora-fauna_aaarcherRain.png", 
+       width = 16, height = 9, dpi = 300, bg = "transparent")
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Urban trees provide important services: they provide shade to reduce energy costs and water savings by helping increase infiltration 
+
+### Data source(s)
+
+Urban tree data from [doi.org/10.5066/P9QV182X](doi.org/10.5066/P9QV182X)
+
