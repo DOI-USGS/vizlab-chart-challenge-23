@@ -148,7 +148,6 @@ transparent_rain <- function(img) {
 
 # Random seed to make sure this is reproduced
 set.seed(86753092)
-#set.seed(48372341)
 
 
 
@@ -176,7 +175,7 @@ plotting_data <- energy_sum |>
 
 
 # Main plot
-(main_plot <- ggplot(data = plotting_data, # just leaves to start
+(main_plot <- ggplot(data = plotting_data,
                      aes(x = random_x, y = random_y))+
     ggimage::geom_image(aes(image = "in/treeEnergy-03.png", 
                             size = I(image_size/1.1)),
@@ -207,7 +206,7 @@ plotting_rain <- rain_sum_state |>
                                 meanRainfall <= rain_q[4] ~ 0.04,
                                 meanRainfall <= rain_q[5] ~ 0.05,
                                 meanRainfall > rain_q[5] ~ 0.07,
-                                TRUE ~ NA),
+                                TRUE ~ NA_real_),
          linetype = sample(linetype, n(), replace = T)) |>
   left_join(state_lookup, by = "State") 
 
@@ -258,7 +257,7 @@ ggsave(filename = "out/20230403_flora-fauna_aaarcherTree.png",
        width = 16, height = 9, dpi = 300, bg = "transparent")
 ```
 
-```{r cowplot, fig.width = 16, fig.height = 9}
+```{r cowplot2, fig.width = 16, fig.height = 9}
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
   draw_plot(rain_plot,
@@ -280,9 +279,9 @@ ggsave(filename = "out/20230403_flora-fauna_aaarcherRain.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Key takeaways here
+1. Urban trees provide important services: they provide shade to reduce energy costs and water savings by helping increase infiltration 
 
 ### Data source(s)
 
-Data sources here.
+Urban tree data from [doi.org/10.5066/P9QV182X](doi.org/10.5066/P9QV182X)
 
