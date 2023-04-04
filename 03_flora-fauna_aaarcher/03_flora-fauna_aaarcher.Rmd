@@ -137,9 +137,6 @@ canvas <- grid::rectGrob(
 
 # Load in USGS logo (also a black logo available)
 usgs_logo <- magick::image_read("../usgs_logo_black.png") 
-tree <- magick::image_read("in/treeEnergy-01.png")
-leaf <- magick::image_read("in/treeEnergy-02.png")
-flower <- magick::image_read("in/treeEnergy-03.png")
 
 transparent <- function(img) {
   magick::image_fx(img, expression = "0.95*a", channel = "alpha")
