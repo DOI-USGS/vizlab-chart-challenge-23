@@ -1,0 +1,588 @@
+---
+title: "Not your parents' baselines"
+author: "Althea Archer"
+date: "2023-03-16"
+output: html_document
+---
+
+## Instructions for using this template
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+
+library(sbtools)
+library(sf)
+library(readr)
+library(scales)
+library(zoo)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Load drought properties data from ScienceBase
+#authenticate_sb()
+# 1921-2020
+file_to_check_1921 <- "in/Streamflow_percentiles_national_1921/01031500.csv"
+if(!file.exists(file_to_check_1921)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "62f463c5d34eacf5397395d9",
+                              names = "Streamflow_percentiles_national_1921.zip",
+                              destinations =  "in/Streamflow_percentiles_national_1921.zip",
+                              overwrite_file = F)
+  # unzip it, too
+  unzip(zipfile = "in/Streamflow_percentiles_national_1921.zip",
+        exdir = "in")
+}
+
+file_in_metadata <- "in/study_watersheds_metadata.csv"
+if(!file.exists(file_in_metadata)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "62793493d34e8d45aa6e3ba9",
+                              names = "study_watersheds_metadata.csv",
+                              destinations = file_in_metadata,
+                              overwrite_file = F)
+}
+metadata <- readr::read_csv(file_in_metadata, show_col_types = FALSE) |>
+  select(StaID, STANAME, DRAIN_SQKM, HUC02, LAT_GAGE, LNG_GAGE, STATE,
+         national_1981, national_1951, national_1921, HCDN_2009)
+
+# Download US State boundaries as sf object
+states_sf <- spData::us_states
+# add in state names, too
+st_crosswalk <- data_frame(NAME = state.name,
+                           STATE = state.abb)
+# Merge in CASC info
+states_CASC <- states_sf |>
+  mutate("CASC" = case_when(NAME %in% c("Minnesota", "Iowa", "Missouri", 
+                                       "Wisconsin", "Illinois", "Indiana", 
+                                       "Michigan", "Ohio") ~ "Midwest",
+                          NAME %in% c("Montana", "Wyoming", "Colorado", "North Dakota", 
+                                       "South Dakota", "Nebraska", "Kansas") ~ "North Central",
+                          NAME %in% c("Maine", "New Hampshire", "Vermont", "Massachusetts", 
+                                       "Connecticut", "Rhode Island",
+                                       "New York", "New Jersey", "Pennsylvania", 
+                                       "Delaware", "Maryland", "West Virginia", 
+                                       "Virginia", "Kentucky", "District of Columbia") ~ "Northeast",
+                          NAME %in% c("Washington", "Oregon", "Idaho") ~ "Northwest",
+                          NAME %in% c("New Mexico", "Texas", 
+                                      "Oklahoma", "Louisiana") ~ "South Central",
+                          NAME %in% c("North Carolina", "South Carolina", "Georgia", "Alabama", 
+                                       "Mississippi", "Florida", "Tennessee", 
+                                       "Arkansas") ~ "Southeast",
+                          NAME %in% c("Arizona",
+                                       "Utah", "Nevada") ~ "Southwest",
+                          NAME == "California" ~ "California",
+                          TRUE ~ "not sorted")) |>
+  left_join(st_crosswalk, by = "NAME")
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Determine what sites are in both datasets using metadata
+metadata <- metadata |>
+  mutate(in_both_L = case_when(national_1981 & national_1921 ~ TRUE,
+                               TRUE ~ FALSE)) |>
+  # add in Climate area 
+  mutate("CASC" = case_when(STATE %in% c("MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH") ~ "Midwest",
+                          STATE %in% c("MT", "WY", "CO", "ND", "SD", "NE", "KS") ~ "North Central",
+                          STATE %in% c("ME", "NH", "VT", "MA", "CT", "RI", "DC",
+                                       "NY", "NJ", "PA", "DE", "MD", "WV", "VA", "KY") ~ "Northeast",
+                          STATE %in% c("WA", "OR", "ID") ~ "Northwest",
+                          STATE %in% c("NM", "TX", "OK", "LA") ~ "South Central",
+                          STATE %in% c("NC", "SC", "GA", "AL", "MS", "FL", "TN", "AR") ~ "Southeast",
+                          STATE %in% c("AZ", "UT", "NV") ~ "Southwest",
+                          STATE == "CA" ~ "California",
+                          TRUE ~ "not sorted"))
+
+# Determine focal sites (these 331 sites have data for 100 years)
+focal_sites <- metadata$StaID[metadata$in_both_L]
+
+# Read in all focal sites and rowbind together for each timeframe
+files_1921 <- sprintf("in/Streamflow_percentiles_national_1921/%s.csv", focal_sites)
+t1921_data <- purrr::map(files_1921[1], 
+                         ~ readr::read_csv(files_1921, 
+                                           show_col_types = FALSE,
+                                           col_types = list("StaID" = col_character()))) |>
+
+  reduce(rbind) |>
+  # only keep fields we need (value = mean daily streamflow in cfs)
+  select(StaID, dt, year, value)
+
+
+
+# Calculate EPA's climate change metrics for each station
+#  (https://www.epa.gov/climate-indicators/climate-change-indicators-streamflow)
+climate_metrics_site <- t1921_data |> 
+  filter(year %in% 1920:2019) |>
+  group_by(StaID) |>
+  # calculate 7-day minimum streamflow by site (returns Inf for empty sets)
+  mutate(min_flow_7d = zoo::rollapply(value, width = 7, 
+                                      function(x){min(x, na.rm = TRUE)}, fill = NA)) |>
+  # convert infinities to missing values
+  mutate(min_flow_7d = case_when(min_flow_7d %in% c(Inf, -Inf) ~ NA_real_,
+                                 TRUE ~ min_flow_7d))
+
+# Extract MIN values by station and year to get "Annual Minimum Streamflow"
+climate_metrics_year_site <- climate_metrics_site |>
+  group_by(year, StaID) |> 
+  summarise(minflow_7d = min(min_flow_7d, na.rm = TRUE)) |>
+  # convert infinities to missing values
+  mutate(minflow_7d = case_when(minflow_7d %in% c(Inf, -Inf) ~ NA_real_,
+                                 TRUE ~ minflow_7d))
+
+
+# Add in generations 
+climate_metrics_year_site_join <- climate_metrics_year_site  |>
+  mutate(generation = case_when(year %in% 1920:1945 ~ "0 silent generation",
+                                year %in% 1946:1964 ~ "1 baby boomers",
+                                year %in% 1965:1980 ~ "2 gen x",
+                                year %in% 1981:1996 ~ "3 millenials",
+                                year %in% 1997:2021 ~ "4 gen z"))  
+
+# Get average values by station and generation
+climate_metrics_generation_site_temp <- climate_metrics_year_site_join |>
+  group_by(generation, StaID) |> 
+  summarise(minflow_7d = mean(minflow_7d, na.rm = TRUE)) 
+
+# Remove sites that had 0 flow in 1920s (three sites)
+climate_metrics_generation_site_remove <- climate_metrics_generation_site_temp |>
+  filter(generation == "0 silent generation",
+         minflow_7d == 0)
+climate_metrics_generation_site <- climate_metrics_generation_site_temp |>
+  filter(! StaID %in% climate_metrics_generation_site_remove$StaID)
+
+# Calculate average across all sites by generation
+climate_metrics_CONUS_temp <- climate_metrics_generation_site |> 
+  group_by(generation) |> 
+  summarise(CONUSmean_minflow_7d = mean(minflow_7d, na.rm = TRUE),
+            n = n())
+
+# Add in baseline flows for comparisons
+climate_metrics_CONUS <- climate_metrics_CONUS_temp |>
+  mutate(baseline_flow = 
+           climate_metrics_CONUS_temp$CONUSmean_minflow_7d[
+             climate_metrics_CONUS_temp$generation == "0 silent generation"],
+         change_in_minflow = ((CONUSmean_minflow_7d - baseline_flow)/baseline_flow)*100,
+         is_change_negative = case_when(change_in_minflow < 0 ~ "yes",
+                                        change_in_minflow == 0 ~ "no change",
+                                        change_in_minflow > 0 ~ "no"))
+CONUS_statistic <- round(
+  climate_metrics_CONUS$change_in_minflow[climate_metrics_CONUS$generation == "4 gen z"],0)
+
+# Calculate averages by CASC
+climate_metrics_CASC_temp <- climate_metrics_generation_site |> 
+  left_join(metadata, by = "StaID") |>
+  group_by(generation, CASC) |> 
+  summarise(CASCmean_minflow_7d = mean(minflow_7d, na.rm = TRUE),
+            n = n())
+
+# Add in baselines
+climate_metrics_CASC <- climate_metrics_CASC_temp |> 
+  left_join(climate_metrics_CASC_temp |> 
+              rename(baseline_flow = CASCmean_minflow_7d,
+                     baseline_generation = generation) |>
+              filter(baseline_generation == "0 silent generation") |>
+              select(baseline_generation, CASC, baseline_flow),
+            by = "CASC") |>
+  mutate(change_in_minflow = ((CASCmean_minflow_7d - baseline_flow)/baseline_flow)*100,
+         is_change_negative = case_when(change_in_minflow < 0 ~ "yes",
+                                        change_in_minflow == 0 ~ "no change",
+                                        change_in_minflow > 0 ~ "no"))
+CASC_stats <- climate_metrics_CASC |> filter(generation == "4 gen z") |> 
+  select(change_in_minflow, generation, CASC)
+
+# Set up plotting data - CONUS
+plotting_data_CONUS <- climate_metrics_year_site |> 
+  filter(year %in% 1920:2019) |>
+  group_by(year) |>
+  summarise(CONUS_annual_minflow_7d = mean(minflow_7d, na.rm = TRUE)) |>
+  mutate(generation = case_when(year %in% 1920:1945 ~ "0 silent generation",
+                                year %in% 1946:1964 ~ "1 baby boomers",
+                                year %in% 1965:1980 ~ "2 gen x",
+                                year %in% 1981:1996 ~ "3 millenials",
+                                year %in% 1997:2021 ~ "4 gen z")) |>
+  left_join(climate_metrics_CONUS, by = c("generation"))
+
+plotting_data_CASC <- climate_metrics_year_site |>
+  filter(year %in% 1920:2019) |>
+  left_join(metadata, by = "StaID") |>
+  group_by(year, CASC) |> 
+  summarise(CASC_annual_minflow_7d = mean(minflow_7d, na.rm = TRUE)) |>
+  mutate(generation = case_when(year %in% 1920:1945 ~ "0 silent generation",
+                                year %in% 1946:1964 ~ "1 baby boomers",
+                                year %in% 1965:1980 ~ "2 gen x",
+                                year %in% 1981:1996 ~ "3 millenials",
+                                year %in% 1997:2021 ~ "4 gen z")) |>
+  left_join(climate_metrics_CASC, by = c("generation", "CASC"))
+
+
+
+mapping_data <- states_CASC |> 
+  left_join(climate_metrics_CASC |> filter(generation == "4 gen z"),
+                                         by = "CASC")
+
+# convert id to CASC for mapping just regions to make them look "exploded"
+mapping_data_regions <- mapping_data |>
+  group_by(CASC) |>
+  summarise(id = unique(CASC))
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Comfortaa"
+sysfonts::font_add_google("Comfortaa")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "#ffffff"
+font_color = "black"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png") |>
+  image_colorize(100, "#36454F")
+
+# Set default chart
+ggplot2::theme_set(theme_minimal())
+
+# Main plot
+(main_plot <- ggplot(data = plotting_data_CONUS, 
+                     aes(x = year, y = CONUS_annual_minflow_7d)) +
+    geom_line(color = "#ADAEB3") +
+    geom_line(data = plotting_data_CONUS |> filter(change_in_minflow >= 0),
+              aes(y = CONUSmean_minflow_7d, 
+                  color = change_in_minflow, group = generation),
+              linewidth = 2) +
+    scale_color_viridis_c(limits = c(0,100), direction = -1, end = 0.6) +
+    geom_line(data = plotting_data_CONUS |> 
+                filter(change_in_minflow < 0),
+              aes(y = CONUSmean_minflow_7d, group = generation),
+              color = "#ef8a62",
+              linewidth = 2) +
+    geom_line(data = plotting_data_CONUS |> 
+                filter(generation == "0 silent generation"),
+              aes(y = CONUSmean_minflow_7d, group = generation),
+              color = "#999999",
+              linewidth = 2) +
+    ylab("Minimum Annual Streamflow (cfs)") +
+    theme(legend.position = "none",
+          panel.grid = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(size = 14),
+          axis.ticks = element_line()) +
+    scale_x_continuous(breaks = c(1920, 1946, 1964, 1980, 1997, 2020))
+)
+# Chart settings
+Ymargin <-  0.04
+Xmargin <- 0.03
+
+# CASC Plots
+CASC_names <- unique(plotting_data_CASC$CASC)
+Xbase <- 1 - Xmargin
+Ybase <- Ymargin*2 + 0.02
+Yjitter <- 0.25
+Xjitter <- 0.2 
+
+# Function to make regional plots
+draw_CASC_plots <- map(1:length(CASC_names), function(x){
+  plot_temp <- plotting_data_CASC |>
+    filter(CASC == CASC_names[x]) |> 
+    ggplot(aes(x = year, y = CASC_annual_minflow_7d)) +
+    geom_line(linewidth = 0.5, color = "#ADAEB3") +
+    geom_line(data = plotting_data_CASC |> 
+                    filter(CASC == CASC_names[x]),
+              aes(y = CASCmean_minflow_7d, group = generation, 
+                  color = change_in_minflow),
+              linewidth = 2) +
+    scale_color_viridis_c(limits = c(0,100), direction = -1, end = 0.7) +
+    {if(CASC_names[x] == "South Central"){
+              geom_line(data = plotting_data_CASC |> 
+                    filter(CASC == CASC_names[x], generation == "3 millenials"),
+                  aes(y = CASCmean_minflow_7d, group = generation),
+                  color = "blue",
+              linewidth = 2) 
+    }} +
+        geom_line(data = plotting_data_CASC |> 
+                    filter(CASC == CASC_names[x], generation == "0 silent generation"),
+                  aes(y = CASCmean_minflow_7d, group = generation),
+                  color = "#999999",
+              linewidth = 2) +
+        geom_line(data = plotting_data_CASC |> 
+                    filter(CASC == CASC_names[x], change_in_minflow < 0),
+                  aes(y = CASCmean_minflow_7d, group = generation),
+                  color = "#ef8a62",
+              linewidth = 2) +
+    ggtitle(CASC_names[x]) + 
+    theme(legend.position = "none",
+        panel.grid = element_blank(),
+        axis.title = element_blank()) +
+    ylab("Minimum Annual Streamflow") +
+    scale_x_continuous(breaks = c(1920, 1946, 1964, 1980, 1997, 2020)) #order: above, baseline, below
+  
+  if(CASC_names[x] %in% c("Southwest", "Southeast", "South Central")){
+    Y_position <- Ybase
+  } else if(CASC_names[x] %in% c("California", "Northeast")){
+    Y_position <- Ybase + Yjitter
+  } else {
+    Y_position <- Ybase + 2*Yjitter
+  }
+  
+  if(CASC_names[x] %in% c("Northwest", "California", "Southwest")){
+    X_position <- Xbase - (2*Xjitter)
+  } else if(CASC_names[x] %in% c("North Central", "South Central")){
+    X_position <- Xbase - Xjitter
+  } else {
+    X_position <- Xbase
+  } 
+  
+  draw_plot(plot_temp,
+            x = X_position,
+            y = Y_position,
+            hjust = 1,
+            height = 0.2,
+            width = 0.2) 
+
+})
+
+# Function to make the labels for each regional plot
+draw_CASC_labels <- map(1:length(CASC_names), function(x){
+
+  if(CASC_names[x] %in% c("Southwest", "Southeast", "South Central")){
+    Y_position <- Ybase + Yjitter - 0.09
+  } else if(CASC_names[x] %in% c("California", "Northeast")){
+    Y_position <- Ybase + 2*Yjitter - 0.09
+  } else {
+    Y_position <- Ybase + 3*Yjitter - 0.09
+  }
+  
+  if(CASC_names[x] %in% c("Northwest", "California", "Southwest")){
+    X_position <- Xbase - (2*Xjitter) -0.03
+  } else if(CASC_names[x] %in% c("North Central", "South Central")){
+    X_position <- Xbase - Xjitter - 0.03
+  } else {
+    X_position <- Xbase - 0.03
+  } 
+
+  draw_label(sprintf("%s%%", round(
+    CASC_stats$change_in_minflow[CASC_stats$CASC == CASC_names[x]]), 0
+    ),
+            x = X_position,
+            y = Y_position,
+    fontfamily = font_legend,
+    size = 18,
+    color = ifelse(CASC_names[x] %in% c("Southwest", "Southeast"), "#ef8a62", "#1F9E89FF"))
+})
+
+# Regional map
+(map_plot <- ggplot(data = mapping_data) +
+    geom_sf(aes(fill = change_in_minflow), color = "white") +
+    theme_void()+
+    scale_fill_viridis_c(limits = c(0,100), direction = -1, end = 0.7) +
+    geom_sf(data = mapping_data |> filter(change_in_minflow < 0), 
+            fill = "#ef8a62", color = "white")+ 
+    geom_sf(data = mapping_data_regions, color = "white", fill = NA, linewidth = 1)+
+    geom_segment(aes(x = -125, xend = -127, 
+                     y = 50, yend = 52), 
+                 arrow = arrow(length = unit(0.03, "npc")))+
+    geom_segment(aes(x = -104, xend = -104, 
+                     y = 50, yend = 52), 
+                 arrow = arrow(length = unit(0.03, "npc")))+
+    geom_segment(aes(x = -85, xend = -75, 
+                     y = 48, yend = 52), 
+                 arrow = arrow(length = unit(0.03, "npc")))+
+    geom_segment(aes(x = -74, xend = -70, 
+                     y = 39, yend = 39), 
+                 arrow = arrow(length = unit(0.03, "npc")))+
+    geom_segment(aes(x = -124, xend = -127, 
+                     y = 37, yend = 37), 
+                 arrow = arrow(length = unit(0.03, "npc")))+
+    geom_segment(aes(x = -113, xend = -127, 
+                     y = 30, yend = 24), 
+                 arrow = arrow(length = unit(0.03, "npc")))+
+    geom_segment(aes(x = -101, xend = -101, 
+                     y = 26, yend = 24), 
+                 arrow = arrow(length = unit(0.03, "npc")))+
+    geom_segment(aes(x = -80, xend = -70, 
+                     y = 30, yend = 24), 
+                 arrow = arrow(length = unit(0.03, "npc")))+
+    theme(legend.position = "none")
+)
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = Xmargin,
+            y = 0.15,
+            height = 0.35,
+            width = 0.3,
+            hjust = 0) +
+  # Generation names
+  draw_text("Silent\nGeneration\n(baseline)", 
+            x = Xmargin + 0.08, y = 0.5, size = 12) +
+  draw_text("Baby\nBoomers\n-5%", 
+            x = Xmargin + 0.135, y = 0.4, size = 12) +
+  draw_text("Gen X\n+14%", 
+            x = Xmargin + 0.175, y = 0.5, size = 12) +
+  draw_text("Millenials\n+18%", 
+            x = Xmargin + 0.215, y = 0.51, size = 12) +
+  draw_text("Gen Z\n+22%", 
+            x = Xmargin + 0.26, y = 0.515, size = 12) +
+  # map plot
+  draw_plot(map_plot,
+            x = Xbase - (2*Xjitter),
+            y = Ybase + Yjitter,
+            height = 0.2,
+            width = 0.2) +
+  draw_CASC_plots + 
+  draw_CASC_labels +
+  # explainer text
+  draw_label("Minimum Annual Streamflow values are calculated by averaging annual 7-day low flows from 331 gages for which there are 100 years of data.\nData from doi.org/10.5066/P92FAASD. Chart by A.A. Archer.",
+             fontfamily = supporting_font,
+             x = 1-Xmargin,   
+             y = Ymargin,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = "#999999")+
+  # Title
+  draw_label("Not your parents' streamflows!",
+             x = Xmargin,
+             y = 1-Ymargin,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = "#31688EFF",
+             size = 45,
+             fontface="bold") +
+    # Statistics
+  draw_label("Across CONUS,\nMinimum Annual Streamflow\nduring Gen Z was\n\n\n\non average than during the\nSilent Generation",
+             x = Xmargin + 0.15,
+             y = 0.86,
+             hjust = 0.5,
+             vjust = 1,
+             lineheight = 0.8,
+             fontfamily = supporting_font,
+             color = font_color,
+             size = 25) +
+  draw_label(sprintf("%s%% higher", CONUS_statistic), x = Xmargin + 0.15, y = 0.67,
+            hjust = 0.5, vjust = 0, size = 52, fontfamily = font_legend, color = "#1F9E89FF")+
+  draw_label("These changes in Minimum Annual Streamflow vary by region",
+             x = Xmargin + 0.35,
+             y = 0.85,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.85,
+             fontfamily = supporting_font,
+             color = font_color,
+             size = 25)+
+  # Add logo
+  draw_image(usgs_logo, 
+             x = Xmargin,
+             y = Ymargin,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)+
+  draw_line(x = c(Xmargin, 1 - Xmargin),
+           y = c(0.9, 0.9),
+           color = "#31688EFF")+
+  draw_line(x = c(0.135, 1 - Xmargin),
+            y = c(0.09, 0.09),
+            color = "#36454F")
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230404_historical_aaarcher.png", 
+       width = 16, height = 9, dpi = 300)
+
+```
+
+
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Shows the minimum annual streamflow averaged by generation for 331 USGS gages that have 100 years of near complete data, by CONUS and by region 
+2. Almost everywhere in the US, minimum annual streamflow levels have increased during the last few generations compared to the “Silent Generation” 
+3. Minimum annual streamflow during Gen Z generation was 22% higher on average across the CONUS than it was during the Silent generation 
+4. Two regions, southwest and southeast have slightly lower minimum annual streamflow levels now than they did during the silent generation 
+5. Data from doi.org/10.5066/P92FAASD 
+6. Uses #rstats and #OpenData 
+
+### Data source(s)
+
+Simeone, C.E., 2022, Streamflow Drought Metrics for Select United States Geological Survey Streamgages for Three Different Time Periods from 1921 - 2020: U.S. Geological Survey data release, https://doi.org/10.5066/P92FAASD.
+
