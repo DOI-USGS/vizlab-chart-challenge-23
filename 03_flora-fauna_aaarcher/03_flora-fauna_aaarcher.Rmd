@@ -160,7 +160,6 @@ plotting_data <- energy_sum |>
          th = runif(1, 0, 2*pi),
          random_x = sqrt(r) * cos(th),
          random_y = sqrt(r) * sin(th),
-         image_source = sample(leaf_files, 1, replace = T),
          # make breaks for sizing of flowers using quantiles
          image_size = case_when(sumEnergy <= energy_q[1] ~ 0.005,
                                 sumEnergy <= energy_q[2] ~ 0.010,
