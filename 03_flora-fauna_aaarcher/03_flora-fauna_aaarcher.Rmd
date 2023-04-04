@@ -172,7 +172,7 @@ plotting_data <- energy_sum |>
                                 sumEnergy <= energy_q[9] ~ 0.05,
                                 sumEnergy <= energy_q[10] ~ 0.07,
                                 sumEnergy > energy_q[10] ~ 0.1,
-                                TRUE ~ NA)) 
+                                TRUE ~ NA_real_)) 
 
 
 # Main plot
