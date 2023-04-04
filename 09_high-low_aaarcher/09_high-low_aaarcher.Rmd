@@ -226,7 +226,7 @@ font_color = "#0A1927"
 # The background canvas for your viz
 canvas <- grid::rectGrob(
   x = 0, y = 0, 
-  width = 16, height = 9,
+  width = 16, height = 16,
   gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
 )
 
@@ -269,7 +269,7 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png")
     theme_void() + 
     theme(legend.position = "none"))
 
-(distribution_plot <- ggplot(data = SCI_hex_grid, 
+(distribution_plot_longitude <- ggplot(data = SCI_hex_grid, 
                              aes(y = compare_means,
                                  x = st_coordinates(st_centroid(SCI_hex_grid))[,1]))+
     geom_linerange(aes(ymin = 0, ymax = compare_means, color = compare_means))+
@@ -281,6 +281,21 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png")
     theme_void()+
     theme(legend.position = "none",
           panel.background = element_blank())
+)
+
+(distribution_plot_latitude <- ggplot(data = SCI_hex_grid, 
+                             aes(x = compare_means,
+                                 y = st_coordinates(st_centroid(SCI_hex_grid))[,2]))+
+    geom_linerange(aes(xmin = 0, xmax = compare_means, color = compare_means))+
+    #geom_linerange(aes(ymin = 0, ymax = compare_means), color = "white")+
+    geom_point(aes(color = compare_means))+
+    scale_color_scico(palette = "cork", direction = -1)+
+    geom_hline(yintercept = 0, color = "#E6EEEC")+
+  #scale_color_gradient2_tableau(palette = "Green-Blue Diverging")+
+    theme_void()+
+    theme(legend.position = "none",
+          panel.background = element_blank())+
+    scale_x_reverse()
 )
 
 ```
