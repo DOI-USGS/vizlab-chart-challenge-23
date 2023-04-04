@@ -150,7 +150,6 @@ transparent_rain <- function(img) {
 set.seed(86753092)
 #set.seed(48372341)
 
-leaf_files = sprintf("in/treeEnergy-0%s.png", c(2,4:9))
 
 
 # Set random values for placement so they land in a circle
