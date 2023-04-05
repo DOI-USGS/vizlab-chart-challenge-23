@@ -1,0 +1,415 @@
+---
+title: "Example for Chart Challenge"
+author: "Althea Archer"
+date: "2023-03-10"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+
+library(sf)
+library(terra)
+library(spData)
+library(scico)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+#### Define global variables
+focal_month <- "February"
+focal_month_numeric <- 2
+focal_month_label <- ifelse(focal_month_numeric < 10, 
+                            sprintf("0%s", focal_month_numeric),
+                            focal_month_numeric)
+focal_year <- 2023
+
+# This is a look-up table for the day-of-year of the first of the month, based on year
+date_code_lookup <- data.frame(
+  common_yr = c("001", "032", "060", "091", "121", "152", 
+                 "182", "213", "244", "274", "305", "335"),
+  leap_yr = c("001", "032", "061", "092", "122", "153", 
+               "183", "214", "245", "275", "306", "336")
+)
+
+# Function to determine the correct code given year and month
+code_given_year_mo <- function(month_numeric, year){
+  if(year %% 4 == 0){ #if leap year
+    return(date_code_lookup$leap_yr[month_numeric])
+  } else { # otherwise
+    return(date_code_lookup$common_yr[month_numeric])
+  }
+}
+
+# Return date code for *this* year and month
+focal_date_code <- code_given_year_mo(month_numeric = focal_month_numeric,
+                                      year = focal_year)
+
+# Read in the snow cover index (SCI) raster
+snow_cover_files <- list.files(path = "in", 
+                               pattern = glob2rx(sprintf("^MOD10CM.A%s%s*tiff", focal_year, focal_date_code)))
+snow_cover <- terra::rast(paste0("in/", snow_cover_files))
+
+# Read in past data
+number_years_past <- 20 # change if doing longer than 5 years
+past_snow_cover_files <- NULL # empty, to add list of files to
+
+for(yy in 1:number_years_past){ # for each year in the past
+  
+  # Temporary year, code, and file name
+  temp_year <- focal_year - yy
+  temp_code <- code_given_year_mo(month_numeric = focal_month_numeric, year = temp_year)
+  
+  temp_file <- snow_cover_files <- list.files(path = "in", 
+                                              pattern = glob2rx(sprintf("^MOD10CM.A%s%s*tiff", temp_year, temp_code)))
+
+  # Append file name to list
+  past_snow_cover_files <- c(past_snow_cover_files, temp_file)
+} 
+
+# Create raster stack of all past years' rasters
+past_snow_cover <- terra::rast(paste0("in/", past_snow_cover_files))
+
+
+# Download US State boundaries as sf object
+states_shp <- spData::us_states
+
+
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Reclassify values 211, 250, 253, 254, and 255 to NA
+snow_cover_reclass <- terra::classify(snow_cover, cbind(c(211, 250, 253, 254, 255), NA))
+past_snow_cover_reclass <- terra::classify(past_snow_cover, cbind(c(211, 250, 253, 254, 255), NA))
+
+# Average over past years
+mean_past_snow_cover <- terra::mean(past_snow_cover_reclass, na.rm = TRUE)
+
+# Reproject the sf object to match the projection of the raster
+states_rast_proj <- states_shp |> sf::st_transform(terra::crs(snow_cover_reclass))
+
+# Clip to state boundaries (may have to remove "vect()")
+snow_cover_clip <- terra::crop(x = snow_cover_reclass, 
+                               y = terra::vect(states_rast_proj), mask = TRUE)
+past_snow_cover_clip <- terra::crop(x = mean_past_snow_cover, 
+                                    y = terra::vect(states_rast_proj), mask = TRUE)
+
+# USGS EA Conic
+crs_USGS <- "+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5 +lat_2=45.5 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
+
+# Reproject to match USGS EA Conic for plotting
+snow_cover_clip_project <- terra::project(snow_cover_clip, crs_USGS)
+past_snow_cover_clip_project <- terra::project(past_snow_cover_clip, crs_USGS)
+
+# Reproject the state boundary sf object to match the projection of the raster
+states_proj <- states_shp |> sf::st_transform(crs_USGS)
+
+# make hex tesselation of CONUS
+columns <- 50
+rows <- 50
+hex_grid <- states_proj |> 
+  # using the project states boundaries, make a hexagon grid that is 70 by 70 across the US
+  sf::st_make_grid(n = c(columns, rows), 
+               what = "polygons", 
+               # if square = TRUE, then square. Otherwise hexagonal
+               square = FALSE) |>
+  sf::st_as_sf() |>
+  mutate(geometry = x) |>
+  mutate(hex = as.character(row_number()))
+
+
+# Extract values to the hexagon grid from the masked raster
+extract_snow_cover_hex <- terra::extract(x = snow_cover_clip_project, vect(hex_grid))
+colnames(extract_snow_cover_hex) <- c("ID", "mean")
+
+past_extract_snow_cover_hex <- terra::extract(x = past_snow_cover_clip_project,
+                                              vect(hex_grid))
+colnames(past_extract_snow_cover_hex) <- c("ID", "mean")
+
+# Calculate mean snow cover by hex
+means_by_hex <- extract_snow_cover_hex |> 
+  group_by(ID) |>
+  summarise(meanSCI = mean(mean, na.rm = T))
+
+past_means_by_hex <- past_extract_snow_cover_hex |>
+  group_by(ID) |>
+  summarise(meanPastSCI = mean(mean, na.rm = T))
+
+
+# Calculate SCI means and left-join to the hexagon grid sf object
+SCI_hex_grid <- hex_grid |>
+  mutate(ID = as.numeric(hex)) |>
+  left_join(means_by_hex) |>
+  left_join(past_means_by_hex) |>
+  # Calculate means and use "cut" to categorize them
+  mutate(compare_means = meanSCI - meanPastSCI,
+         category = cut(compare_means, 
+                        breaks = c(-Inf, -75, -50, -25, -1, 1, 25, 50, 75, Inf ),
+                        labels = c("-75%", 
+                                   "-50 to -75%", 
+                                   "-25 to -50%", 
+                                   "  -1 to -25%", 
+                                   "No change", 
+                                   "  +1 to 25%", 
+                                   "+25 to 50%", 
+                                   "+50 to 75%",
+                                   "+75%")),
+         sign_change = case_when(compare_means > 0 ~ "positive",
+                                 compare_means < 0 ~ "negative",
+                                 compare_means == 0 ~ "no change")) |>
+  filter(! is.na(meanSCI)) # delete hexagons outside the US boundaries
+
+
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Oxanium" 
+sysfonts::font_add_google("Oxanium")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "#061b4b"  
+font_color = "#60dced"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 16,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_white.png") |>
+  magick::image_colorize(100, "#386CB1")
+
+
+
+# Plots
+(compare_plot <- SCI_hex_grid |>
+  ungroup() %>%
+  ggplot() +
+  geom_sf(aes(fill = compare_means),
+          color = background_color, 
+          size = 0.1) +
+    scale_fill_gradient2(mid = "#386CB1", high = "#60dced", low = "#ffb3fd",
+                       limits = c(-80,82))+
+    theme_void() + 
+    theme(legend.position = "none"))
+
+(distribution_plot_longitude <- ggplot(data = SCI_hex_grid, 
+                             aes(y = compare_means,
+                                 x = st_coordinates(st_centroid(SCI_hex_grid))[,1]))+
+    geom_linerange(aes(ymin = 0, ymax = compare_means, color = compare_means))+
+    geom_point(aes(color = compare_means))+
+    scale_color_gradient2(mid = "#386CB1", high = "#60dced", low = "#ffb3fd",
+                       limits = c(-80,82),
+                       guide = guide_colorbar(ticks = FALSE))+
+    geom_hline(yintercept = 0, color = "#386CB1")+
+    ylim(c(-85, 85))+
+    theme_void()+
+    theme(legend.position = "right",
+          legend.direction = "vertical",
+          legend.title = element_blank(),
+          legend.key.width = unit(1,"cm"),
+          legend.key.height = unit(1,"cm"),
+          legend.box.margin = margin(t = 0, r = 0, b = 0, l = 3.5, unit = "cm"),
+          legend.text = element_blank(),
+          panel.background = element_blank())
+)
+
+(distribution_plot_latitude <- ggplot(data = SCI_hex_grid, 
+                                      aes(x = compare_means,
+                                          y = st_coordinates(st_centroid(SCI_hex_grid))[,2]))+
+    geom_linerange(aes(xmin = 0, xmax = compare_means, color = compare_means))+
+    geom_point(aes(color = compare_means))+
+    scale_color_gradient2(mid = "#386CB1", high = "#60dced", low = "#ffb3fd",
+                          limits = c(-80,82))+
+    geom_vline(xintercept = 0, color = "#386CB1")+
+    xlim(c(-85, 85))+
+    theme_void()+
+    theme(legend.position = "none",
+          panel.background = element_blank())+
+    scale_x_reverse()
+)
+
+
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 14}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 16, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(compare_plot,
+            x = 0.05,
+            y = 0.10,
+            width = 0.7,
+            hjust = 0,
+            vjust = 0) +
+  draw_plot(distribution_plot_longitude,
+            x = 0.05, 
+            y = 0.2,
+            width = 0.822,
+            height = 0.4,
+            hjust = 0,
+            vjust = 0.5)+
+  draw_plot(distribution_plot_latitude,
+            x = 0.85, 
+            y = 0.382,
+            width = 0.3,
+            height = 0.43,
+            hjust = 0.5,
+            vjust = 0)+
+  # Title
+  draw_label("A Tale of Two Winters",
+             x = 0.04,
+             y = 0.96,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = font_color,
+             fontface = "bold",
+             size = 55) +
+    draw_label("For one half of the country, it was remarkably snowy;\n   for the other, remarkably not.",
+             x = 0.04,
+             y = 0.90,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.9,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 30) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.04,
+             y = 0.04,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)+
+    draw_label("Data from the NSIDC: doi.org/10.5067/MODIS/MOD10CM.061", 
+             x = 0.15,
+             y = 0.045,
+             fontfamily = supporting_font,
+             color = "#386CB1",
+             size = 18,
+             hjust = 0)+
+  draw_label("Difference in\nPercent Snow\nCovered Area",
+            x = 0.850,
+            y = 0.31,
+            color = font_color,
+            size = 25,
+            fontfamily = supporting_font,
+            hjust = 0.5)+ 
+  draw_label("for February 2023,\nas compared to\n20-year-mean\n(2003-2022)",
+            x = 0.850,
+            y = 0.09,
+            color = "#ffb3fd",
+            size = 20,
+            fontfamily = supporting_font,
+            hjust = 0.5)+
+  draw_label("+80%\n+40%\n0\n-40%,\n-80%",
+            x = 0.90,
+            y = 0.20,
+            color = "#386CB1",
+            size = 22,
+            fontfamily = supporting_font,
+            hjust = 0.5,
+            lineheight = 1.25,
+            fontface = "bold")+
+  draw_label("N", x = 0.855, y = 0.82, color = "#386CB1", 
+            size = 25, fontface = "bold", fontfamily = supporting_font)+
+  draw_label("S", x = 0.855, y = 0.371, color = "#386CB1", 
+            size = 25, fontface = "bold", fontfamily = supporting_font)+
+  draw_label("E", x = 0.758, y = 0.2, color = "#386CB1", 
+            size = 25, fontface = "bold", fontfamily = supporting_font)+
+  draw_label("W", x = 0.04, y = 0.2, color = "#386CB1", 
+            size = 25, fontface = "bold", fontfamily = supporting_font)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230409_high-low_aaarcher.png", 
+       width = 16, height = 16, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. The Western half of the country saw higher than average snow in February, whereas the Eastern half of the country saw lower than average. There was not a similar north-south split.
+
+
+### Data source(s)
+
+Data from the NSIDC: doi.org/10.5067/MODIS/MOD10CM.061
+
