@@ -369,7 +369,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             size = 25,
             fontfamily = supporting_font,
             hjust = 0.5)+ 
-  draw_label("for February 2023,\nas compared to\n20-year-mean\n(2023-2022)",
+  draw_label("for February 2023,\nas compared to\n20-year-mean\n(2003-2022)",
             x = 0.850,
             y = 0.09,
             color = "#ffb3fd",
