@@ -10,9 +10,7 @@ Date for your prompt in April: April 3
 
 Image: 
 
-Share the link in this document with the format `![](out/20230000_prompt-example_name.png)`:
-
-![](out/)
+![20230403_flora-fauna-aaarcher](/uploads/2ac7fce9c47eac52eb82c8051fb6d760/20230403_flora-fauna-aaarcher.png)
 
 Your key takeaways (1-2 sentences each):
 
