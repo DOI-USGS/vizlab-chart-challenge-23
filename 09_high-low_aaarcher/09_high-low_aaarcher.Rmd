@@ -355,9 +355,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              width = 0.1, 
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)+
-    draw_label("Data from the NSIDC: doi.org/10.5067/MODIS/MOD10CM.061", 
+    draw_label("Althea A. Archer, USGS\nData from NSIDC: doi.org/10.5067/MODIS/MOD10CM.061", 
              x = 0.15,
-             y = 0.045,
+             y = 0.055,
              fontfamily = supporting_font,
              color = "#386CB1",
              size = 18,
