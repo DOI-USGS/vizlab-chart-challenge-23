@@ -1,0 +1,334 @@
+---
+title: "Distribution - Humans"
+author: "Hayley Corson-Dosch"
+date: "2023-04-08"
+output: html_document
+---
+
+## Instructions for using this template
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+library(sf)
+library(tigris)
+library(rmapshaper)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load, results = 'hide'}
+# Add your code here
+conus_proj <- '+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5 +lat_2=45.5 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs'
+
+conus_sf <- tigris::states(cb = TRUE) %>% 
+  st_transform(conus_proj) %>%
+  filter(STUSPS %in% state.abb[!state.abb %in% c('AK', 'HI')]) %>%
+  rmapshaper::ms_simplify(keep = 0.4)
+
+counties_sf <- tigris::counties() %>%
+  st_transform(crs=conus_proj) %>%
+  filter(STATEFP %in% conus_sf$STATEFP) %>% 
+  rmapshaper::ms_simplify(keep = 0.2) %>%
+  st_intersection(st_union(conus_sf))
+
+county_wu <- readr::read_csv('in/county_water_use.csv', col_types = cols())
+national_wu <- readr::read_csv('in/national_water_use.csv', col_types = cols())
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Add your processing code here
+rankings_2015 <- national_wu %>%
+  filter(year == 2015, !(wu_category == 'commercial')) %>%
+  mutate(wu_category = case_when(
+    wu_category == 'thermoelectric power' ~ 'thermoelectric',
+    wu_category == 'self-supplied domestic' ~ 'domestic',
+    wu_category == 'self-supplied industrial' ~ 'industrial',
+    TRUE ~ wu_category
+  )) %>%
+  arrange(desc(wu_bgd)) %>%
+  pull(wu_category)
+
+county_wu_totals_2015 <- county_wu %>%
+  filter(year == 2015) %>%
+  filter(!(wu_category == 'commercial')) %>% # not measured in 2015
+  rowwise() %>%
+  mutate(GEOID = paste0(
+    paste(rep('0', 2 - nchar(as.character(state_cd))), collapse = ''), 
+    state_cd, 
+    paste(rep('0', 3 - nchar(as.character(county_cd))), collapse = ''), 
+    county_cd), 
+    .after = county_cd) %>%
+  group_by(GEOID, year) %>%
+  mutate(county_total_mgd = sum(total_watersource_mgd, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(per_of_total = total_watersource_mgd/county_total_mgd * 100,
+         wu_category = case_when(
+           wu_category == 'thermoelectric power' ~ 'thermoelectric',
+           wu_category == 'self-supplied domestic' ~ 'domestic',
+           wu_category == 'self-supplied industrial' ~ 'industrial',
+           TRUE ~ wu_category
+         ),
+         wu_category = factor(wu_category, levels = rankings_2015))
+
+county_wu_2015_sf <- counties_sf %>%
+  left_join(county_wu_totals_2015, by = 'GEOID')
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "white"
+font_color = "grey10"
+label_font_size <- 19
+category_colors <-  c(RColorBrewer::brewer.pal(7, 'Dark2'), '#A0BFEC') #, '#E2E2E2') # add blue for PS and light grey for NA values
+names(category_colors) <- c('aquaculture','domestic','industrial','livestock','thermoelectric','mining','irrigation','public supply')
+category_colors <- category_colors[order(match(names(category_colors),rankings_2015))]
+
+# The background canvas for your viz
+plot_width <- 12
+plot_height <- 9
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = plot_width, height = plot_height,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
+
+# Main plot list (maps)
+main_plot_list <- purrr::map2(names(category_colors), category_colors, function(category, category_color) {
+  ggplot() +
+    geom_sf(data = conus_sf,
+            fill = 'white',
+            color = 'white',
+            size = 0.6) +
+    geom_sf(data = filter(county_wu_2015_sf, wu_category == category),
+            aes(alpha = per_of_total),
+            fill = category_color,
+            color = NA,
+            size = 0.1) +
+    geom_sf(data = conus_sf,
+            fill = NA,
+            color = background_color,
+            size = 3) +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_y_continuous(expand = c(0,0)) +
+    scale_alpha(range = c(0.1,1), limits = c(0, 100), name = '') +
+    theme_void() +
+    theme(
+      legend.position = 'None',
+      plot.margin = unit(c(0,0,0.1,0), "cm")
+    )
+  
+})
+
+```
+
+
+```{r plotting2}
+# approach modified from https://timogrossenbacher.ch/2019/04/bivariate-maps-with-ggplot2-and-sf/#create-a-bivariate-choropleth
+bivariate_color_scale <- purrr::map2_df(names(category_colors), category_colors, function(category, category_color) {
+  tibble(
+    wu_category = rep(category, 5),
+    alpha = c(100, 75, 50, 25, 0),
+    fill = rep(category_color, 5)
+  )
+}) %>%
+  mutate(wu_category = factor(wu_category, levels = rev(rankings_2015)))
+
+legend_list <- purrr::map2(names(category_colors), category_colors, function(category, category_color) {
+  ggplot() +
+    geom_tile(
+      data = filter(bivariate_color_scale, wu_category == category),
+      mapping = aes(
+        x = alpha,
+        y = wu_category,
+        fill = fill,
+        alpha = alpha)
+    ) + 
+    scale_fill_identity() +
+    scale_alpha(range = c(0.1,1), limits = c(0, 100), name = '') +
+    scale_y_discrete(position = "right", expand = c(0,0)) +
+    theme_void() +
+    theme(
+      legend.position = 'none',
+      plot.margin = unit(c(0,6,6.5,0), "cm")
+    )
+})
+
+```
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+# arrange maps
+main_plot_list1 <- append(NA, main_plot_list[1:2])
+main_plot_list2 <- main_plot_list[3:5]
+main_plot_list3 <- main_plot_list[6:8]
+arranged_maps1 <- plot_grid(plotlist = main_plot_list1, nrow = 1, ncol = 3)
+arranged_maps2 <- plot_grid(plotlist = main_plot_list2, nrow = 1, ncol = 3)
+arranged_maps3 <- plot_grid(plotlist = main_plot_list3, nrow = 1, ncol = 3)
+
+# arrange legends
+legend_list <- append(NA, legend_list)
+arranged_legends <- cowplot::plot_grid(plotlist = legend_list, nrow = 3, ncol = 3, scale = 1)
+
+# label placement
+row_positions <- c(1, 1, 2, 2, 2, 3, 3, 3)
+col_positions <- c(2, 3, 1, 2, 3, 1, 2, 3)
+label_x_col1 <- 0.16
+label_x_col2 <- 0.494
+label_x_col3 <- 0.826
+label_y_row1 <- 0.949
+label_y_row2 <- 0.649
+label_y_row3 <- 0.349
+
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+                    xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = plot_height, width = plot_width,
+            hjust = 0, vjust = 1) +
+  draw_plot(arranged_maps1,
+            x = 0.005,
+            y = 0.675,
+            height = 0.25) +
+  draw_plot(arranged_maps2,
+            x = 0.005,
+            y = 0.375,
+            height = 0.25) +
+  draw_plot(arranged_maps3,
+            x = 0.005,
+            y = 0.075,
+            height = 0.25) +
+  # the legend
+  draw_plot(arranged_legends,
+            x = 0.02,
+            y = 0.064,
+            width = 1,
+            height = 0.9) +
+  # legend labels +
+  purrr::map(seq(1:length(rankings_2015)), function(index) {
+    row <- row_positions[index] 
+    col <- col_positions[index]
+    y_pos <- case_when(row == 1 ~ label_y_row1, row == 2 ~ label_y_row2, row == 3 ~ label_y_row3)
+    x_pos <- case_when(col == 1 ~ label_x_col1, col == 2 ~ label_x_col2, col == 3 ~ label_x_col3)
+    draw_label(
+      rankings_2015[index],
+      fontfamily = supporting_font,
+      x = x_pos,
+      y = y_pos,
+      size = label_font_size,
+      hjust = 0,
+      vjust = 0,
+      color = font_color
+    )
+  }) +
+  # use % label for public supply legend
+  draw_label('0     10  25  75  100% of use',
+    fontfamily = supporting_font,
+    x = 0.0262,
+    y = label_y_row2 + 0.03,
+    size = 15,
+    hjust = 0,
+    vjust = 0,
+    color = font_color
+  ) +
+  # explainer text
+  draw_label(paste('Hayley Corson-Dosch, USGS', 
+                   "2015 U.S. water use data: https://waterdata.usgs.gov/nwis/wu", sep = '\n'),
+             fontfamily = supporting_font,
+             fontface = 'italic',
+             x = 0.96,   
+             y = 0.03,
+             size = 12,
+             hjust = 1,
+             vjust = 0,
+             color = '#6D6D6D')+
+  # Title
+  draw_label(stringr::str_wrap("How are we using water?", 8),
+             x = 0.026,
+             y = 0.96,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             color = font_color,
+             size = 55) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.026,
+             y = 0.03,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230408_humans_hcorson-dosch.png", 
+       width = plot_width, height = plot_height, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. How we use water varies by county across the continental U.S. In the western U.S. water is used largely for irrigation, while in the east, water is used primarily for public supply and industry. 
+
+### Data source(s)
+
+[https://waterdata.usgs.gov/nwis/wu](https://waterdata.usgs.gov/nwis/wu)
+
