@@ -41,7 +41,7 @@ Save any files that you are using directly in the `in` folder. Then read them in
 This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
 
 
-```{r load}
+```{r load, results = 'hide'}
 # Add your code here
 conus_proj <- '+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5 +lat_2=45.5 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs'
 
@@ -122,12 +122,13 @@ showtext::showtext_auto(enable = TRUE)
 # Define colors
 background_color = "white"
 font_color = "grey10"
-label_font_size <- 14
+label_font_size <- 19
 category_colors <-  c(RColorBrewer::brewer.pal(7, 'Dark2'), '#A0BFEC') #, '#E2E2E2') # add blue for PS and light grey for NA values
 names(category_colors) <- c('aquaculture','domestic','industrial','livestock','thermoelectric','mining','irrigation','public supply')
+category_colors <- category_colors[order(match(names(category_colors),rankings_2015))]
 
 # The background canvas for your viz
-plot_width <- 9
+plot_width <- 12
 plot_height <- 9
 canvas <- grid::rectGrob(
   x = 0, y = 0, 
@@ -138,33 +139,32 @@ canvas <- grid::rectGrob(
 # Load in USGS logo (also a black logo available)
 usgs_logo <- magick::image_read("../usgs_logo_black.png") 
 
-# Main plot
-(main_plot <- ggplot() +
-  geom_sf(data = conus_sf,
-          fill = 'white',
-          color = 'white',
-          size = 0.6) +
-  geom_sf(data = county_wu_2015_sf,
-          aes(alpha = per_of_total,
-              fill = wu_category),
-          color = NA,
-          size = 0.1) +
-  geom_sf(data = conus_sf,
-          fill = NA,
-          color = background_color,
-          size = 3) +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0)) +
-  scale_alpha(range = c(0.1,1), limits = c(0, 100), name = '') +
-  scale_fill_manual(name = '', values = category_colors) +
-
-  theme_void() +
-  facet_wrap(~wu_category, labeller = labeller(wu_category = label_wrap_gen(25))) +
-  theme(
-    legend.position = 'None',
-    strip.text.x = element_text(size = label_font_size, color = font_color, family = supporting_font, margin = margin(15, 0, 3, 0))
-  )
- )
+# Main plot list (maps)
+main_plot_list <- purrr::map2(names(category_colors), category_colors, function(category, category_color) {
+  ggplot() +
+    geom_sf(data = conus_sf,
+            fill = 'white',
+            color = 'white',
+            size = 0.6) +
+    geom_sf(data = filter(county_wu_2015_sf, wu_category == category),
+            aes(alpha = per_of_total),
+            fill = category_color,
+            color = NA,
+            size = 0.1) +
+    geom_sf(data = conus_sf,
+            fill = NA,
+            color = background_color,
+            size = 3) +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_y_continuous(expand = c(0,0)) +
+    scale_alpha(range = c(0.1,1), limits = c(0, 100), name = '') +
+    theme_void() +
+    theme(
+      legend.position = 'None',
+      plot.margin = unit(c(0,0,0.1,0), "cm")
+    )
+  
+})
 
 ```
 
@@ -180,28 +180,25 @@ bivariate_color_scale <- purrr::map2_df(names(category_colors), category_colors,
 }) %>%
   mutate(wu_category = factor(wu_category, levels = rev(rankings_2015)))
 
-(legend <- ggplot() +
-  geom_tile(
-    data = bivariate_color_scale,
-    mapping = aes(
-      x = alpha,
-      y = wu_category,
-      fill = fill,
-      alpha = alpha)
-  ) + 
-  scale_fill_identity() +
-  scale_alpha(range = c(0.1,1), limits = c(0, 100), name = '') +
-  scale_x_continuous(breaks = c(-12.5, 12.5, 37.5, 62.5, 87.5), labels = c('0', '25', '50', '75', '100% of withdrawals'), expand = c(0,0)) +
-  scale_y_discrete(position = "right", expand = c(0,0)) +
-  # labs(x = "Percent of total water use") +
-  theme_void() +
-  theme(
-    legend.position = 'none',
-    # axis.title.x = element_text(size = 16, hjust = 0),
-    axis.text = element_text(size = label_font_size, color = font_color, family = supporting_font),
-    axis.text.y = element_text(hjust = 0, margin = margin(0, 0, 0, 7)),
-    axis.text.x = element_text(margin = margin(7, 0, 0, 0), hjust = 0)
-  ))
+legend_list <- purrr::map2(names(category_colors), category_colors, function(category, category_color) {
+  ggplot() +
+    geom_tile(
+      data = filter(bivariate_color_scale, wu_category == category),
+      mapping = aes(
+        x = alpha,
+        y = wu_category,
+        fill = fill,
+        alpha = alpha)
+    ) + 
+    scale_fill_identity() +
+    scale_alpha(range = c(0.1,1), limits = c(0, 100), name = '') +
+    scale_y_discrete(position = "right", expand = c(0,0)) +
+    theme_void() +
+    theme(
+      legend.position = 'none',
+      plot.margin = unit(c(0,6,6.5,0), "cm")
+    )
+})
 
 ```
 
@@ -212,52 +209,110 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 **Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
 ```{r cowplot, fig.width = 16, fig.height = 9}
+# arrange maps
+main_plot_list1 <- append(NA, main_plot_list[1:2])
+main_plot_list2 <- main_plot_list[3:5]
+main_plot_list3 <- main_plot_list[6:8]
+arranged_maps1 <- plot_grid(plotlist = main_plot_list1, nrow = 1, ncol = 3)
+arranged_maps2 <- plot_grid(plotlist = main_plot_list2, nrow = 1, ncol = 3)
+arranged_maps3 <- plot_grid(plotlist = main_plot_list3, nrow = 1, ncol = 3)
+
+# arrange legends
+legend_list <- append(NA, legend_list)
+arranged_legends <- cowplot::plot_grid(plotlist = legend_list, nrow = 3, ncol = 3, scale = 1)
+
+# label placement
+row_positions <- c(1, 1, 2, 2, 2, 3, 3, 3)
+col_positions <- c(2, 3, 1, 2, 3, 1, 2, 3)
+label_x_col1 <- 0.16
+label_x_col2 <- 0.494
+label_x_col3 <- 0.826
+label_y_row1 <- 0.949
+label_y_row2 <- 0.649
+label_y_row3 <- 0.349
+
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
-       xlim = c(0,1)) +
+                    xlim = c(0,1)) +
   # a background
   draw_grob(canvas,
             x = 0, y = 1,
             height = plot_height, width = plot_width,
             hjust = 0, vjust = 1) +
-  # the main plot
-  draw_plot(main_plot,
+  draw_plot(arranged_maps1,
             x = 0.005,
-            y = 0.1,
-            height = 0.75) +
-  # the legend
-  draw_plot(legend,
-            x = 0.68,
-            y = 0.07,
-            width = 0.28,
+            y = 0.675,
             height = 0.25) +
+  draw_plot(arranged_maps2,
+            x = 0.005,
+            y = 0.375,
+            height = 0.25) +
+  draw_plot(arranged_maps3,
+            x = 0.005,
+            y = 0.075,
+            height = 0.25) +
+  # the legend
+  draw_plot(arranged_legends,
+            x = 0.02,
+            y = 0.064,
+            width = 1,
+            height = 0.9) +
+  # legend labels +
+  purrr::map(seq(1:length(rankings_2015)), function(index) {
+    row <- row_positions[index] 
+    col <- col_positions[index]
+    y_pos <- case_when(row == 1 ~ label_y_row1, row == 2 ~ label_y_row2, row == 3 ~ label_y_row3)
+    x_pos <- case_when(col == 1 ~ label_x_col1, col == 2 ~ label_x_col2, col == 3 ~ label_x_col3)
+    draw_label(
+      rankings_2015[index],
+      fontfamily = supporting_font,
+      x = x_pos,
+      y = y_pos,
+      size = label_font_size,
+      hjust = 0,
+      vjust = 0,
+      color = font_color
+    )
+  }) +
+  # use % label for public supply legend
+  draw_label('0     10  25  75  100% of use',
+    fontfamily = supporting_font,
+    x = 0.0262,
+    y = label_y_row2 + 0.03,
+    size = 15,
+    hjust = 0,
+    vjust = 0,
+    color = font_color
+  ) +
   # explainer text
-  draw_label("Data: https://waterdata.usgs.gov/nwis/wu",
+  draw_label(paste('Hayley Corson-Dosch, USGS', 
+                   "2015 U.S. water use data: https://waterdata.usgs.gov/nwis/wu", sep = '\n'),
              fontfamily = supporting_font,
              fontface = 'italic',
              x = 0.96,   
              y = 0.03,
-             size = 10,
+             size = 12,
              hjust = 1,
              vjust = 0,
-             color = font_color)+
+             color = '#6D6D6D')+
   # Title
-  draw_label("2015 water withdrawals",
-             x = 0.04,
-             y = 0.95,
+  draw_label(stringr::str_wrap("How are we using water?", 8),
+             x = 0.026,
+             y = 0.96,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
              fontfamily = supporting_font,
              fontface = 'bold',
              color = font_color,
-             size = 45) +
+             size = 55) +
   # Add logo
   draw_image(usgs_logo, 
-             x = 0.03,
-             y = 0.02,
+             x = 0.026,
+             y = 0.03,
              width = 0.1, 
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)
+
 
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
@@ -271,7 +326,7 @@ ggsave(filename = "out/20230408_humans_hcorson-dosch.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Can see the dominance of different categories of water use by county. Irrigation very high percentage of water withdrawals in many western states. 
+1. How we use water varies by county across the continental U.S. In the western U.S. water is used largely for irrigation, while in the east, water is used primarily for public supply and industry. 
 
 ### Data source(s)
 
