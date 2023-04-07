@@ -8,7 +8,7 @@
 
 **Image:**
 
-![](out/20230408_humans_hcorson-dosch.png)
+![20230408_humans_hcorson-dosch](/uploads/05dcb296fc127be65c7b66def1113986/20230408_humans_hcorson-dosch.png)
 
 **Your key takeaways (1-2 sentences each):**
 
