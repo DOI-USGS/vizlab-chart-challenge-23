@@ -128,8 +128,8 @@ This chunk is where the main ggplot grob definition and set-up occurs. You may h
 
 theme_usgs <- function(legend.position = "right"){
   theme(
-    plot.title = element_text(vjust = 3, size = 9,family="serif"),
-    plot.subtitle = element_text(vjust = 3, size = 9,family="serif"),
+    plot.title = element_text(vjust = 3, size = 14, face = "bold", family="serif"),
+    plot.subtitle = element_text(vjust = 3, size = 12,family="serif"),
     panel.border = element_rect(colour = "black", fill = NA, size = 0.1),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
@@ -139,12 +139,12 @@ theme_usgs <- function(legend.position = "right"){
     legend.position = legend.position,
     legend.key = element_blank(),
     legend.title = element_blank(),
-    legend.text = element_text(size = 8),
-    axis.title.x = element_text(size = 9, family="serif"),
+    legend.text = element_text(size = 10),
+    axis.title.x = element_text(size = 10, family="serif"),
     axis.title.y = element_text(vjust = 1, angle = 90, size = 9, family="serif"),
-    axis.text.x = element_text(size = 8, vjust = -0.25, colour = "black", 
+    axis.text.x = element_text(size = 10, vjust = -0.25, colour = "black", 
                                family="serif", margin=margin(10,5,20,5,"pt")),
-    axis.text.y = element_text(size = 8, hjust = 1, colour = "black", 
+    axis.text.y = element_text(size = 10, hjust = 1, colour = "black", 
                                family="serif", margin=margin(5,10,10,5,"pt")),
     axis.ticks = element_line(colour = "black", size = 0.1),
     axis.ticks.length = unit(-0.25 , "cm")
@@ -218,19 +218,40 @@ ggplot(data = fish_data_long, aes(x = end_date, y = variable)) +
 
 # ---------------------------------------------------------------------------------------------------
 # bar/segment plot
+
+# this business is to get the full duration from onset to cessation to be one long segment
+fish_data_long_2 <- fish_data_long |>
+  group_by(condition, species) |>
+  summarize(min_onset = min(end_date), 
+            max_end = max(origin_date), 
+            y = mean(y)
+  )
+
 ggplot(data = fish_data_long) + 
-  geom_segment(aes(x = origin_date, xend = end_date, y = y, yend = y, col = period, group = period), linewidth = 10, alpha = 0.7, show.legend = FALSE) +
-  # geom_segment(aes(x = as.Date("2023-01-01"), xend = as.Date("2023-12-31"), y = 3, yend = 3), col = "grey", size = 30) +
+  geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "grey25", linewidth = 10, show.legend = FALSE) +
+  geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "#faf6fe", linewidth = 9.5, show.legend = FALSE) +
+  geom_segment(aes(x = origin_date, xend = end_date, y = y, yend = y, col = period, group = period), linewidth = 7.5, alpha = 0.7, show.legend = FALSE) +
   # geom_segment(aes(x = as.Date("2023-01-01"), xend = as.Date("2023-12-31"), y = 3, yend = 3), col = "white", size = 29) +
   scale_color_brewer(palette = "Accent") +
   scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
   scale_y_continuous(limits = c(0, 10)) +
-  coord_polar(theta = "x", direction = 1, start = -1.57) +
+  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
   facet_wrap(~species) +
-  labs(x = "", y = "") +
+  labs(x = "", 
+       y = "", 
+       title = "FISH IN HOT WATER", 
+       subtitle = "The Striped Bass and American Shad of the Hudson River Estuary are projected to spawn earlier (~15 days) and have a shorter window (~4 days) to do so with climate change."
+       # caption = "Data Source: Nack, C. et. al. (2019). https://doi.org/10.1002/mcf2.10076
+       # Plot made by Ellie White, ewhite@usgs.gov 04/02/2023"
+       ) +
   theme_bw()+
-  theme(axis.text.y = element_blank(), 
-        axis.ticks = element_blank())
+  theme(plot.title = element_text(vjust = 3, size = 14, face = "bold", family="serif"),
+        plot.subtitle = element_text(vjust = 3, size = 12,family="serif"), 
+        axis.text.y = element_blank(), 
+        axis.ticks = element_blank(), 
+        panel.border = element_blank(), 
+        strip.background = element_blank(), 
+        strip.text.x = element_blank())
 
 ggsave("out/00_timeseries_ewhite_base.png", width = 16, height = 9, units = "in", dpi = 1200)
 
