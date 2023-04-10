@@ -10,7 +10,6 @@ Date for your prompt in April: 04/13/2023
 
 Image: 
 
-![20230402_waffle_eazadpour](/uploads/5ea43d9e222cc02187c74fb013d831ff/20230402_waffle_eazadpour.png)
 
 Your key takeaways (1-2 sentences each):
 
