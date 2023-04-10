@@ -60,7 +60,7 @@ This is also a good place to load any data from other built-in packages such as 
 
 ```{r load}
 # select timeframe to plot by
-start_date <- "2011-01-01"
+start_date <- "1991-01-01"
 end_date <- "2022-12-31"
 
 # select gage of interest
@@ -78,7 +78,7 @@ stream_data_raw <- readNWISuv(siteNumbers = site_no, parameterCd = c("00060", "0
 This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
 
 ```{r processing}
-# munge dates and get mean daily gage height (f)
+# munge dates and get mean daily streamflow (cfs)
 stream_data <- stream_data_raw  %>%
   filter(dateTime >= as.POSIXct(start_date), dateTime <= as.POSIXct(end_date)) |>
   mutate(julian_day = yday(dateTime),
@@ -88,7 +88,7 @@ stream_data <- stream_data_raw  %>%
   group_by(site_no, year, julian_day) |>
   # users can select what parameter they would like to summarize by (flow, gage height, etc.)
   # more on parameters here: https://help.waterdata.usgs.gov/code/parameter_cd_query?fmt=rdb&inline=true&group_cd=%
-  summarise(mean_daily_gh_f = mean(GH_Inst))
+  summarise(mean_daily_flow_cfs = mean(Flow_Inst))
 ```
 
 ## Set up main plot
@@ -99,18 +99,18 @@ This chunk is where the main ggplot grob definition and set-up occurs. You may h
 
 ```{r plotting}
 # Load some custom fonts and set some custom settings
-font_legend <- 'Yantramanav'
+font_legend <- 'Questrial'
 font_add_google(font_legend)
 showtext_opts(dpi = 300, regular.wt = 300, bold.wt = 800)
 showtext_auto(enable = TRUE)
 
   
-main_plot <- ggplot(stream_data, aes(x = julian_day,  y= year, group = year, height = mean_daily_gh_f)) +
-  geom_density_ridges(stat = "identity", scale = 4,
+main_plot <- ggplot(stream_data, aes(x = julian_day,  y= year, group = year, height = mean_daily_flow_cfs)) +
+  geom_density_ridges(stat = "identity", scale = 6,
                       fill = "black", color = 'white',
                       alpha=0.5) +
   coord_cartesian(clip="off") +
-  geom_text(x = 183, y = 2011, label = "GAGE HEIGHT", color = "white", size = 8, hjust = 0.5) +
+  geom_text(x = 183, y = 1989, label = "STREAMFLOW", color = "white", size = 10, hjust = 0.5, family = font_legend) +
   scale_x_continuous(name = NULL) +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -122,9 +122,10 @@ main_plot <- ggplot(stream_data, aes(x = julian_day,  y= year, group = year, hei
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank(),
-        text = element_text(size=22,family = font_legend, color = "white"),
+        text = element_text(size=26,family = font_legend, color = "white"),
         plot.title=element_text(hjust=0.5, vjust = -0.5),
-        plot.margin = unit(c(1,1,1,1), "lines")) +
+        plot.margin = unit(c(1,1,2,1), "lines")
+        ) +
   labs(title = "RIO GRANDE RIVER, NEW MEXICO")
 
 # Plotting just one constituent concentrations regionally  
@@ -136,7 +137,8 @@ background_color =  "#000000"
 canvas <- grid::rectGrob(
   x = 0, y = 0,
   width = 16, height = 9,
-  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color
+                  )
 )
 
 # Load in USGS logo (also a black logo available)
