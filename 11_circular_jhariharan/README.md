@@ -8,11 +8,9 @@ Your prompt: Circular
 
 Date for your prompt in April: 11
 
-Image: ![](out/20230411_circular_jhariharan.png)
+Image:
 
-Share the link in this document with the format `![](out/20230000_prompt-example_name.png)`:
-
-![](out/20230411_circular_jhariharan.png)
+![20230411_circular_jhariharan](/uploads/f2fdc1d61a7dd980013775db14787c6b/20230411_circular_jhariharan.png)
 
 Your key takeaways (1-2 sentences each):
 
