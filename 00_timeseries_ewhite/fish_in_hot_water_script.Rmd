@@ -16,37 +16,33 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Load libraries
 ```{r libraries, warning=FALSE, message=FALSE}
 # Load libraries
-library(tidyverse) # includes ggplot
-library(readr) # best for reading and writing csvs
-
-# # These are used for the layout of the viz
-# library(cowplot) # for laying out the final plot
-# library(sysfonts) # for text editing
-# library(showtext) # for adding in google fonts
-# library(magick) # for adding logo
-
-library(ggplot2)
+library(tidyverse) 
+library(readr) 
 library(scales)
 ```
 
 ## Load files
+Copy-pasted data from paper to a csv. Paper is here: https://afspubs.onlinelibrary.wiley.com/doi/full/10.1002/mcf2.10076
+
 ```{r load}
-# copy pasted data from paper to a csv
-# paper is here: https://afspubs.onlinelibrary.wiley.com/doi/full/10.1002/mcf2.10076
-# citation: Nack, C. C., Swaney, D. P., & Limburg, K. E. (2019). Historical and projected changes in spawning Phenologies of American Shad and Striped bass in the Hudson River Estuary. Marine and Coastal Fisheries, 11(3), 271-284.
-# doi: https://doi.org/10.1002/mcf2.10076
 fish_data <- read_csv("in/fish_data.csv")
 fish_data_origin_dates <- read_csv("in/fish_data_origin_dates.csv")
+```
 
-# this data came from the author in personal communications 04/03/2023
-# I modified the spreadsheet to be more R friendly
-# it's a time series record spanning 1950-2099 of fish spawning onset and cessation dates (modeled values)
+This extra data came from the author in personal communications 04/03/2023
+
+I modified the spreadsheet to be more R friendly
+
+It's a time series record spanning 1950-2099 of fish spawning onset and cessation dates (modeled values)
+
+Maybe we can use this later to make a probability of spawning on the y axis. for now, we don't need it.
+
+```{r load_extra_data, eval = FALSE, include = FALSE}
 fish_data_ts <- read_csv("in/fish_data_from_nack.csv")
 ```
 
 ## Get data ready for plotting
 ```{r processing}
-# process fish_data.csv, data from paper to make a preliminary plot to see if it's worth persuing -----------------------------------
 # change to factors 
 fish_data <- fish_data |>
   mutate(species = factor(species, levels = c("American Shad", "Striped Bass")), 
@@ -66,71 +62,40 @@ fish_data_origin_dates$origin_date <- as.Date(fish_data_origin_dates$origin_date
 fish_data_long <- gather(fish_data, condition, value, RCP_26:RCP_85)
 fish_data_long <- full_join(fish_data_long, fish_data_origin_dates, by = c("species", "variable", "condition"))
 fish_data_long$end_date <- fish_data_long$origin_date + fish_data_long$value
+```
 
-
-# process the fish_data_ts, sxtra data I got from Nack for probabilities ------------------------------------------------------------
-# change to factors 
+```{r processing_extra_data, eval = FALSE, include = FALSE}
+# change to factors
 fish_data_ts <- fish_data_ts|>
-  mutate(species = factor(species, levels = c("American Shad", "Striped Bass")), 
+  mutate(species = factor(species, levels = c("American Shad", "Striped Bass")),
          condition = factor(condition, levels = c("rcp_26", "rcp_45", "rcp_60", "rcp_85", labels = c("RCP 2.6", "RCP 4.5", "RCP 6.0", "RCP 8.5"))),
-         period = factor(ifelse(year <= 2012, "Historical", "Future")), 
+         period = factor(ifelse(year <= 2012, "Historical", "Future")),
          )
 
-# fix date column, the minus one is to match the numbers Nack gave in his spreadsheet. Not sure why the formula in excel gives the dates one day after the R function, but not a big deal, we are looking at relative dates anyway. 
+# fix date column, the minus one is to match the numbers Nack gave in his spreadsheet.
 fish_data_ts$Onset <- as.Date(fish_data_ts$start_date_julianday, origin = as.Date("2015-01-01"))-1
 fish_data_ts$Cessation <- as.Date(fish_data_ts$end_date_julianday, origin = as.Date("2015-01-01"))-1
 
 # get rid of duration and extra dates
-fish_data_ranked <- fish_data_ts |>      # use this to calculate probabilities 
+fish_data_ranked <- fish_data_ts |>      # use this to calculate probabilities
   select(-c("duration", "start_date", "end_date"))
 
 fish_data_ts <- fish_data_ts |>
   select(-c("duration", "start_date_julianday", "end_date_julianday", "start_date", "end_date"))
-  
+
 # make long format
 fish_data_ts_long <- gather(fish_data_ts, spawning, value, Onset:Cessation)
 fish_data_ts_long$spawning <- factor(fish_data_ts_long$spawning, levels = c("Onset", "Cessation"))
 ```
 
 ## Set up main plot
-
-This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
-
-> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
-
+Theme:
 ```{r plotting_setup}
-# # Load some custom fonts and set some custom settings
-# font_legend <- "Pirata One"
-# sysfonts::font_add_google("Pirata One")
-# supporting_font <- "Source Sans Pro"
-# sysfonts::font_add_google("Source Sans Pro")
-# showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
-# showtext::showtext_auto(enable = TRUE)
-# 
-# # Define colors
-# background_color = "#0A1927"
-# font_color = "#ffffff"
-# 
-# # The background canvas for your viz
-# canvas <- grid::rectGrob(
-#   x = 0, y = 0, 
-#   width = 16, height = 9,
-#   gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
-# )
-# 
-# # Load in USGS logo (also a black logo available)
-# usgs_logo <- magick::image_read("../usgs_logo_white.png") 
-# 
-# # Main plot
-# (main_plot <- ggplot()
-#  )
-
-
 theme_usgs <- function(legend.position = "right"){
   theme(
-    plot.title = element_text(vjust = 3, size = 14, face = "bold", family="serif"),
-    plot.subtitle = element_text(vjust = 3, size = 12,family="serif"),
-    panel.border = element_rect(colour = "black", fill = NA, size = 0.1),
+    plot.title = element_text(vjust = 3, size = 14, face = "bold", family="sans"),
+    plot.subtitle = element_text(vjust = 3, size = 12,family="sans"),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.1),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
     panel.background = element_rect(fill = "white"),
@@ -140,18 +105,20 @@ theme_usgs <- function(legend.position = "right"){
     legend.key = element_blank(),
     legend.title = element_blank(),
     legend.text = element_text(size = 10),
-    axis.title.x = element_text(size = 10, family="serif"),
-    axis.title.y = element_text(vjust = 1, angle = 90, size = 9, family="serif"),
+    axis.title.x = element_text(size = 10, family="sans"),
+    axis.title.y = element_text(vjust = 1, angle = 90, size = 9, family="sans"),
     axis.text.x = element_text(size = 10, vjust = -0.25, colour = "black", 
-                               family="serif", margin=margin(10,5,20,5,"pt")),
+                               family="sans", margin=margin(10,5,20,5,"pt")),
     axis.text.y = element_text(size = 10, hjust = 1, colour = "black", 
-                               family="serif", margin=margin(5,10,10,5,"pt")),
-    axis.ticks = element_line(colour = "black", size = 0.1),
+                               family="sans", margin=margin(5,10,10,5,"pt")),
+    axis.ticks = element_line(colour = "black", linewidth = 0.1),
     axis.ticks.length = unit(-0.25 , "cm")
   )
 }
+```
 
-# add in y location for bar/segment plot 
+Add in y location for bar/segment plot:
+```{r plotting_add_extra_info}
 y_location <- tibble(variable = rep(c("Onset", "Cessation"), 1, each =4), 
                      condition = rep(c("RCP_26", "RCP_45", "RCP_60", "RCP_85"), 2), 
                      y = rep(c(1:4) + 5, 2))
@@ -159,66 +126,17 @@ y_location <- tibble(variable = rep(c("Onset", "Cessation"), 1, each =4),
 fish_data_long <- full_join(fish_data_long, y_location, by = c("variable", "condition"))
 ```
 
-
 ## Produce final plot
-```{r cowplot, fig.width = 16, fig.height = 9}
-# ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
-#        xlim = c(0,1)) +
-#   # a background
-#   draw_grob(canvas,
-#             x = 0, y = 1,
-#             height = 9, width = 16,
-#             hjust = 0, vjust = 1) +
-#   # the main plot
-#   draw_plot(main_plot,
-#             x = 0.01,
-#             y = 0.01,
-#             height = 1) +
-#   # explainer text
-#   draw_label("Explainer text",
-#              fontfamily = supporting_font,
-#              x = 0.96,   
-#              y = 0.05,
-#              size = 14,
-#              hjust = 1,
-#              vjust = 0,
-#              color = font_color)+
-#   # Title
-#   draw_label("Title",
-#              x = 0.04,
-#              y = 0.285,
-#              hjust = 0,
-#              vjust = 1,
-#              lineheight = 0.75,
-#              fontfamily = font_legend,
-#              color = font_color,
-#              size = 55) +
-#   # Add logo
-#   draw_image(usgs_logo, 
-#              x = 0.04,
-#              y = 0.05,
-#              width = 0.1, 
-#              hjust = 0, vjust = 0, 
-#              halign = 0, valign = 0)
-# 
-# # Save the final image in Twitter's 16 by 9 format
-# # !! Use format for saving with the date of your prompt: 
-# #         YYYYMMDD_prompt_name ()
-# # e.g. `20230101_part-to-whole-cnell.png`
-# ggsave(filename = "out/20230000_prompt_name.png", 
-#        width = 16, height = 9, dpi = 300)
-```
-
+First, a dot chart for my own sanity
 ```{r plotting}
-# dot chart for sanity
 ggplot(data = fish_data_long, aes(x = end_date, y = variable)) +
   geom_point(aes(col = condition)) + 
   facet_wrap(~species) +
   theme_usgs()
+```
 
-# ---------------------------------------------------------------------------------------------------
-# bar/segment plot
-
+Bar/segment plot
+```{r plotting_2}
 # this business is to get the full duration from onset to cessation to be one long segment
 fish_data_long_2 <- fish_data_long |>
   group_by(condition, species) |>
@@ -227,12 +145,13 @@ fish_data_long_2 <- fish_data_long |>
             y = mean(y)
   )
 
+# main base plot
 ggplot(data = fish_data_long) + 
   geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "grey25", linewidth = 10, show.legend = FALSE) +
-  geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "#faf6fe", linewidth = 9.5, show.legend = FALSE) +
-  geom_segment(aes(x = origin_date, xend = end_date, y = y, yend = y, col = period, group = period), linewidth = 7.5, alpha = 0.7, show.legend = FALSE) +
-  # geom_segment(aes(x = as.Date("2023-01-01"), xend = as.Date("2023-12-31"), y = 3, yend = 3), col = "white", size = 29) +
-  scale_color_brewer(palette = "Accent") +
+  geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "#D2C6E1" , linewidth = 9.5, show.legend = FALSE) +
+  geom_segment(aes(x = origin_date, xend = end_date, y = y, yend = y, col = period, group = period, linewidth = period), show.legend = FALSE) + 
+  scale_color_manual(values = c("white", "#faf6fe")) +
+  scale_alpha_manual(values = c(1, 0.7)) + # using alpha to take out historical
   scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
   scale_y_continuous(limits = c(0, 10)) +
   coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
@@ -240,57 +159,105 @@ ggplot(data = fish_data_long) +
   labs(x = "", 
        y = "", 
        title = "FISH IN HOT WATER", 
-       subtitle = "The Striped Bass and American Shad of the Hudson River Estuary are projected to spawn earlier (~15 days) and have a shorter window (~4 days) to do so with climate change."
+       subtitle = "Under projected climate change scenarios, the American Shad and Striped Bass of the Hudson River Estuary are predicted to on average spawn 15 days earlier."
        # caption = "Data Source: Nack, C. et. al. (2019). https://doi.org/10.1002/mcf2.10076
        # Plot made by Ellie White, ewhite@usgs.gov 04/02/2023"
        ) +
   theme_bw()+
-  theme(plot.title = element_text(vjust = 3, size = 14, face = "bold", family="serif"),
-        plot.subtitle = element_text(vjust = 3, size = 12,family="serif"), 
+  theme(plot.title = element_text(vjust = 3, size = 14, face = "bold", family="sans"),
+        plot.subtitle = element_text(vjust = 3, size = 12,family="sans"), 
         axis.text.y = element_blank(), 
         axis.ticks = element_blank(), 
         panel.border = element_blank(), 
         strip.background = element_blank(), 
         strip.text.x = element_blank())
 
-ggsave("out/00_timeseries_ewhite_base.png", width = 16, height = 9, units = "in", dpi = 1200)
+ggsave("out/11_circular_ewhite_base.png", width = 16, height = 9, units = "in", dpi = 1200)
+```
 
-# ---------------------------------------------------------------------------------------------------
-# recreating figure in paper for sanity
+recreating figure in paper for sanity
+```{r plotting_with_extra_data, eval = FALSE, include = FALSE}
 ggplot(data = fish_data_ts_long[fish_data_ts_long$year > 1950, ], aes(x = year, y = value)) +
-  geom_point(aes(shape = species, col = species)) + 
+  geom_point(aes(shape = species, col = species)) +
   facet_wrap(~condition + spawning, ncol = 2, scales = "free") +
   labs(x="", y="Predicted Date of Spawning") +
   theme_usgs()
 # it matches! Hooray
+```
 
+bar/segment plot with probabilities
+```{r plotting_with_extra_data_2, eval = FALSE, include = FALSE}
+y_location <- tibble(spawning = rep(c("Onset", "Cessation"), 1, each =4), 
+                     condition = rep(c("rcp_26", "rcp_45", "rcp_60", "rcp_85"), 2), 
+                     y = rep(c(1:4) + 5, 2))
 
-# ---------------------------------------------------------------------------------------------------
-# bar/segment plot with probabilities
-ggplot(data = fish_data_ts_long[fish_data_ts_long$condition == "rcp_85",], aes(x = value, group = interaction(spawning, period), fill = period)) +
-  stat_ecdf(aes(ymin=0, ymax=..y..), geom="ribbon", alpha = 0.7) +
-  scale_fill_brewer(palette = "Accent") +
+fish_data_ts_long <- full_join(fish_data_ts_long, y_location, by = c("spawning", "condition"))
+
+p <- ggplot(data = fish_data_ts_long, aes(x = value, group = interaction(spawning, period, condition))) +
+  stat_ecdf(aes(ymin = 0, ymax = after_stat(y)), geom="ribbon", alpha = 0.7) +
+  scale_color_brewer(palette = "Accent") +
   scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
-  scale_y_continuous(limits = c(-1, 1)) +
-  coord_polar(theta = "x", direction = 1, start = -1.57) +
-  facet_wrap(~species+spawning) +
+  scale_y_continuous(limits = c(0, 10)) +
+  # coord_polar(theta = "x", direction = 1, start = -1.57) +
+  facet_wrap(~species+condition) +
   labs(x = "RCP 8.5 Scenario", y = "Cumulative Probability") +
   theme_bw()+
-  theme(axis.text.y = element_blank(), 
+  theme(axis.text.y = element_blank(),
         axis.ticks = element_blank())
-ggsave("out/00_timeseries_probability.png", width = 16, height = 9, units = "in", dpi = 1200)
-  
+
+p
+p_data <- layer_data(p)
+p_data$y_location <- p_data$ymax + p_data$group
+
+ggplot(data = p_data, aes(x = x, y = y_location)) +
+  geom_line()+
+  scale_color_brewer(palette = "Accent") +
+  facet_wrap(~group) +
+  labs(x = "RCP 8.5 Scenario", y = "Cumulative Probability") +
+  theme_bw()+
+  theme(axis.text.y = element_blank(),
+        axis.ticks = element_blank())
 
 
+ggplot(data = fish_data_ts_long[fish_data_ts_long$condition == "rcp_85",], aes(x = value, group = interaction(spawning, period), fill = period)) +
+  stat_ecdf(aes(ymin = 0, ymax = after_stat(y)), geom = "ribbon", alpha = 0.7, pad = FALSE)  +  # ymin = 0, ymax = after_stat(y)), geom = "ribbon"
+  scale_fill_brewer(palette = "Accent") +
+  # coord_cartesian(xlim = c(0,100)) +
+  scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
+  scale_y_continuous(limits = c(-1, 1)) +
+  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) +
+  facet_wrap(~species) +
+  labs(x = "RCP 8.5 Scenario", y = "Cumulative Probability") +
+  theme_bw()+
+  theme(axis.text.y = element_blank(),
+        axis.ticks = element_blank())
+ggsave("out/11_circular_probability.png", width = 16, height = 9, units = "in", dpi = 1200)
 ```
 
 ## Supporting information
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Key takeaways here
+1. The American Shad and the Striped Bass are migratory species needing both freshwater and marine habitats to complete their life cycle. This makes them particularly vulnerable to human activities. The Hudson River Shad has declined in stock so much that all its fisheries were closed in 2010. The Striped Bass, while declining in relative abundance, still remains the most important game fish in the Hudson River.
+
 
 ### Data source(s)
 
-Data sources here.
+Paper is here: https://afspubs.onlinelibrary.wiley.com/doi/full/10.1002/mcf2.10076
+
+Citation: Nack, C. C., Swaney, D. P., & Limburg, K. E. (2019). Historical and projected changes in spawning Phenologies of American Shad and Striped bass in the 
+Hudson River Estuary. Marine and Coastal Fisheries, 11(3), 271-284.
+
+DOI: https://doi.org/10.1002/mcf2.10076
+
+### Process 
+
+1) produced `out/11_circular_ewhite_base.png` with ggplot
+
+2) made markups in powerpoint 
+
+3) final plot is called `out/11_circular_ewhite_final.png`
+
+
+
 
