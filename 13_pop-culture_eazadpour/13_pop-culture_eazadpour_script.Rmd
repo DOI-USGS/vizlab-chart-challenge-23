@@ -88,7 +88,8 @@ stream_data <- stream_data_raw  %>%
   group_by(site_no, year, julian_day) |>
   # users can select what parameter they would like to summarize by (flow, gage height, etc.)
   # more on parameters here: https://help.waterdata.usgs.gov/code/parameter_cd_query?fmt=rdb&inline=true&group_cd=%
-  summarise(mean_daily_flow_cfs = mean(Flow_Inst))
+  summarise(mean_daily_flow_cfs = mean(Flow_Inst)) |>
+  filter(!is.na(mean_daily_flow_cfs)) # Filter out NAs to avoid line gaps
 ```
 
 ## Set up main plot
