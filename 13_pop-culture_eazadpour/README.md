@@ -10,6 +10,7 @@ Date for your prompt in April: 04/13/2023
 
 Image: 
 
+![20230410_pop-culture_eazadpour](/uploads/9467f21e2fa4e59f08424b7c10060a18/20230410_pop-culture_eazadpour.png)
 
 Your key takeaways (1-2 sentences each):
 
