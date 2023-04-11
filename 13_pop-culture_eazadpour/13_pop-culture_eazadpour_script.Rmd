@@ -17,18 +17,6 @@ output: html_document
 
 This website has great information on how to use RMarkdown: <https://yihui.org/knitr/>
 
-# adjust working dir for targets
-
-```{r}
-
-```
-
-### To get all data:
-
--   lets first run a targets pipeline to 1) get the data from sbtools and 2) do some munging/wrangling
--   to do this open `_targets.R` and run lines 1-10, if you do not have targets installed, run `install.packages("targets")`
--   now run `tar_make()`, you should see the pipeline build with outputs in `02_waffle_eazadpour/out` folder
-
 ## Set up - lets load
 
 ```{r setup, include=FALSE}
@@ -42,8 +30,7 @@ Define libraries here.
 library(tidyverse) # includes ggplot
 library(dataRetrieval) # pull gage data
 library(ggridges) # make ridge plots
-# library(gridExtra) #annotating
-# library(grid)
+library(grid) # plot layout
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -109,7 +96,7 @@ showtext_auto(enable = TRUE)
 main_plot <- ggplot(stream_data, aes(x = julian_day,  y= year, group = year, height = mean_daily_flow_cfs)) +
   geom_density_ridges(stat = "identity", scale = 6,
                       fill = "black", color = 'white',
-                      alpha=0.5) +
+                      alpha=1) +
   coord_cartesian(clip="off") +
   geom_text(x = 183, y = 1989, label = "STREAMFLOW", color = "white", size = 10, hjust = 0.5, family = font_legend) +
   scale_x_continuous(name = NULL) +
@@ -163,22 +150,22 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             hjust = 0, vjust = 1) +
   # the main plot
   draw_plot(main_plot,
-            x = 0.01,
+            x = -0.001,
             y = 0.01,
             height = 1) +
   # explainer text
   draw_label("Elmera Azadpour, USGS\nData: NWIS",
              fontfamily = font_legend,
-             x = 0.96,
-             y = 0.05,
+             x = 0.933,
+             y = 0.039,
              size = 10,
              hjust = 1,
              vjust = 0,
              color = font_color) +
   # Add logo
   draw_image(usgs_logo,
-             x = 0.04,
-             y = 0.05,
+             x = 0.070,
+             y = 0.034,
              width = 0.1,
              hjust = 0, vjust = 0,
              halign = 0, valign = 0)
