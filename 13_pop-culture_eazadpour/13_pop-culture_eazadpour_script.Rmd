@@ -118,7 +118,7 @@ main_plot <- ggplot(stream_data, aes(x = julian_day,  y= year, group = year, hei
         panel.background = element_rect(fill = "black"),
         axis.line = element_blank(),
         axis.text.x = element_blank(),
-        plot.background = element_rect(fill = "black"),
+        plot.background = element_rect(fill = "black", color = NA), #set color to NA to avoid white border on plot
         axis.ticks.x = element_blank(),
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
