@@ -13,6 +13,6 @@ into the project you can [fork this repository][2] and
 
 
 
-[1]: https://github.com/USGS-VIZLAB/what-is-drought/issues
+[1]: https://github.com/DOI-USGS/chart-challenge-23/issues
 [2]: https://help.github.com/articles/fork-a-repo/
 [3]: https://help.github.com/articles/about-pull-requests/
