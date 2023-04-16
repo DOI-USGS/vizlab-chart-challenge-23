@@ -95,7 +95,7 @@ metadata <- readr::read_csv(file_in_metadata, show_col_types = FALSE) |>
   select(StaID, STANAME, DRAIN_SQKM, HUC02, LAT_GAGE, LNG_GAGE, STATE,
          national_1981, national_1951, national_1921, HCDN_2009)
 
-# Determine focal sites (these 331 sites have data for 100 years)
+# Determine focal sites 
 focal_sites <- metadata$StaID[metadata$national_1951]
 
 # Read in all focal sites and rowbind together for each timeframe
