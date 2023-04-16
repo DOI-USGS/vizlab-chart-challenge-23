@@ -1,0 +1,471 @@
+---
+title: "Example for Chart Challenge"
+author: "Althea Archer"
+date: "2023-03-10"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+
+library(sbtools)
+library(lubridate)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Add your code here
+# Load drought properties data from ScienceBase
+#authenticate_sb() (username includes email address)
+
+
+# Drought Properties - 7day window
+drought_properties_7d <- "in/Drought_Properties_jd_07d_wndw.csv"
+if(!file.exists(drought_properties_7d)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "627974ccd34e8d45aa6e3c81",
+                              names = "Drought_Properties_jd_07d_wndw.csv",
+                              destinations =  "in/Drought_Properties_jd_07d_wndw.csv",
+                              overwrite_file = FALSE)
+  # unzip it, too
+  #unzip(zipfile = "in/Streamflow_percentiles_national_1981.zip",
+  #      exdir = "in")
+}
+drought_properties_7d <- readr::read_csv(drought_properties_7d) 
+
+# Drought Properties - Fixed threshold
+drought_properties_fixed <- "in/Drought_Properties_site.csv"
+if(!file.exists(drought_properties_fixed)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "627974ccd34e8d45aa6e3c81",
+                              names = "Drought_Properties_site.csv",
+                              destinations =  "in/Drought_Properties_site.csv",
+                              overwrite_file = FALSE)
+  # unzip it, too
+  #unzip(zipfile = "in/Streamflow_percentiles_national_1981.zip",
+  #      exdir = "in")
+}
+drought_properties_fixed <- readr::read_csv(drought_properties_fixed) 
+
+file_in_metadata <- "in/study_watersheds_metadata.csv"
+if(!file.exists(file_in_metadata)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "62793493d34e8d45aa6e3ba9",
+                              names = "study_watersheds_metadata.csv",
+                              destinations = file_in_metadata,
+                              overwrite_file = F)
+}
+metadata <- readr::read_csv(file_in_metadata, show_col_types = FALSE) |>
+  select(StaID, STANAME, DRAIN_SQKM, HUC02, LAT_GAGE, LNG_GAGE, STATE,
+         national_1981, national_1951, national_1921, HCDN_2009)
+
+# Determine focal sites (these 331 sites have data for 100 years)
+focal_sites <- metadata$StaID[metadata$national_1951]
+
+# Read in all focal sites and rowbind together for each timeframe
+files_1951 <- sprintf("in/Streamflow_percentiles_national_1981/%s.csv", focal_sites)
+t1951_data <- purrr::map(files_1981[1], 
+                         ~ readr::read_csv(files_1981, 
+                                           show_col_types = FALSE,
+                                           col_types = list("StaID" = col_character()))) |>
+
+  reduce(rbind) |>
+  # only keep fields we need
+  select(StaID, jd, dt, year, value, thresh_2_jd_07d_wndw, thresh_10_jd_07d_wndw)
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r test_processing_droughts}
+test_droughts_10 <- drought_properties_7d |>
+  # only severe droughts with 10 percentile
+  filter(threshold == 10) |>
+  filter(StaID %in% sample(focal_sites, 30, replace = F)) 
+
+test_droughts_long <- test_droughts_10 |>
+  group_by(StaID, drought_id) |>
+  # similar to uncount()
+  slice(rep(seq_len(drought_id), each = duration)) |>
+  # for future munging
+  mutate(drought_date = start + (seq_len(duration)-1),
+         decade = year(floor_date(drought_date, years(10))),
+         year = year(drought_date)) |>
+  # make sure they're sorted by date
+  arrange(start) |>
+  # add in metadata for further processing
+  left_join(metadata, by = "StaID") |>
+  filter(STATE == "NC")
+
+test_number_stations_by_state <- metadata |>
+  filter(national_1951,
+         StaID %in% test_droughts_long$StaID) |>
+  group_by(STATE) |>
+  summarise(number_stations = n())
+
+test_prop_in_drought_by_yday_year <- test_droughts_long |> 
+  left_join(test_number_stations_by_state, by = "STATE") |>
+  group_by(drought_date, STATE) |>
+  summarize(numb_in_drought = n(),
+            prop_in_drought = numb_in_drought/number_stations) |>
+  mutate(drought_date_noYr = format(as.Date(drought_date), "%m-%d"),
+         drought_date_fakeYr = as.Date(sprintf("1999-%s", drought_date_noYr), "%Y-%m-%d"),
+         year = year(drought_date))
+
+test_prop_in_drought_cumulative <- test_prop_in_drought_by_yday_year |>
+  group_by(drought_date_noYr, STATE, year) |>
+  summarise(prop_cum = cumsum(prop_in_drought))
+
+ggplot(test_prop_in_drought_cumulative, 
+       aes(y = prop_cum, x = drought_date_fakeYr, group = year))+
+  geom_area(aes(fill = year), color = "transparent")+
+  coord_polar() +
+  facet_wrap(~ STATE)
+#################
+
+test_droughts_sequenced_site <- test_droughts_long |>
+  group_by(drought_date_fakeYr, StaID) |>
+  # sequence the droughts
+  mutate(y_seq = 1:n())
+
+test_droughts_by_yday_site <- test_droughts_long |>
+  group_by(drought_date_fakeYr, StaID) |>
+  # summarize total number of droughts
+  summarize(total_droughts = n())
+
+test_droughts_sequenced_state <- test_droughts_long |>
+  group_by(drought_date_fakeYr, STATE) |>
+  # sequence the droughts
+  mutate(y_seq = 1:n())
+
+test_droughts_by_yday_state <- test_droughts_long |>
+  group_by(drought_date_fakeYr, STATE) |>
+  # summarize total number of droughts
+  summarize(total_droughts = n())
+
+
+# Calculate the proportion of a state's gages that are in drought by year and day of year
+
+
+```
+
+```{r processing_droughts}
+droughts_10 <- drought_properties_7d |>
+  # only severe droughts with 10 percentile
+  filter(threshold == 10) |>
+  mutate(year = lubridate::year(start))
+
+droughts_long <- droughts_10 |>
+  group_by(StaID, drought_id) |>
+  # similar to uncount()
+  slice(rep(seq_len(drought_id), each = duration)) |>
+  # for future munging
+  mutate(drought_date = start + (seq_len(duration)-1),
+         drought_date_noYr = format(as.Date(drought_date), "%m-%d"),
+         drought_date_fakeYr = as.Date(sprintf("1999-%s", drought_date_noYr), "%Y-%m-%d"),
+         decade = year(floor_date(start, years(10)))) |>
+  # make sure they're sorted by date
+  arrange(start) |>
+  # add in metadata for further processing
+  left_join(metadata, by = "StaID")
+
+droughts_sequenced_site <- droughts_long |>
+  group_by(drought_date_fakeYr, StaID) |>
+  # sequence the droughts
+  mutate(y_seq = 1:n())
+
+droughts_by_yday_site <- droughts_long |>
+  group_by(drought_date_fakeYr, StaID) |>
+  # summarize total number of droughts
+  summarize(total_droughts = n())
+
+droughts_sequenced_state <- droughts_long |>
+  group_by(drought_date_fakeYr, STATE) |>
+  # sequence the droughts
+  mutate(y_seq = 1:n())
+
+droughts_by_yday_state <- droughts_long |>
+  group_by(drought_date_fakeYr, STATE) |>
+  # summarize total number of droughts
+  summarize(total_droughts = n())
+
+```
+
+```{r plot_tests1}
+ggplot(data = droughts_by_yday_state, aes(y = total_droughts, x = drought_date_fakeYr)) +
+  geom_ribbon(aes(ymin = 0, ymax = total_droughts)) +
+  facet_wrap(~ STATE) +
+  coord_polar() +
+  theme_void()
+```
+```{r plot_tests1}
+ggplot(data = droughts_sequenced_state, aes(y = y_seq, x = drought_date_fakeYr)) +
+  geom_point(aes(color = year)) +
+  facet_wrap(~ STATE) +
+  coord_polar() +
+  theme_void()
+```
+
+
+
+```{r processing}
+test_droughts_10 <- drought_properties_7d |>
+  # only severe droughts with 10 percentile
+  filter(threshold == 10) |>
+  #filter(StaID %in% sample(focal_sites, 10, replace = F)) |>
+  filter(StaID == "03221000") |>
+  mutate(year = lubridate::year(start))
+
+test_droughts_long <- test_droughts_10 |>
+  group_by(StaID, drought_id) |>
+  slice(rep(seq_len(drought_id), each = duration)) |>
+  mutate(drought_date = start + (seq_len(duration)-1),
+         drought_date_noYr = format(as.Date(drought_date), "%m-%d"),
+         drought_date_fakeYr = as.Date(sprintf("1999-%s", drought_date_noYr), "%Y-%m-%d"),
+         decade = year(floor_date(start, years(10)))) |>
+  arrange(start)
+
+# ggplot(test_droughts_long |> filter(year == 1963), 
+#        aes(y = year, x = drought_date_noYr, group = drought_id))+
+#   geom_ribbon(aes(ymin = 1962, ymax = 1963), alpha = 0.2)+
+#   geom_ribbon(data = test_droughts_long |> filter(year == 1964),
+#               aes(ymin = 1963, ymax = 1964), alpha = 0.2)+
+#   coord_polar()+
+#   facet_wrap(~ StaID)+
+#   theme_void()
+
+test_droughts_plotting <- test_droughts_long |>
+  group_by(drought_date_fakeYr, decade, StaID) |>
+  summarise(total_drought_days = n()) |>
+  left_join(metadata, by = "StaID")
+
+ggplot(test_droughts_plotting,
+       aes(x = drought_date_fakeYr, y = total_drought_days))+
+  geom_ribbon(aes(ymin = 0, ymax = total_drought_days), 
+              alpha = 0.4, color = "orange", fill = "orange")+
+  scale_x_date(labels = date_format("%b"), breaks = "1 month",
+                 limits = c(as.Date("1999-01-01"), as.Date("1999-12-31")))+
+  facet_wrap(~ decade, ncol = 1)+
+  coord_polar()+
+  theme_minimal()+
+  ggtitle("Fixed threshold")
+
+# Expand vertically ### make sure only correct droughts! threshold 10%, jd7
+test_drought_properties <- drought_properties |> 
+  filter(StaID %in% sample(focal_sites, 10, replace = F))
+test_drought_expand <- uncount(test_drought_properties, duration, .id = "id") |>
+  mutate(date = start + id,
+         jd_yday = lubridate::yday(date)) |>
+  left_join(metadata, by = "StaID")
+ggplot(data = test_drought_expand, aes(y = lubridate::year(date), x = jd_yday, group = drought_id))+
+  geom_line(aes(color = drought_id))+
+  facet_wrap(~ STATE, scales = "free_y")
+
+test_drought_summarize_dt <- test_drought_expand |>
+  group_by(date, STATE) |>
+  summarize(total_drought_days = n()) |>
+  mutate(jd_yday = lubridate::yday(date),
+         year = lubridate::year(date))
+
+test_drought_summarize_site_jd <- test_drought_expand |>
+  group_by(jd_yday, StaID) |>
+  summarise(total_drought_days = n()) |>
+  left_join(metadata, by = "StaID")
+ggplot(data = test_drought_summarize_site_jd, aes(y = year, x = jd_yday, group = StaID))+
+  geom_line(aes(color = StaID))+
+  facet_wrap(~ STATE, scales = "free_y")
+ggplot(test_drought_summarize_site_jd, aes(y = total_drought_days, x = jd_yday))+
+  geom_line()+
+  facet_wrap(~ STATE)
+mn_data <- test_drought_summarize_site_jd |>
+  filter(STATE == "MN")
+
+ggplot(test_drought_summarize_dt, aes(y = total_drought_days, x = jd_yday))+
+  geom_line(aes(color = STATE))+
+  facet_wrap(~ year)
+ggplot(test_drought_summarize_dt, aes(y = total_drought_days, x = jd_yday))+
+  geom_line(aes(color = year))+
+  facet_wrap(~ STATE)
+ggplot(test_drought_summarize_dt |> filter(STATE %in% c("AZ", "MN", "CA")), 
+       aes(y = total_drought_days, x = jd_yday))+
+  geom_line(aes(color = year))+
+  facet_wrap(~ STATE, nrow = 3)
+
+test_t1981_data <- t1981_data |> filter(StaID %in% sample(focal_sites, 10, replace = F))
+
+data_joined <- t1981_data |>
+  left_join(metadata, by = "StaID") |>
+  # and specify when droughts happended
+  mutate(drought_binary = case_when(value <= thresh_1981 ~ TRUE,
+                                    TRUE ~ FALSE),
+         drought_text = case_when(value <= thresh_1981 ~ "Drought",
+                                    TRUE ~ "Not Drought"),
+         drought_numerical = case_when(value <= thresh_1981 ~ 1,
+                                       TRUE ~ 0))
+
+# Calculate the cumulative # drought days by julian day
+nd_cumulative_by_jd_year <- nd_data_joined |>
+  group_by(jd, year) |> 
+  summarise(cumulative_drought = sum(drought_numerical))
+cumulative_by_jd <- data_joined |>
+  group_by(jd, STATE) |> 
+  summarise(cumulative_drought = sum(drought_numerical),
+            mean_drought = mean(drought_numerical))
+
+ggplot(data = cumulative_by_jd_year |> filter(STATE == "TX", year >= 2015),
+       aes(x = jd, group = year, y = cumulative_drought))+
+  geom_line(aes(color = year))+
+  coord_polar()+
+  facet_wrap(~ year)
+
+ggplot(data = cumulative_by_jd |> filter(STATE %in% c("TX", "MN","CO", "IA")),
+       aes(x = jd, y = mean_drought))+
+  geom_line()+
+  #coord_polar()+
+  facet_wrap(~ STATE, scales = "free_y")
+
+
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Pirata One"
+sysfonts::font_add_google("Pirata One")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "#0A1927"
+font_color = "#ffffff"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+
+# Main plot
+(main_plot <- ggplot()
+ )
+
+
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = 0.01,
+            y = 0.01,
+            height = 1) +
+  # explainer text
+  draw_label("Explainer text",
+             fontfamily = supporting_font,
+             x = 0.96,   
+             y = 0.05,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+  # Title
+  draw_label("Title",
+             x = 0.04,
+             y = 0.285,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 55) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.04,
+             y = 0.05,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230000_prompt_name.png", 
+       width = 16, height = 9, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Key takeaways here
+
+### Data source(s)
+
+Data sources here.
+
