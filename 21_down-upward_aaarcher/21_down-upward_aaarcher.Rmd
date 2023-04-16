@@ -36,6 +36,7 @@ library(readr) # best for reading and writing csvs
 library(lubridate)
 library(ggstream)
 library(sf)
+library(sbtools)
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -54,7 +55,31 @@ This is also a good place to load any data from other built-in packages such as 
 
 
 ```{r load}
-# Add your code here
+# Load drought properties data from ScienceBase
+#authenticate_sb() (username includes email address)
+
+
+# Drought Properties - 7day window
+drought_properties_7d <- "in/Drought_Properties_jd_07d_wndw.csv"
+if(!file.exists(drought_properties_7d)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "627974ccd34e8d45aa6e3c81",
+                              names = "Drought_Properties_jd_07d_wndw.csv",
+                              destinations =  "in/Drought_Properties_jd_07d_wndw.csv",
+                              overwrite_file = FALSE)
+}
+drought_properties_7d <- readr::read_csv(drought_properties_7d) 
+
+# Metadata
+file_in_metadata <- "in/study_watersheds_metadata.csv"
+if(!file.exists(file_in_metadata)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "62793493d34e8d45aa6e3ba9",
+                              names = "study_watersheds_metadata.csv",
+                              destinations = file_in_metadata,
+                              overwrite_file = FALSE)
+}
+metadata <- readr::read_csv(file_in_metadata, show_col_types = FALSE) |>
+  select(StaID, STANAME, DRAIN_SQKM, HUC02, LAT_GAGE, LNG_GAGE, STATE,
+         national_1981, national_1951, national_1921, HCDN_2009)
 
 
 
