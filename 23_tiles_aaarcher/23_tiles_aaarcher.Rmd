@@ -59,30 +59,15 @@ This is also a good place to load any data from other built-in packages such as 
 
 
 # Drought Properties - 7day window
-drought_properties_7d <- "in/Drought_Properties_jd_07d_wndw.csv"
-if(!file.exists(drought_properties_7d)){ # if files don't exist, download
+drought_properties_7d_file <- "in/Drought_Properties_jd_07d_wndw.csv"
+if(!file.exists(drought_properties_7d_file)){ # if files don't exist, download
   sbtools::item_file_download(sb_id = "627974ccd34e8d45aa6e3c81",
                               names = "Drought_Properties_jd_07d_wndw.csv",
                               destinations =  "in/Drought_Properties_jd_07d_wndw.csv",
                               overwrite_file = FALSE)
-  # unzip it, too
-  #unzip(zipfile = "in/Streamflow_percentiles_national_1981.zip",
-  #      exdir = "in")
 }
 drought_properties_7d <- readr::read_csv(drought_properties_7d) 
 
-# Drought Properties - Fixed threshold
-drought_properties_fixed <- "in/Drought_Properties_site.csv"
-if(!file.exists(drought_properties_fixed)){ # if files don't exist, download
-  sbtools::item_file_download(sb_id = "627974ccd34e8d45aa6e3c81",
-                              names = "Drought_Properties_site.csv",
-                              destinations =  "in/Drought_Properties_site.csv",
-                              overwrite_file = FALSE)
-  # unzip it, too
-  #unzip(zipfile = "in/Streamflow_percentiles_national_1981.zip",
-  #      exdir = "in")
-}
-drought_properties_fixed <- readr::read_csv(drought_properties_fixed) 
 
 file_in_metadata <- "in/study_watersheds_metadata.csv"
 if(!file.exists(file_in_metadata)){ # if files don't exist, download
@@ -98,16 +83,7 @@ metadata <- readr::read_csv(file_in_metadata, show_col_types = FALSE) |>
 # Determine focal sites 
 focal_sites <- metadata$StaID[metadata$national_1951]
 
-# Read in all focal sites and rowbind together for each timeframe
-files_1951 <- sprintf("in/Streamflow_percentiles_national_1981/%s.csv", focal_sites)
-t1951_data <- purrr::map(files_1981[1], 
-                         ~ readr::read_csv(files_1981, 
-                                           show_col_types = FALSE,
-                                           col_types = list("StaID" = col_character()))) |>
 
-  reduce(rbind) |>
-  # only keep fields we need
-  select(StaID, jd, dt, year, value, thresh_2_jd_07d_wndw, thresh_10_jd_07d_wndw)
 
 ```
 
@@ -115,6 +91,75 @@ t1951_data <- purrr::map(files_1981[1],
   
 This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
 
+
+```{r processing_top}
+# Select appropriate threshold (here 2%)
+droughts_2pct <- drought_properties_7d |> 
+  # step 0: join metadata and take out DC
+  left_join(metadata |> select(StaID, STATE), by = "StaID") |>
+  filter(! STATE == "DC") |>
+  # step 1: 2% threshold
+  filter(threshold == 2) |>
+  mutate(year = lubridate::year(start)) |>
+  # remove couple from 2020 (uncomplete year)
+  filter(year < 2020) 
+
+droughts_100perYear <- droughts_2pct |>
+  # step 2: group by year
+  group_by(year) |>
+  # and get top 100
+  slice_max(order_by = severity, n = 100)
+
+
+droughts_100_join_CASC <- droughts_100perYear |>
+  # step 4: join with CASCs
+  mutate(CASC = case_when(STATE %in% c("MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH") ~ "Midwest",
+                          STATE %in% c("MT", "WY", "CO", "ND", "SD", "NE", "KS") ~ "North Central",
+                          STATE %in% c("ME", "NH", "VT", "MA", "CT", "RI", "DC",
+                                       "NY", "NJ", "PA", "DE", "MD", "WV", "VA", "KY") ~ "Northeast",
+                          STATE %in% c("WA", "OR", "ID") ~ "Northwest",
+                          STATE %in% c("NM", "TX", "OK", "LA") ~ "South Central",
+                          STATE %in% c("NC", "SC", "GA", "AL", "MS", "FL", "TN", "AR") ~ "Southeast",
+                          STATE %in% c("AZ", "UT", "NV") ~ "Southwest",
+                          STATE %in% "CA" ~ "California",
+                          TRUE ~ "not sorted"),
+         north_south = case_when(CASC %in% c("Northwest", "North Central", "Midwest", "Northeast") ~ "North",
+                                 TRUE ~ "South"),
+         CASC = factor(CASC, levels = c("California", "Southwest", "South Central", "Southeast",
+                                        "Northeast", "Midwest", "North Central", "Northwest")))
+
+# Number of 100 most severe droughts by year in each CASC
+table(droughts_100_join_CASC$CASC)
+table(droughts_100_join_CASC$north_south)
+length(table(droughts_100_join_CASC$STATE))
+
+# Make long
+droughts_long <- droughts_100_join_CASC |>
+  uncount(duration, .id = "day_of_drought") |>
+  # for future munging
+  mutate(drought_date = start + day_of_drought -1,
+         decade = year(floor_date(drought_date, years(10))),
+         year = year(drought_date),
+         jd = yday(drought_date)) |>
+  # make sure they're sorted by date
+  arrange(start) |>
+  # remove unneeded fields
+  select(-threshold, -previous_end, -days_since_previous_drought,
+         -has_the_potential_to_be_impacted_by_missing_values) 
+
+# Which streamgages?
+gages_with_drought <- droughts_100_join_CASC |> 
+  group_by(StaID) |>
+  summarise(num_droughts = n()) |>
+  left_join(metadata, by = "StaID")
+
+gages_with_drought_decade <- droughts_100_join_CASC |> 
+  mutate(decade = year(floor_date(start, years(10)))) |>
+  group_by(StaID, decade) |>
+  summarise(num_droughts = n()) |>
+  left_join(metadata, by = "StaID")
+
+```
 
 ```{r test_processing_droughts}
 test_droughts_10 <- drought_properties_7d |>
