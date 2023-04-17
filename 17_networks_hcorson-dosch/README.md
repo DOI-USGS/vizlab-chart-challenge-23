@@ -10,6 +10,7 @@ Please fill out this information prior to creating a merge request, *unless you'
 
 **Image:**
 
+![17_networks_hcorson-dosch](/uploads/7ddb56325482fd068ae463e9bf278d9d/17_networks_hcorson-dosch.png)
 
 **Your key takeaways (1-2 sentences each):**
 
