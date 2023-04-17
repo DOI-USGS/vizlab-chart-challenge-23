@@ -10,8 +10,10 @@ Date for your prompt in April: 04/19/2023
 
 Image:
 
-Share the link in this document with the format `![](out/20230000_prompt-example_name.png)`:
+Share the link in this document with the format `![](out/20230419_anthropocene_mjaenicke.png)`:
 20230419_anthropocene_mjaenicke.png - sent to Althea
+
+![](out/20230419_anthropocene_mjaenicke.png)
 
 Your key takeaways (1-2 sentences each):
 
