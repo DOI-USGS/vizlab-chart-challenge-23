@@ -75,8 +75,9 @@ streams_sf <- streams_sf %>%
   inner_join(streams_vaa, by = 'NHDPlusID')
 
 # Set StreamOrde as a factor
+max_level <- max(streams_sf$StreamOrde)
 streams_sf <- streams_sf %>%
-  mutate(StreamOrde = factor(StreamOrde, levels = seq(1, max(streams_sf$StreamOrde), by = 1)))
+  mutate(StreamOrde = factor(StreamOrde, levels = seq(1, max_level, by = 1)))
 
 # Get summary of length (in km) by stream order
 # Add plotting variables for donut chart
@@ -84,7 +85,7 @@ stream_order_summary <- streams_sf %>%
   st_drop_geometry() %>%
   group_by(StreamOrde) %>%
   summarize(count = n(), total_length_km = sum(LengthKM)) %>%
-  mutate(StreamOrde = factor(StreamOrde, levels = c(1, 2, 3, 4, 5, 6, 7, 8)),
+  mutate(StreamOrde = factor(StreamOrde, levels = seq(1, max_level, by = 1)),
          length_fraction = total_length_km/sum(total_length_km),
          ymax = cumsum(length_fraction),
          ymin = ymax - length_fraction,
