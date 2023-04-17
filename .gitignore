@@ -25,6 +25,7 @@
 */out/*
 *.html
 !07_hazards_conlon_colgin/in/*
+!17_networks_hcorson-dosch/in/stream_order.png
 
 # allow empty files to be committed
 !*/in/.empty
