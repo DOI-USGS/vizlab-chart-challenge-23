@@ -43,9 +43,12 @@ This is also a good place to load any data from other built-in packages such as 
 
 ```{r load}
 # Download NHDPlusHR for Potomac Watershed (huc4)
+# NOTE: if download fails, can download zip for huc4 directly from 
+# https://prd-tnm.s3.amazonaws.com/index.html?prefix=StagedProducts/Hydrography/NHDPlusHR/Beta/GDB/
 huc04 <- '0207'
 # build s3 url
 url <- sprintf('https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHDPlusHR/Beta/GDB/NHDPLUS_H_%s_HU4_GDB.zip', huc04)
+https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHDPlusHR/Beta/GDB/NHDPLUS_H_0207_HU4_GDB.zip
 
 # set destination, download, and unzip file
 dest_file <- sprintf('in/%s', basename(url))
