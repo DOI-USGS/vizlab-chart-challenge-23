@@ -1,4 +1,4 @@
-source("01_fetch/src/fetch_functions.R")
+source("src/01_fetch_functions.R")
 
 p1_targets <- list(
   

@@ -1,4 +1,4 @@
-source("02_process/src/process_functions.R")
+source("src/02_process_functions.R")
 
 p2_targets <- list(
   
