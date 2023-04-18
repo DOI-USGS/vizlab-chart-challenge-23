@@ -38,3 +38,7 @@
 *.prj
 *.shp
 *.shx
+
+# 28_trend_padilla
+28_trend_padilla/data
+!28_trend_padilla/data/in/.empty
