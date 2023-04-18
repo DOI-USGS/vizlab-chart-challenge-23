@@ -172,7 +172,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 0.72) +
   # explainer
   draw_image(stream_order_explainer,
-             x = 0.668,
+             x = 0.667,
              y = 0.623,
              width = 0.27,
              hjust = 0, vjust = 0,
@@ -194,15 +194,15 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   # Annotation
   draw_label(stringr::str_wrap("In the Potomac River watershed, first order streams make up 57% of the network, by length", 20),
              x = 0.73,
-             y = 0.455,
+             y = 0.449,
              hjust = 0,
              vjust = 0,
              lineheight = 0.75,
              fontfamily = supporting_font,
              color = font_color,
-             size = 16) +
+             size = 18) +
   # Title
-  draw_label(stringr::str_wrap("Which stream order covers the most distance in this watershed?",20),
+  draw_label(stringr::str_wrap("Which stream order covers the most distance?",20),
              x = 0.05,
              y = 0.05,
              hjust = 0,
@@ -211,7 +211,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = supporting_font,
              fontface = 'bold',
              color = font_color,
-             size = 45) +
+             size = 50) +
   # Add logo
   draw_image(usgs_logo,
              x = 0.95,
