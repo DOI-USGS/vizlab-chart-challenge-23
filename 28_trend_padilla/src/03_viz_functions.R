@@ -68,7 +68,7 @@ create_complete_gl_map <- function(in_zips, homes_factor = TRUE) {
     ggplot(data = all_figs) +
     geom_sf(fill = "dodgerblue", color = "dodgerblue4") +
     ggthemes::theme_map() +
-    facet_grid(vars(lake), switch = "y", scales = "free") +
+    facet_grid(vars(lake), switch = "y") +
     ggthemes::theme_map() +
     theme(strip.background = element_rect(colour = NA, fill = NA),
           strip.text = element_text(face = "bold")) +
@@ -124,4 +124,5 @@ create_complete_plot <- function(map_plot, data_plot, ttl) {
     data_plot +
     plot_annotation(ttl,
                     theme = theme(plot.title = element_text(hjust = 0.5)))
+  return(out_plot)
 }
