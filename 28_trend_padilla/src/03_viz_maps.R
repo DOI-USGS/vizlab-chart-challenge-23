@@ -1,4 +1,4 @@
-# mapping functions ----------------------------------
+
 make_simple_lake_sf <- function(esri_files) {
   map_out <- st_read(esri_files[grepl(".shp", esri_files)]) |> 
     st_union() |> 
@@ -7,7 +7,7 @@ make_simple_lake_sf <- function(esri_files) {
   return(map_out)
 }
 
-create_complete_gl_map <- function(in_zips, homes_order = TRUE) {
+create_great_lakes_maps <- function(in_zips, homes_order = TRUE) {
   
   # extract all files
   unzip_dir <- tempdir()
@@ -50,7 +50,7 @@ create_complete_gl_map <- function(in_zips, homes_order = TRUE) {
                          "Michigan", "Erie", "Superior")]
   }
   
-  return(map_clean)
+  return(ls_maps)
 }
 
 
@@ -111,54 +111,4 @@ make_square_bbox <- function(bbox) {
   new_bbox <- st_bbox(named_new_extent, crs = st_crs(bbox))#crs = st_crs(bbox))
   
   return(new_bbox)
-}
-
-# time series functions ------------------------------
-annual_max_ice_plot <- function(ice_tibble, homes_factor = TRUE) {
-  
-  # calculate data.frame for max ice and yday by water year
-  df_max_ice_yday <- ice_tibble |> 
-    group_by(lake, wy) |> 
-    slice_max(perc_ice_cover, na_rm = TRUE, n = 1, with_ties = FALSE) |> 
-    arrange(lake, date)
-  
-  # calculate lake average yday and max ice for reference
-  df_avg <- df_max_ice_yday |> 
-    group_by(lake) |> 
-    summarize(yday_avg = mean(wy_yday),
-              perc_ice_avg = mean(perc_ice_cover))
-  
-  df_max_ice_yday <- left_join(df_max_ice_yday, df_avg)
-  
-  if(homes_factor) {
-    df_max_ice_yday$lake <- 
-      factor(df_max_ice_yday$lake,
-             levels = c("Basin", "Huron", "Ontario",
-                        "Michigan", "Erie", "Superior"))
-  }
-
-  # maximum perc_ice by year
-  out <- 
-    ggplot(data = df_max_ice_yday, aes(x = year, y = perc_ice_cover)) +
-    geom_line(color = "gray60") +
-    geom_point(fill = "gray15", size = 0.75) +
-    geom_smooth(method = lm, se = FALSE) +
-    geom_hline(aes(yintercept = perc_ice_avg), color = "gray15", linetype = "dashed") +
-    labs(title = "", x = "", y = "") +
-    scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
-    facet_grid(vars(lake), switch = "y") +
-    theme_minimal() +
-    theme(strip.text = element_blank()) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-  
-  return(out)
-}
-
-create_complete_plot <- function(map_plot, data_plot, ttl) {
-  out_plot <- 
-    map_plot + 
-    data_plot +
-    plot_annotation(ttl,
-                    theme = theme(plot.title = element_text(hjust = 0.5)))
-  return(out_plot)
 }
