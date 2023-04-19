@@ -13,6 +13,7 @@ annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
   # calculate data.frame for max ice and yday by water year
   df_max_ice_yday <- ice_tibble |> 
     group_by(lake, wy) |> 
+    # in case of a tie, take the first instance of a max value
     slice_max(perc_ice_cover, na_rm = TRUE, n = 1, with_ties = FALSE) |> 
     arrange(lake, date)
   

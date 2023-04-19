@@ -163,9 +163,17 @@ ggsave(filename = "out/20230000_prompt_name.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Key takeaways here
+1. 2023 ice coverage on all 5 of the Great Lakes was significantly below the 50 year average
+2. The greatest deviation from the average was on Lake Superior (- 67% below average) and the smallest deviation was on Lake Ontario (- 45%).
+3. Basin-wide 2023 ice coverage was 59% below average
 
 ### Data source(s)
 
-Data sources here.
+Ice data is from the Great Lakes Environmental Research Lab 
+* [press release](https://research.noaa.gov/article/ArtMID/587/ArticleID/2941/Low-ice-on-the-Great-Lakes-this-winter)
+* [Daily ice data from 1973-2022](https://www.glerl.noaa.gov/data/ice/glicd/daily/)
+* [Daily ice data from 2023](https://coastwatch.glerl.noaa.gov/statistic/ice/dat/g2022_2023_ice.dat)
+
+Great Lakes spatial data is from [US Geological Survey](https://www.sciencebase.gov/catalog/item/530f8a0ee4b0e7e46bd300dd)
+
 
