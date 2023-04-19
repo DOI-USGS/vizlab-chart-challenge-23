@@ -257,38 +257,74 @@ gages_with_drought_decade_100yr <- droughts_100_join_CASC_100yr |>
 
 
 ```
+
+
+
+
+
+## Set up global plotting settings
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Source Sans Pro"
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Font sizes
+title_size <- 50
+support_size <- 24
+
+# Define colors
+background_color = "#c2dde6"
+font_color = "#431c5d"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 16,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+
+
+
+
+```
+
 ### Making the "when is drought" viz
 
 ```{r plot_tests1}
 (map_plot <- ggplot(data = states_CASC) +
-    geom_sf(fill = "#cdd422", color = "white") +
-    geom_sf(data = mapping_data_regions, color = "white", fill = NA, linewidth = 1.5)+
-    geom_segment(aes(x = -125, xend = -127, 
+    geom_sf(fill = "#e6e9f0", color = background_color, linewidth = 0.5) +
+    geom_sf(data = mapping_data_regions, color = background_color, fill = NA, linewidth = 1.5)+
+    geom_segment(aes(x = -125, xend = -127, # northwest
                      y = 50, yend = 52), 
                  arrow = arrow(length = unit(0.03, "npc")))+
-    geom_segment(aes(x = -104, xend = -104, 
+    geom_segment(aes(x = -101, xend = -101, # north central
                      y = 50, yend = 52), 
                  arrow = arrow(length = unit(0.03, "npc")))+
-    geom_segment(aes(x = -85, xend = -75, 
+    geom_segment(aes(x = -85, xend = -75, # midwest
                      y = 48, yend = 52), 
                  arrow = arrow(length = unit(0.03, "npc")))+
-    geom_segment(aes(x = -74, xend = -70, 
+    geom_segment(aes(x = -74, xend = -70, # northeast
                      y = 39, yend = 39), 
                  arrow = arrow(length = unit(0.03, "npc")))+
-    geom_segment(aes(x = -124, xend = -127, 
+    geom_segment(aes(x = -124, xend = -127, # california
                      y = 37, yend = 37), 
                  arrow = arrow(length = unit(0.03, "npc")))+
-    geom_segment(aes(x = -113, xend = -127, 
+    geom_segment(aes(x = -113, xend = -127, # southwest
                      y = 30, yend = 24), 
                  arrow = arrow(length = unit(0.03, "npc")))+
-    geom_segment(aes(x = -101, xend = -101, 
+    geom_segment(aes(x = -101, xend = -101, #south central
                      y = 26, yend = 24), 
                  arrow = arrow(length = unit(0.03, "npc")))+
     geom_segment(aes(x = -80, xend = -70, 
                      y = 30, yend = 24), 
                  arrow = arrow(length = unit(0.03, "npc")))+
-   geom_point(data = gages_with_drought,
-              aes(y = LAT_GAGE, x = LNG_GAGE, size = I(num_droughts/8)))+
    theme_void() +
     theme(legend.position = "none")
 )
@@ -303,15 +339,22 @@ gages_with_drought_decade_100yr <- droughts_100_join_CASC_100yr |>
                      aes(x = drought_day_fakeYr, group = desc(decade))) +
    geom_histogram(aes(fill = decade), boundary = 0, bins = 36)+
    facet_wrap(~ CASC)+
-   scale_x_date(breaks = "month", date_labels = "%b", 
+   scale_x_date(breaks = "3 month", date_labels = "%b", 
                 limits = as.Date(c("1999-01-01", "1999-12-31")),
-                expand = c(-0.02,0))+
+                expand = c(-0.015,0))+
+   labs(fill = "Decade")+
    coord_polar()+
-   theme_void()+
+   theme_minimal()+
    ylim(c(0, 2500))+
    scale_fill_viridis_c(end = 0.7, direction = -1)+
-   theme(legend.position = "none")
+   theme(legend.title = element_blank(),
+         legend.text = element_text(size = 20,
+                                    family = supporting_font),
+         legend.key.height = unit(1.5, "cm"),
+         legend.key.width = unit(1, "cm"))
  )
+
+legend_seasons <- cowplot::get_legend(CASC_season_plot)
 ```
 
 
@@ -332,15 +375,20 @@ draw_CASC_plots <- map(1:length(CASC_names), function(x){
   plot_temp <- droughts_long |>
     filter(CASC == CASC_names[x]) |> 
     ggplot(aes(x = drought_day_fakeYr, group = desc(decade))) +
+    facet_wrap(~ CASC)+
     geom_histogram(aes(fill = decade), boundary = 0, bins = 36)+
     scale_x_date(breaks = "month", date_labels = "%b", 
                  limits = as.Date(c("1999-01-01", "1999-12-31")),
-                 expand = c(-0.02,0))+
+                 expand = c(-0.015,0))+
     coord_polar()+
-    theme_void()+
+    theme_minimal()+
     ylim(c(-500, 2500))+
     scale_fill_viridis_c(end = 0.7, direction = -1)+
-    theme(legend.position = "none")
+    theme(legend.position = "none",
+          strip.text = element_text(size = support_size, color = font_color,
+                                    family = supporting_font, face = "bold"),
+          axis.text = element_blank(),
+          axis.title = element_blank())
   
   if(CASC_names[x] %in% c("Southwest", "Southeast", "South Central")){
     Y_position <- Ybase
@@ -368,44 +416,6 @@ draw_CASC_plots <- map(1:length(CASC_names), function(x){
 })
 ```
 
-
-
-
-## Set up main plot
-
-This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
-
-> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
-
-```{r plotting}
-# Load some custom fonts and set some custom settings
-font_legend <- "Pirata One"
-sysfonts::font_add_google("Pirata One")
-supporting_font <- "Source Sans Pro"
-sysfonts::font_add_google("Source Sans Pro")
-showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
-showtext::showtext_auto(enable = TRUE)
-
-# Define colors
-background_color = "#c2dde6"
-font_color = "#431c5d"
-
-# The background canvas for your viz
-canvas <- grid::rectGrob(
-  x = 0, y = 0, 
-  width = 16, height = 16,
-  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
-)
-
-# Load in USGS logo (also a black logo available)
-usgs_logo <- magick::image_read("../usgs_logo_white.png") 
-
-
-
-
-```
-
-
 ## Produce final plot
 
 Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
@@ -422,38 +432,77 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             hjust = 0, vjust = 1) +
   # the main plot
   draw_CASC_plots +
+  draw_grob(legend_seasons,
+            y = Yjitter - 0.05,
+            x = 0.5 - Xmargin)+
   draw_plot(map_plot,
             y = 0.44,
             x = 0.5,
             hjust = 0.5,
             vjust = 0.5, 
-            width = 0.4) +
+            width = 0.38) +
   # explainer text
-  draw_label("Explainer text",
+  draw_label("Chart by Althea A Archer. Exceptional droughts defined with 2% variable 7-day thresholds.\nData based on streamflow records from 1831 streamgages: doi.org/10.5066/P92FAASD",
              fontfamily = supporting_font,
-             x = 0.96,   
-             y = 0.05,
+             x = 1 - Xmargin,   
+             y = Ymargin,
              size = 14,
              hjust = 1,
              vjust = 0,
              color = font_color)+
   # Title
-  draw_label("Title",
-             x = 0.04,
-             y = 0.285,
+  draw_label("When and where have droughts happened?",
+             x = Xmargin,
+             y = 1 - Ymargin,
              hjust = 0,
              vjust = 1,
-             lineheight = 0.75,
+             lineheight = 1.0,
              fontfamily = font_legend,
              color = font_color,
-             size = 55) +
+             size = title_size) +
+  
+  # Title
+  draw_label("These are the 100 most severe exceptional droughts from each year\nsince 1950 by time of year and decade.",
+             x = Xmargin,
+             y = 1 - Ymargin - Ymargin ,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 1.0,
+             fontfamily = supporting_font,
+             color = font_color,
+             size = support_size) +
   # Add logo
   draw_image(usgs_logo, 
-             x = 0.04,
-             y = 0.05,
+             x = Xmargin,
+             y = Ymargin,
              width = 0.1, 
              hjust = 0, vjust = 0, 
-             halign = 0, valign = 0)
+             halign = 0, valign = 0)+
+    geom_segment(aes(x = Xbase - Xjitter*2 - 0.153, xend = Xbase - Xjitter*2 - 0.153, 
+                     y = Ybase + Yjitter*2 + 0.122, yend = Ybase + Yjitter*2 + 0.2), 
+                 arrow = arrow(length = unit(0.01, "npc")),
+                 color = "#e05915",
+             lineend = 'round',
+             linewidth = 1.5)+
+  draw_text("Number of\ndroughts",
+           x = Xmargin + 0.025,
+           y = Ybase + Yjitter*3 - 0.08,
+           color = "#e05915", size = support_size, family = supporting_font,
+           hjust = 0)+
+  geom_curve(aes(xend = Xbase - Xjitter*2 - 0.062, x = Xbase - Xjitter*2 - 0.145,
+                 yend = Ybase + Yjitter*2 + 0.115, y = Ybase + Yjitter*2 + 0.2),
+             arrow = grid::arrow(length = unit(0.75, 'lines')),
+             curvature = -0.40,
+             angle = -88,
+             color = "#e05915",
+             lineend = 'round',
+             linewidth = 1.5)+
+  draw_text("Calendar\n   year",
+           x = Xmargin + 0.24,
+           y = Ybase + Yjitter*3 - 0.08,
+           color = "#e05915", size = support_size, family = supporting_font,
+           hjust = 0)
+
 
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
