@@ -12,7 +12,7 @@ Image:
 
 Share the link in this document with the format `![](out/20230000_prompt-example_name.png)`:
 
-![19_anthropocene_candrews](out/19_anthropocene_andrews.png)
+![19_anthropocene_candrews](out/20230419_anthropocene_andrews.png)
 
 Your key takeaways (1-2 sentences each):
 
