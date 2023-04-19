@@ -63,7 +63,11 @@ create_ice_timeseries <- function(tbl) {
     scale_y_continuous(limits = c(0,100)) +
     theme_minimal() +
     theme(strip.text = element_blank()) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) 
+  # +
+  #   # this is here to diagnose the problems with patchwork
+  #   theme(plot.background = element_rect(color = "green", linewidth = 3)) +
+    theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
   
   return(ts)
 }

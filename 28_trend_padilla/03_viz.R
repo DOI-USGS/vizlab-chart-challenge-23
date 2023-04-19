@@ -21,7 +21,8 @@ p3_targets <- list(
     p3_ls_combo_plots,
     create_final_plot(
       map = p3_great_lakes_maps,
-      timeseries = p3_max_ice_timeseries
+      timeseries = p3_max_ice_timeseries,
+      out_path_pattern = "out/lake_and_ice_timeseries_%s.png"
     )
   )
 )

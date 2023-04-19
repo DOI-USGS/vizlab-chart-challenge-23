@@ -133,7 +133,7 @@ calc_wy_yday <- function(yr, dt) {
 #'
 #' @return A tibble containing the summary statistics of ice coverage for each lake.
 
-calc_ice_summary_stats <- function(ice_tibble) {
+calc_ice_summary_stats <- function(ice_tibble, homes_order = TRUE) {
   
   # calculate data.frame for max ice and yday by water year
   df_max_ice_yday <- ice_tibble |> 
