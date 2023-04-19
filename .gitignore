@@ -25,6 +25,7 @@
 */out/*
 *.html
 !07_hazards_conlon_colgin/in/*
+!22_green-energy_ancarr/in/*
 
 # allow empty files to be committed
 !*/in/.empty

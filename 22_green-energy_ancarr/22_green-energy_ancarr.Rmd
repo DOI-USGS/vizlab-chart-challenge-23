@@ -45,8 +45,7 @@ us_data <- readr::read_csv(usa, col_types = cols())
 ```{r processing}
 # Copy 2020 data into 2021 to get full last "step" in plot
 electricity <- us_data %>%
-  dplyr::add_row(us_data[which(us_data$Year==2020),])
-electricity$Year[nrow(electricity)] = 2021
+  dplyr::add_row(us_data |> filter(Year==2020) |> mutate(Year = 2021))
 
 # Convert data to long format
 green_energy <- electricity %>%
