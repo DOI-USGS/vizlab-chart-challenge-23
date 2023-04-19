@@ -47,7 +47,7 @@ update_geom_defaults("text", list(size = geom.text.size, family = 'Signika'))
 #paletteer_c("ggthemes::Sunset-Sunrise Diverging", 30)
 paletteer_d("colorBlindness::paletteMartin")
 show_col(pal_uchicago("default")(9))
-my_point_pal <- c("#b72e74","#74b72e", "#9867c5",
+my_point_pal <- c("#b72e74","#74b72e", "#7f45b4",
                     "#8A9045FF", "#155F83FF", "#767676FF")
 
 
