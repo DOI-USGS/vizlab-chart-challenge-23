@@ -58,7 +58,7 @@ my_point_pal <- c("#800000","#FFA319FF","#490092FF",
 referenceHeight <- 3520 # Recent Height 
 
 # bathymetry -------------------------------------------------------------------
-bath <- read.csv('DamEffectsDataViz/elevation_profile.csv')
+bath <- read.csv('in/elevation_profile.csv')
 names(bath) <- c('distanceFromDam', 'elevation')
 bath$distanceFromDam <- bath$distanceFromDam * 3.28084
 bath$distanceFromDamMiles <- bath$distanceFromDam * 0.000189394
