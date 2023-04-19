@@ -29,7 +29,7 @@ annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
     group_map(~ create_ice_timeseries(.x)) |> 
     setNames(attributes(df_max_ice_yday)$groups[[1]])
   
-  # add factor levels
+  # re-org data
   if(homes_order) {
     ls_ice_ts <- ls_ice_ts[c("Basin", "Huron", "Ontario",
                          "Michigan", "Erie", "Superior")]
