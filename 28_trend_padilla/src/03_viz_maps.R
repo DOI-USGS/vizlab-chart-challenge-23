@@ -17,7 +17,14 @@ make_simple_lake_sf <- function(esri_files) {
   return(map_out)
 }
 
-
+#' Create a list of simple Great Lakes maps
+#'
+#' Function that creates clean maps of the Great Lakes using shapefiles of each lake's basin.
+#'
+#' @param in_zips A character vector of paths to zip files containing shapefiles of each lake's basin.
+#' @param homes_order A logical value indicating whether to return the maps in a specific order. Default is TRUE.
+#'
+#' @return A list of ggplot2 objects, each object representing a clean map of a Great Lake and the Basin.
 
 create_great_lakes_maps <- function(in_zips, homes_order = TRUE) {
   
@@ -89,8 +96,8 @@ plot_clean_map <- function(map_sf, square_bbox = TRUE) {
     ggthemes::theme_map() +
     theme(strip.background = element_rect(colour = NA, fill = NA),
           strip.text = element_text(face = "bold"))# +
-    # # this is here to diagnose the problems with patchwork
-    # theme(plot.background = element_rect(color = "deepskyblue3", size = 3))
+    # this is here to diagnose the problems with patchwork
+    theme(plot.background = element_rect(color = "deepskyblue3", linewidth = 3))
   
   if(square_bbox) {
     orig_bbox <- st_bbox(map_sf) |> st_as_sfc()
