@@ -92,7 +92,6 @@ sites_all <- data.frame()
 
 manual_sites <- data.frame()
 
-#i <- "CA"
 
 for(i in unique(states)){
   
@@ -172,10 +171,6 @@ unique(states_repull$state)
   # Looks like there's literally only 3 stream sites?!? 
 
 
-# write this to "in" 
-#saveRDS(sites_comparison, file = here::here("21_updown_nschmer/in/sites_comparison.RDS"))
-
-
 # save 
 
 saveRDS(sites_all, file = here::here("21_updown_nschmer/in/final_sites.RDS"))
@@ -192,12 +187,6 @@ temp_data <- renameNWISColumns(temp_data)
 
 saveRDS(temp_data, file = here::here("21_updown_nschmer/in/temp_data.RDS"))
 names(temp_data)
-
-
-# test <- readNWISsite("01467200")
-# test2 <- whatNWISdata(siteNumber = "01467200", service = "dv", parameterCd = "00010")
-# 
-# temp_data_test <- readNWISdv("01467200", "00010", "", "", "00003")
 
 
 ```
@@ -229,31 +218,9 @@ temp_data_avg <- temp_data %>%
   select(DOY, site_no, ts_start, ts_end, ts_years, Years, mean, temp_value) %>% 
   distinct() %>% 
   left_join(., final_list) %>% 
-         # ,
-         # site_type = case_when(site_tp_cd == "ST" ~ "Stream",
-         #                       site_tp_cd == "GW" ~ "Groundwater",
-         #                       site_tp_cd == "LK" ~ "Lake",
-         #                       site_tp_cd == "ES" ~ "Estuary")
   distinct() %>% 
-#%>% 
- #  mutate(label = paste0(state, ", ", start_yr, ", ",site_type),
- #         label2 = paste0(start_yr, ", ",site_type)) %>% 
- #  mutate(Region = case_when(state %in% c("WA", "OR", "ID", "AK") ~ "Northwest",
- #                            state %in% c("HI") ~ "Hawaii",
- #                            #state_abrv %in% c("CA") ~ "California",
- #                            state %in% c("NV", "UT", "AZ", "CA") ~ "Southwest",
- #                            state %in% c("MT", "WY", "CO", "SD", "ND", "NE", "KS") ~ "North Central",
- #                            state %in% c("NM", "OK", "LA", "TX") ~ "South Central",
- #                            state %in% c("WI", "MN", "MI", "IL", "MO", "IA", "OH", "IN") ~ "Midwest",
- #                            state %in% c("AR", "TN", "NC", "SC", "GA", "FL", "MS", "AL") ~ "Southeast",
- #                            state %in% c("ME", "CT", "VT", "NH", "DE", "MD", "PA", "VA", "WV", "KY", "RI", "NJ", "NY", "MA") ~ "Northeast")) %>% 
- # #mutate(Region = factor(levels = "Northwest", "North Central", "Midwest", "Northeast", "Hawaii", "Southwest", "South Central", "Southeast")) %>% 
    group_by(state, DOY) %>% 
   mutate(state_avg = mean(temp_value, na.rm =T))
- #   mutate(Temp_Diff = abs(max(mean) - min(mean)))
-
-# temp_data_avg <- temp_data_avg %>% 
-#   mutate(Region = factor(Region, levels = c("Northwest", "North Central", "Midwest", "Northeast", "Hawaii", "Southwest", "South Central", "Southeast"))) 
 
 
 saveRDS(temp_data_avg, file = here::here("21_updown_nschmer/in/temp_data_avg.RDS"))
@@ -295,43 +262,6 @@ usgs_logo <- magick::image_read(here::here("usgs_logo_black.png"))
 my_grid <- us_state_grid1 %>% 
   filter(code != "DC")
 
-#extract axis from this plot:
-# (template_plot <- ggplot(temp_data_avg, 
-#                       aes(x = DOY, y = mean, group = site_no, color = Years)) +
-#     geom_line(linewidth =1, alpha = 0.7)+
-#     # geom_line(aes(x = DOY, y = state_avg, group = site_no), color = "black", linetype = "dashed", show_guide = TRUE)+
-#     ggthemes::theme_few()+
-#     scale_color_gradient(low = "#d9d0ff", high = "#08008c")+
-#     #scale_colour_scico(palette = "devon")+
-#     scale_y_continuous(breaks = c(0, 25, 50))+
-#     theme(strip.background = element_blank(),
-#           strip.text = element_text(size = 16),
-#           strip.placement = "inside",
-#           strip.background.x = element_blank(),
-#           # axis.line = element_blank(),
-#           # axis.ticks = element_blank(),
-#           axis.text = element_text(size = 14),
-#           axis.text.x = element_text(angle = 45, vjust = 0.3, hjust=0.5),
-#           axis.title = element_text(size = 16),
-#           axis.title.x = element_text(vjust = -0.06),
-#           axis.ticks.x = element_blank(),
-#           axis.ticks.y = element_blank(),
-#           panel.border = element_blank(),
-#           #plot.title = element_text(size = 14, face = "bold"),
-#           #plot.background = element_blank(),
-#           panel.background = element_blank(),
-#           panel.spacing.x = unit(-2, "pt"),
-#           panel.spacing.y = unit(-5, "pt"),
-#           plot.margin = margin(0, 0, 0, 0, "pt"),
-#           legend.box.background = element_rect(fill = background_color, color = NA),
-#           legend.position = c(0.95, 0.25))+
-#     facet_geo(~ state, grid = my_grid)+
-#     labs(y = expression("Mean Temperature (°C) for DOY"),
-#         color= "Years of Record"))
-# 
-# x_axis <- get_x_axis(template_plot)
-# y_axis <- get_y_axis(template_plot)
-# legend <- get_legend(template_plot)
 
 
 (main_plot <-  ggplot(temp_data_avg, 
@@ -349,15 +279,10 @@ my_grid <- us_state_grid1 %>%
           strip.text = element_text(size = 16),
           strip.placement = "inside",
           strip.background.x = element_blank(),
-          # axis.line = element_blank(),
-          # axis.ticks = element_blank(),
           axis.text = element_blank(),
           axis.text.x = element_blank(),
           axis.title = element_text(size =14),
-          #axis.title.x = element_blank(),
           panel.border = element_blank(),
-          #plot.title = element_text(size = 14, face = "bold"),
-          #plot.background = element_blank(),
           panel.background = element_blank(),
           panel.spacing.x = unit(-2, "pt"),
           panel.spacing.y = unit(-5, "pt"),
@@ -369,49 +294,6 @@ my_grid <- us_state_grid1 %>%
           
     labs(y = expression("Mean Temperature (°C) for DOY"),
         color= "Years of Record"))
-
-
-
-#########
-
-
-
-# (main_plot <-  ggplot(temp_data_avg, 
-#                       aes(x = DOY, y = mean, group = site_no, color = Years)) +
-#     geom_line(linewidth =1, alpha = 0.7)+
-#     # geom_line(aes(x = DOY, y = state_avg, group = site_no), color = "black", linetype = "dashed", show_guide = TRUE)+
-#     ggthemes::theme_few()+
-#     #scale_color_gradient(low = "blue", high = "red")+
-#     scale_colour_scico(palette = "devon")+
-#     scale_y_continuous(breaks = c(0, 25, 50))+
-#     theme(strip.background = element_blank(),
-#           strip.text = element_text(size = 16),
-#           strip.placement = "inside",
-#           strip.background.x = element_blank(),
-#           # axis.line = element_blank(),
-#           # axis.ticks = element_blank(),
-#           axis.text = element_text(size = 14),
-#           axis.text.x = element_text(angle = 45, vjust = 0.3, hjust=0.5),
-#           axis.title = element_text(size = 16),
-#           axis.title.x = element_text(vjust = -0.06),
-#           panel.border = element_blank(),
-#           #plot.title = element_text(size = 14, face = "bold"),
-#           #plot.background = element_blank(),
-#           panel.background = element_blank(),
-#           panel.spacing.x = unit(-2, "pt"),
-#           panel.spacing.y = unit(-5, "pt"),
-#           plot.margin = margin(0, 0, 0, 0, "pt"),
-#           legend.box.background = element_rect(fill = background_color, color = NA),
-#           legend.position = c(0.95, 0.25))+
-#     #facet_geo(~ state, grid = my_grid)+
-#     labs(y = expression("Mean Temperature (°C) for DOY"),
-#         color= "Years of Record"))
-
-
-# ggplot(temp_data_avg %>% filter(state == "MS"), aes(x = DOY, y = mean, group = site_no)) +
-#   geom_line()
-
-
 
 ```
 
@@ -437,21 +319,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             y = 0.03,
             height = 0.8,
             width = 0.9) +
-  #add axis and legend
-  # draw_plot(x_axis,
-  #           x = 0.04,
-  #           y = 0.01,
-  #           height = 0.04,
-  #           width = 0.07)+
-  # draw_plot(y_axis,
-  #           x = 0.1,
-  #           y = 0.1,
-  #           height = 0.05,
-  #           width = 0.05)+
-  # draw_plot(legend,
-  #           x= 0.9,
-  #           y = 0.4,
-  #           height = 0.15)+
+  # Labels, etc
   draw_label("Day 1", 
              fontfamily = supporting_font,
              x = 0.07,   
