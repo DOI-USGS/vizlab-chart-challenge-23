@@ -27,6 +27,7 @@
 !07_hazards_conlon_colgin/in/*
 !17_networks_hcorson-dosch/in/stream_order.png
 !19_anthropocene_candrews/out/*
+!19_anthropocene_candrews/in/*
 
 
 # allow empty files to be committed
