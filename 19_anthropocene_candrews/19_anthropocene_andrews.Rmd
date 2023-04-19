@@ -47,7 +47,7 @@ update_geom_defaults("text", list(size = geom.text.size, family = 'Signika'))
 #paletteer_c("ggthemes::Sunset-Sunrise Diverging", 30)
 paletteer_d("colorBlindness::paletteMartin")
 show_col(pal_uchicago("default")(9))
-my_point_pal <- c("#b72e74","#74b72e", "#490092",
+my_point_pal <- c("#b72e74","#74b72e", "#9867c5",
                     "#8A9045FF", "#155F83FF", "#767676FF")
 
 
@@ -176,7 +176,7 @@ Fig1 <- g1 +
   geom_ribbon(data = bath,
               aes(x= distanceFromDamMiles, ymin = 3100, 
                   ymax = elevation),
-              fill = '#a1523e')  +
+              fill = '#814231')  +
   geom_line(data = bath,
           aes(x = distanceFromDamMiles, y = elevation),
            size = 2.5, color = '#eab676') 
@@ -214,9 +214,9 @@ Fig1.2 <- Fig1 + annotate("text", x = 95, y = 3310, label = txt1, color = 'white
   annotate("text", x = 98, y = 3220, label = txt24, color = 'white',  
            hjust = 0, size = geom.text.size + .3) + 
   
-  annotate("text", x = 95, y = 3190, label = txt3, color = '#490092', 
+  annotate("text", x = 95, y = 3190, label = txt3, color = '#C59AFA', 
             fontface = 'bold', hjust = 0, size = geom.text.size + .5) + 
-  annotate("text", x = 161.4, y = 3190, label = txt32, color = 'white',
+  annotate("text", x = 163, y = 3190, label = txt32, color = 'white',
            hjust = 0, size = geom.text.size + .3) + 
   annotate("text", x = 97, y = 3170, label = txt33, color = 'white',
            hjust = 0, size = geom.text.size + .3) + 
@@ -229,7 +229,7 @@ Fig1.2 <- Fig1 + annotate("text", x = 95, y = 3310, label = txt1, color = 'white
            hjust = 0, size = geom.text.size + .3) 
 
 ggsave(filename = paste0('20230419_anthropocene_andrews_base.png'), 
-       path = 'out/Outputs',
+       path = 'out/',
        width = 9,
        height = 7,
        unit = 'in',
