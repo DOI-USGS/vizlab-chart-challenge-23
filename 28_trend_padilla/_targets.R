@@ -4,8 +4,10 @@ library(tarchetypes)
 tar_option_set(packages = c(
   "tidyverse", 
   "dataRetrieval", 
-  "patchwork",
-  "sf"
+  # "patchwork",
+  "sf",
+  "purrr",
+  "cowplot"
   ))
 
 # Phase target makefiles
