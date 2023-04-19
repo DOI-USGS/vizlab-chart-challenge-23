@@ -62,12 +62,14 @@ create_ice_timeseries <- function(tbl) {
     scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
     scale_y_continuous(limits = c(0,100)) +
     theme_minimal() +
+    theme(axis.text.y = element_text(size = 14))
     theme(strip.text = element_blank())
   
   # conditionally remove x-axis labels for lakes that aren't superior+
-  if(tbl$lk[1] == "Superior") {
+  # if(tbl$lk[1] == "Superior") { # tall
+  if(tbl$lk[1] == "Superior" | tbl$lk[1] == "Erie") { # wide
     ts <- ts + 
-      theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
+      theme(axis.text.x = element_text(size = 14, angle = 0, hjust = 0.5, vjust = 0.5))
   } else {
     ts <- ts + 
       theme(axis.text.x = element_blank())

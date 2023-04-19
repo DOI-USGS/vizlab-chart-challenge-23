@@ -5,7 +5,7 @@
 #'
 #' @param maps A named list of spatial maps for each lake. Each element of the list should be an `sf` object
 #' @param timeseries A named list of time series data for each lake. Each element of the list should be a data frame with columns "Date" and "Value".
-#' @return A list of plots, with one plot for each lake
+#' @returns A list of plots, with one plot for each lake
 #' 
 create_combo_plots <- function(maps, timeseries, out_path_pattern = NULL) {
   
@@ -24,35 +24,59 @@ create_combo_plots <- function(maps, timeseries, out_path_pattern = NULL) {
     
     out <- mapply(ggsave, filename = out_paths, plot = ls_lake_plots, 
                   MoreArgs = list(
-                    height = 2, width = 6, units = "in", 
+                    # height = 2, width = 6, units = "in", # tall
+                    height = 2.83, width = 5, units = "in", # wide
                     dpi = 300, bg = "white"
                   )
     )
-    return(out)
     message("returning file paths...")
+    return(out)
   } else {
-    return(ls_lake_plots)
     message("returning objects...")
+    return(ls_lake_plots)
   }
   
 }
 
-
+#' Format and Combine Plots
+#'
+#' This function takes in two ggplot objects and formats them with specific plot margins and then combines them into a single plot.
+#'
+#' @param x_map A ggplot object for a map plot
+#' @param y_ts A ggplot object for a time series plot
+#'
+#' @returns A ggplot object that combines x_map and y_ts plots.
+#' 
 format_and_combine_plots <- function(x_map, y_ts) {
+  
   ts_margins <- y_ts + 
-    theme(plot.margin = unit(c(-0.15, 0, 0, 1.47), "in")) # trbl
-  
+    # margin order - trbl
+    # theme(plot.margin = unit(c(-0.15, 0, 0, 1.47), "in")) # tall
+    theme(plot.margin = unit(c(0, 0.1, 0, 2), "in")) # wide
+
   map_margins <- x_map +
-    theme(plot.margin = unit(c(0, 0, 0, 0), "in"))
-  
+    # theme(plot.margin = unit(c(0, 0, 0, 0), "in")) # tall
+    theme(plot.margin = unit(c(0, 0, 0, 0), "in")) # wide
+
   out_plot <- 
     ggdraw() +
     draw_plot(ts_margins) +
-    draw_plot(map_margins, x = -0.11, y = 0.3, width = 0.5, height = 0.5, scale = 2)
+    # draw_plot(map_margins, x = -0.11, y = 0.3, width = 0.5, height = 0.5, scale = 2) # tall
+    draw_plot(map_margins, x = -0.11, y = 0.3, width = 0.5, height = 0.5, scale = 1.5) # wide
   
   return(out_plot)
 }
 
+#' Create Final Plot
+#'
+#' This function takes a list of ggplot objects and combines them into a single plot grid with a specified title, and saves the final plot to a specified output path.
+#'
+#' @param ls_gl_plots A list of ggplot objects for each of the Great Lakes
+#' @param ttl The title to be displayed at the top of the plot
+#' @param out_path The file path for the output plot file
+#'
+#' @returns A final plot grid with the specified title and a combination of all ggplot objects in the ls_gl_plots list.
+#' 
 create_final_plot <- function(ls_gl_plots, ttl, out_path) {
   
   lake_nms <- names(ls_gl_plots)
@@ -64,14 +88,16 @@ create_final_plot <- function(ls_gl_plots, ttl, out_path) {
   out_plot <- plot_grid(plotBasin, plotHuron,
                         plotOntario, plotMichigan, 
                         plotErie, plotSuperior, 
-                        align = "v", ncol = 1)
+                        align = "v", 
+                        # ncol = 1) # tall
+                        ncol = 2) #wide
   
   # now add the title
   title <- ggdraw() + 
     draw_label(
       ttl,
       fontface = 'bold',
-      size = 20
+      size = 24
     )
   
   out_plot_w_ttl<- plot_grid(
@@ -81,6 +107,8 @@ create_final_plot <- function(ls_gl_plots, ttl, out_path) {
   )
 
   ggsave(filename = out_path, 
-         plot = out_plot_w_ttl, height = 12, width = 6, units = "in", 
+         plot = out_plot_w_ttl, 
+         # height = 12, width = 6, units = "in", # tall
+         height = 9, width = 16, units = "in", # wide
          dpi = 300, bg = "white")
 }

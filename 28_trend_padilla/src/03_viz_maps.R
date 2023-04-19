@@ -95,7 +95,7 @@ plot_clean_map <- function(map_sf, square_bbox = TRUE) {
     facet_grid(vars(lake), switch = "y") +
     ggthemes::theme_map() +
     theme(strip.background = element_rect(colour = NA, fill = NA),
-          strip.text = element_text(size = 18)) 
+          strip.text = element_text(size = 20)) 
   # +
   #   # this is here to diagnose the problems with patchwork
   #   theme(plot.background = element_rect(color = "deepskyblue3", linewidth = 3))
@@ -147,7 +147,7 @@ make_square_bbox <- function(bbox) {
                         xmax = new_extent[[3]], ymax = new_extent[[4]])
   
   # Create a new sf object with the same CRS as the original bbox
-  new_bbox <- st_bbox(named_new_extent, crs = st_crs(bbox))#crs = st_crs(bbox))
+  new_bbox <- st_bbox(named_new_extent, crs = st_crs(bbox))
   
   return(new_bbox)
 }

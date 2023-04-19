@@ -22,7 +22,7 @@ p3_targets <- list(
     create_combo_plots(
       map = p3_great_lakes_maps,
       timeseries = p3_max_ice_timeseries,
-      out_path_pattern = NULL#"out/lake_and_ice_timeseries_%s.png"
+      out_path_pattern = NULL #"out/lake_and_ice_timeseries_%s.png"
     )
   ),
   
@@ -30,8 +30,8 @@ p3_targets <- list(
     p3_great_lakes_ice_png,
     create_final_plot(
       ls_gl_plots = p3_ls_combo_plots,
-      ttl = "Trends in Maximum Percent Ice Cover \nin the Great Lakes \n(1973-2023)",
-      out_path = "out/Great_Lakes_Ice_Cover.png"
+      ttl = "Trends in Maximum Percent Ice Cover in the Great Lakes (1973-2023)",
+      out_path = "out/Great_Lakes_Ice_Cover_wide.png"
     )
   )
 )
