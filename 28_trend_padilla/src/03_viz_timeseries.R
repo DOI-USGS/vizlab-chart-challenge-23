@@ -24,7 +24,7 @@ annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
               perc_ice_avg = mean(perc_ice_cover))
   
   df_max_ice_yday <- left_join(df_max_ice_yday, df_avg) |> group_by(lake)
-  
+  df_max_ice_yday$lk <- df_max_ice_yday$lake # add a dummy lake column
   
   ls_ice_ts <- df_max_ice_yday |> 
     group_map(~ create_ice_timeseries(.x)) |> 
@@ -62,12 +62,22 @@ create_ice_timeseries <- function(tbl) {
     scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
     scale_y_continuous(limits = c(0,100)) +
     theme_minimal() +
-    theme(strip.text = element_blank()) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) 
+    theme(strip.text = element_blank())
+  
+  # conditionally remove x-axis labels for lakes that aren't superior+
+  if(tbl$lk[1] == "Superior") {
+    ts <- ts + 
+      theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
+  } else {
+    ts <- ts + 
+      theme(axis.text.x = element_blank())
+  }
+
   # +
   #   # this is here to diagnose the problems with patchwork
   #   theme(plot.background = element_rect(color = "green", linewidth = 3)) +
-    theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+    ts <- ts +
+      theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
   
   return(ts)
 }

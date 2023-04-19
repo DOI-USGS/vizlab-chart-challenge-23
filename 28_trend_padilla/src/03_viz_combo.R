@@ -7,14 +7,7 @@
 #' @param timeseries A named list of time series data for each lake. Each element of the list should be a data frame with columns "Date" and "Value".
 #' @return A list of plots, with one plot for each lake
 #' 
-
-# tar_load(p3_great_lakes_maps)
-# tar_load(p3_max_ice_timeseries) 
-# maps <- p3_great_lakes_maps
-# timeseries <- p3_max_ice_timeseries
-# out_path_pattern <- "out/lake_and_ice_timeseries_%s.png"
-
-create_final_plot <- function(maps, timeseries, out_path_pattern) {
+create_combo_plots <- function(maps, timeseries, out_path_pattern = NULL) {
   
   # make sure objects match by lake
   stopifnot(names(maps) == names(timeseries))
@@ -26,17 +19,24 @@ create_final_plot <- function(maps, timeseries, out_path_pattern) {
     format_and_combine_plots
   )
   
-  out_paths <- lapply(names(maps), function(x){sprintf(out_path_pattern, x)})
+  if(!is.null(out_path_pattern)) {
+    out_paths <- lapply(names(maps), function(x){sprintf(out_path_pattern, x)})
+    
+    out <- mapply(ggsave, filename = out_paths, plot = ls_lake_plots, 
+                  MoreArgs = list(
+                    height = 2, width = 6, units = "in", 
+                    dpi = 300, bg = "white"
+                  )
+    )
+    return(out)
+    message("returning file paths...")
+  } else {
+    return(ls_lake_plots)
+    message("returning objects...")
+  }
   
-  out <- mapply(ggsave, filename = out_paths, plot = ls_lake_plots, 
-         MoreArgs = list(
-           height = 2, width = 6, units = "in", 
-           dpi = 300, bg = "white"
-           )
-         )
-
-  return(out)
 }
+
 
 format_and_combine_plots <- function(x_map, y_ts) {
   ts_margins <- y_ts + 
@@ -51,4 +51,35 @@ format_and_combine_plots <- function(x_map, y_ts) {
     draw_plot(map_margins, x = -0.11, y = 0.3, width = 0.5, height = 0.5, scale = 2)
   
   return(out_plot)
+}
+
+create_final_plot <- function(ls_gl_plots, ttl, out_path) {
+  
+  lake_nms <- names(ls_gl_plots)
+  
+  for(i in seq_along(ls_gl_plots)) {
+    assign(paste0("plot", lake_nms[[i]]), ls_gl_plots[[i]])
+  }
+  
+  out_plot <- plot_grid(plotBasin, plotHuron,
+                        plotOntario, plotMichigan, 
+                        plotErie, plotSuperior, 
+                        align = "v", ncol = 1)
+  
+  # now add the title
+  title <- ggdraw() + 
+    draw_label(
+      ttl,
+      fontface = 'bold'
+    )
+  
+  out_plot_w_ttl<- plot_grid(
+    title, out_plot,
+    ncol = 1,
+    rel_heights = c(0.1, 1)
+  )
+
+  ggsave(filename = out_path, 
+         plot = out_plot_w_ttl, height = 12, width = 6, units = "in", 
+         dpi = 300, bg = "white")
 }
