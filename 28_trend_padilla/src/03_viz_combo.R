@@ -70,7 +70,8 @@ create_final_plot <- function(ls_gl_plots, ttl, out_path) {
   title <- ggdraw() + 
     draw_label(
       ttl,
-      fontface = 'bold'
+      fontface = 'bold',
+      size = 20
     )
   
   out_plot_w_ttl<- plot_grid(

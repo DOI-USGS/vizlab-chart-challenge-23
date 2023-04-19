@@ -95,7 +95,7 @@ plot_clean_map <- function(map_sf, square_bbox = TRUE) {
     facet_grid(vars(lake), switch = "y") +
     ggthemes::theme_map() +
     theme(strip.background = element_rect(colour = NA, fill = NA),
-          strip.text = element_text(face = "bold")) 
+          strip.text = element_text(face = "bold", size = 18)) 
   # +
   #   # this is here to diagnose the problems with patchwork
   #   theme(plot.background = element_rect(color = "deepskyblue3", linewidth = 3))
