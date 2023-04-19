@@ -122,3 +122,70 @@ calc_wy_yday <- function(yr, dt) {
   out <- difftime(dt, wy_start_date) |> as.numeric()
   return(out)
 }
+
+#' Calculate summary statistics for Great Lakes ice data
+#'
+#' This function calculates summary statistics of ice coverage for each lake in a given data frame.
+#'
+#' @param ice_tibble A tibble containing ice coverage data for each lake.
+#' @param homes_order A logical indicating whether the lakes should be ordered according
+#' to their location on the Great Lakes HOMES scale (TRUE) or in alphabetical order (FALSE).
+#'
+#' @return A tibble containing the summary statistics of ice coverage for each lake.
+
+calc_ice_summary_stats <- function(ice_tibble) {
+  
+  # calculate data.frame for max ice and yday by water year
+  df_max_ice_yday <- ice_tibble |> 
+    group_by(lake, wy) |> 
+    slice_max(perc_ice_cover, na_rm = TRUE, n = 1, with_ties = FALSE) |> 
+    arrange(lake, date) |> 
+    ungroup()
+  
+  # calculate lake period of record and max ice for reference
+  df_avg <- df_max_ice_yday |> 
+    group_by(lake) |> 
+    summarize(
+      n_yrs = max(wy) - min(wy),
+      avg_perc_ice = mean(perc_ice_cover)
+    )
+  
+  # grab 2023 ice cover
+  df_2023 <- df_max_ice_yday |> 
+    filter(wy == 2023) |> 
+    select(lake, perc_ice_2023 = perc_ice_cover)
+  
+  df_summary <- left_join(df_avg, df_2023) |> 
+    mutate(
+      abs_change = round(perc_ice_2023 - avg_perc_ice, 0),
+      rpd = round((perc_ice_2023 - avg_perc_ice) / avg_perc_ice * 100, 0)
+    )
+  
+  # re-org data
+  if(homes_order) {
+    df_summary <- df_summary |> 
+      arrange(match(lake , 
+                    c("Basin", "Huron", "Ontario", "Michigan", "Erie", "Superior")
+                    )
+              )
+  }
+  
+  return(df_summary)
+  
+  # workshopping these
+  
+  # # calculate years where max ice was a global max and global min
+  # df_min_ice_yr <- df_max_ice_yday |> 
+  #   group_by(lake) |> 
+  #   slice_min(perc_ice_cover, na_rm = TRUE) |> 
+  #   select(lake, year, perc_ice_cover) |> 
+  #   arrange(lake) |> 
+  #   ungroup()
+  # 
+  # df_max_ice_yr <- df_max_ice_yday |> 
+  #   group_by(lake) |> 
+  #   slice_max(perc_ice_cover, na_rm = TRUE) |> 
+  #   select(lake, year, perc_ice_cover) |> 
+  #   arrange(lake) |> 
+  #   ungroup()
+}
