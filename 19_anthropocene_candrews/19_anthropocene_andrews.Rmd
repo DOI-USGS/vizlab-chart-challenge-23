@@ -1,0 +1,299 @@
+---
+title: "Many Water Level of Lake Powell"
+author: "Caitlin M Andrews"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(geomtextpath)
+library(ggsci)
+library(ggthemes)
+library(paletteer)
+library(scales)
+
+library(DBI)
+library(odbc)
+library(lubridate)
+library(data.table)
+library(tidyr)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+```{r plotting and theme settings, echo = FALSE}
+
+# font -------------------------------------------------------------------------
+showtext_opts(dpi = 300)
+showtext_auto()
+font_add_google("Signika", "Signika")
+
+theme_set(theme_light(base_size = 16, base_family = "Signika"))
+
+geom.text.size = 4.2
+theme.size = (14/5) * geom.text.size
+update_geom_defaults("text", list(size = geom.text.size, family = 'Signika'))
+
+# color scales -----------------------------------------------------------------
+#paletteer_c("ggthemes::Sunset-Sunrise Diverging", 30)
+paletteer_d("colorBlindness::paletteMartin")
+show_col(pal_uchicago("default")(9))
+my_point_pal <- c("#800000","#FFA319FF","#490092FF",
+                    "#8A9045FF", "#155F83FF", "#767676FF")
+
+
+```
+
+
+```{r generate or read in data, echo=FALSE}
+referenceHeight <- 3520 # Recent Height 
+
+# bathymetry -------------------------------------------------------------------
+bath <- read.csv('DamEffectsDataViz/elevation_profile.csv')
+names(bath) <- c('distanceFromDam', 'elevation')
+bath$distanceFromDam <- bath$distanceFromDam * 3.28084
+bath$distanceFromDamMiles <- bath$distanceFromDam * 0.000189394
+bath$elevation <- bath$elevation * 3.28084
+bath$lakedepth <- referenceHeight - bath$elevation
+
+
+# dam things -------------------------------------------------------------------
+damHeights <- data.frame(name = c('Spillways', 'Penstock Depth', 'River Bypass'),
+                         description = c('Spillways\n3648 ft',
+                                         ' Intake for Power\n3470 ft',
+                                         'River Bypass\n3374 ft'),
+                         description2 = c(' Spillways', '', 'River Bypass'),
+                         description3 = c('', '   Intakes\nfor Power', ''),
+                         elevation = c(3648, 3470, 3370))
+
+damHeights$distance <- (referenceHeight - damHeights$elevation)
+damHeights$name <- factor(damHeights$name, levels = c('Spillways', 'Penstock Depth', 
+                                                      'River Bypass'))
+
+# lake elevations --------------------------------------------------------------
+lakeElevations <- data.frame(name = c('1983 Flood', 'Current (April 2023)', 
+                                      '2005 Drought'),
+                             elevationL = c(3708, 3520, 3555))
+lakeElevations$distanceL <- referenceHeight - lakeElevations$elevationL
+
+
+# key functional elevations   --------------------------------------------------
+funcElevations <- data.frame(name = c( 'Full Pool',  'Min Pool', 'Dead Pool'),
+                             x = c(70, 55, 38),
+                             description2 = c('Full Pool',
+                                              '', ''),
+                             description3 = c('',
+                                              'Minimum\nPower Pool',
+                                              ''),
+                             description4 = c('',
+                                              '',
+                                              'Dead Pool'),
+                             elevation = c(3700, 3490, 3365 ))
+funcElevations$distance <- referenceHeight - funcElevations$elevation
+
+
+```
+
+```{r plotting setup, echo=FALSE}
+totalLakeDepth <- max(bath$lakedepth)
+fullPoolDistance <- min(damHeights$distance)
+
+g1 <- 
+  ggplot() + 
+  scale_color_manual(values = my_point_pal) +
+  scale_fill_manual(values = my_point_pal) +
+  scale_x_continuous(expand = c(0,0),
+                     limits = c(0, max(bath$distanceFromDamMiles)),
+                     breaks = c(seq(0, 150, 50)))  +
+  scale_y_continuous(expand = c(0,0), 
+                     limits = c(3100, 3770),
+                     breaks = c(),
+                     labels =c(),
+                     # # Add a second axis a
+                     sec.axis = dup_axis(
+                       breaks = c( 3700, referenceHeight, 3490, 3365),
+                       labels = c(3700, referenceHeight, 3490, 3370)),
+                     name = 'Elevation above Sea Level (feet)') +
+  labs(x = 'Channel Miles from Glen Canyon Dam') +
+  theme(
+    legend.position = "none",
+    panel.grid = element_blank(),
+    axis.title=element_text(size = 14),
+    panel.border = element_blank()
+    #plot.background = element_rect(fill = "#fbdbc9")
+  ) 
+
+```
+
+```{r plot!}
+Fig1 <- g1 + 
+  
+  # ----- agua -----------------------------------------------------------------
+  geom_ribbon(data = bath,
+              aes(x= distanceFromDamMiles, 
+                  ymin = referenceHeight, ymax = elevation),
+              fill = '#b0efef') +
+  
+  # key functional elevations ----- points and lines from reference ------------
+  geom_hline(data = funcElevations,
+             aes(yintercept = elevation, color = name), 
+             size = .5, lty = 'dashed', alpha = .7) +
+  geom_segment(data = funcElevations,
+               aes(x = x, y = elevation, xend = x, yend = referenceHeight,
+               color = name), linewidth = 1.1) +
+  geom_point(data = funcElevations,
+             aes(x = x, y = elevation, fill = name),
+             size = 4, pch = 21) +
+  geom_text(data = funcElevations, 
+            aes(x = x, y = elevation, label = description3), 
+            vjust = 1.5) + 
+  geom_text(data = funcElevations, 
+            aes(x = x, y = elevation, label = description2), 
+            vjust = 1.5, hjust = -.1) +
+  geom_text(data = funcElevations, 
+            aes(x = x, y = elevation, label = description4), 
+            vjust = 1.8) +
+  
+  # lake elevations ------------------ solid blue horizontal lines -------------
+  geom_texthline(data = lakeElevations,
+                 aes(yintercept = elevationL, label = name,
+                                          linewidth = name),
+               color = '#07659b', hjust = .67, fontface = 'bold', size = geom.text.size ) +
+  scale_linewidth_manual(values = c(.5,.5, 2)) +
+  
+  
+  # dam points ---------------- ▶ ----------------------------------------------
+  geom_text(data = damHeights,
+            aes(x = 0, y = elevation, color = name),
+            label = " ▶",  size = 12, family = "wqy-microhei")  +
+  geom_text(data = damHeights,
+            aes(x = 0, y = elevation, color = name, label = description3),
+            hjust = -.2, vjust = .5, fontface = 'bold')  +
+  geom_text(data = damHeights,
+            aes(x = 0, y = elevation, color = name, label = description2),
+            hjust = -.2, vjust = 0.3, fontface = 'bold')  +
+  
+ 
+  # bathymetry  ----------------------------------------------------------------
+  geom_ribbon(data = bath,
+              aes(x= distanceFromDamMiles, ymin = 3100, 
+                  ymax = elevation),
+              fill = '#a1523d')  +
+  geom_line(data = bath,
+          aes(x = distanceFromDamMiles, y = elevation),
+           size = 2.5, color = '#eab676') 
+
+```
+
+```{r add text to plot!}
+# Add Text!
+
+# This is so ugly!!
+# text -------------------------------------------------------------------------
+txt1 <- "We are currently:"
+
+txt2 <- paste0("• ", 180, " feet and ", 24, " million acre feet (maf) below\n                   , where the reservoir is full.")
+txt22 <- "full pool"
+
+txt3 <- paste0("• ", 30, " feet and ", 4, " maf from                                                ,\nwhere no more hydroelectricity can be generated.") 
+txt32 <- paste0("minimum power pool") 
+
+txt4 <-  paste0("• ", 150, " feet and ", 5.6, " maf above                       , where\nno more water can pass downstream.")
+txt42 <-  "dead pool"
+
+
+Fig1.2 <- Fig1 + annotate("text", x = 95, y = 3310, label = txt1, color = 'white', hjust = 0, 
+              size = geom.text.size + .75) +
+  
+  annotate("text", x = 90, y = 3260, label = txt2, color = 'white',  hjust = 0) +
+  annotate("text", x = 90, y = 3248, label = txt22, color = '#FFA319FF',  
+           fontface = 'bold', hjust = 0, vjust = .4, size = geom.text.size + .5) +
+  
+  annotate("text", x = 90, y = 3200, label = txt3, color = 'white',  hjust = 0) +
+  annotate("text", x = 129.5, y = 3200, label = txt32, color = '#490092FF',  
+           fontface = 'bold', hjust = 0, vjust = -.5, size = geom.text.size + .5) +
+  
+  annotate("text", x = 90, y = 3140, label = txt4, color = 'white',  hjust = 0) +
+  annotate("text", x = 136, y = 3140, label = txt42, color = '#800000', 
+           fontface = 'bold', hjust = 0, vjust = -.45, size = geom.text.size + .5) 
+
+```
+
+```{r cowplot}
+
+background_color = "#fbdbc9"
+  font_color = "#0A1927"
+    
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+  
+# Load in USGS logo
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
+
+# Dam illustration
+gcd <- magick::image_read('gcd3.png')
+gcd2 <- grid::rasterGrob(gcd)
+```
+
+```{r cowplot2, fig.width = 16, fig.height = 9}
+
+# ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+#        xlim = c(0,1)) +
+#   # a background
+#   draw_grob(canvas,
+#             x = 0, y = 1,
+#             height = 9, width = 16,
+#             hjust = 0, vjust = 1) +
+  # # the main plot
+  # draw_plot(Fig1.2,
+  #           x = 0.4, y = 0.1,
+  #           height = .9, width = .65) +
+  # # the illustration of the dam
+  #   draw_plot(gcd2,
+  #           x = -.017, y = -.09,
+  #           height = 1.15, width = .5) +
+  # # explainer text
+  # draw_label("Explainer text",
+  #            fontfamily = 'Signika',
+  #            x = 0.96,   
+  #            y = 0.05,
+  #            size = 14,
+  #            hjust = 1,
+  #            vjust = 0,
+  #            color = font_color)+
+  # # Title
+  # draw_label("Title",
+  #            x = 0.04,
+  #            y = 0.285,
+  #            hjust = 0,
+  #            vjust = 1,
+  #            lineheight = 0.75,
+  #            fontfamily = font_legend,
+  #            color = font_color,
+  #            size = 55) +
+  # Add logo
+#   draw_image(usgs_logo, 
+#              x = 0.04,
+#              y = 0.05,
+#              width = 0.1, 
+#              hjust = 0, vjust = 0, 
+#              halign = 0, valign = 0)
+
+# # Save the final image in Twitter's 16 by 9 format
+#   ggsave(filename = "20230419_anthropocen_andrews.png", 
+#          width = 16, height = 9, dpi = 300)
+
+```
