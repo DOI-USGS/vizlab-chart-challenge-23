@@ -33,6 +33,10 @@ Define libraries here.
 library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
 
+library(sbtools)
+library(lubridate)
+library(gganimate)
+
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
 library(sysfonts) # for text editing
@@ -50,9 +54,35 @@ This is also a good place to load any data from other built-in packages such as 
 
 
 ```{r load}
-# Add your code here
+# Load drought properties data from ScienceBase
+#sbtools::authenticate_sb()
 
+file_in_path_discrete <- "in/EcoDrought Discrete_VA.csv"
+if(!file.exists(file_in_path_discrete)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "624decacd34e21f82766c9da",
+                              names = "EcoDrought Discrete_VA.csv",
+                              destinations =  "in/EcoDrought Discrete_VA.csv",
+                              overwrite_file = F)
+}
+discrete <- readr::read_csv(file_in_path_discrete)
 
+file_in_path_continuous <- "in/EcoDrought Continuous_VA.csv"
+if(!file.exists(file_in_path_continuous)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "624decacd34e21f82766c9da",
+                              names = "EcoDrought Continuous_VA.csv",
+                              destinations =  "in/EcoDrought Continuous_VA.csv",
+                              overwrite_file = F)
+}
+continuous <- readr::read_csv(file_in_path_continuous)
+
+metadata_in_path <- "in/VA_site_info.csv"
+if(!file.exists(metadata_in_path)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "624decacd34e21f82766c9da",
+                              names = "VA_site_info.csv",
+                              destinations =  "in/VA_site_info.csv",
+                              overwrite_file = F)
+}
+metadata <- readr::read_csv(metadata_in_path)
 
 ```
 
@@ -62,7 +92,19 @@ This next section is for doing any pre-processing steps, data joins, etc, to get
 
 
 ```{r processing}
-# Add your processing code here
+# Isolate example of hysteresis
+hyst_example <- continuous |> 
+  filter(year(DateTime_EST) == 2019,
+         yday(DateTime_EST) == 91,
+         !is.na(AirTemperature_HOBO_degF),
+         !is.na(WaterTemperature_HOBO_DegF)) |>
+  rename(dt = DateTime_EST,
+         waterT = WaterTemperature_HOBO_DegF,
+         airT = AirTemperature_HOBO_degF) |>
+  mutate(time = hms::as_hms(dt),
+         am_logic = am(time)) |>
+  arrange(time) |>
+  left_join(metadata, by = "Site_ID")
 
 
 ```
@@ -75,16 +117,20 @@ This chunk is where the main ggplot grob definition and set-up occurs. You may h
 
 ```{r plotting}
 # Load some custom fonts and set some custom settings
-font_legend <- "Pirata One"
-sysfonts::font_add_google("Pirata One")
+font_legend <- "Share Tech Mono"  #"Special Elite"
+sysfonts::font_add_google("Share Tech Mono")
 supporting_font <- "Source Sans Pro"
 sysfonts::font_add_google("Source Sans Pro")
 showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
 showtext::showtext_auto(enable = TRUE)
 
 # Define colors
-background_color = "#0A1927"
-font_color = "#ffffff"
+background_color = "#dddfd4"
+font_color = "#173e43"
+pop_color = "#3fb0ac"
+highlight_color = "#fae596"
+point_size = 5
+inset_point_size = 2
 
 # The background canvas for your viz
 canvas <- grid::rectGrob(
@@ -94,13 +140,61 @@ canvas <- grid::rectGrob(
 )
 
 # Load in USGS logo (also a black logo available)
-usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+usgs_logo <- magick::image_read("../usgs_logo_black.png") |>
+  magick::image_colorize(100, font_color)
 
 # Main plot
-(main_plot <- ggplot()
+(main_plot <- ggplot(hyst_example, aes(x = airT, y = waterT)) +
+    geom_point(color = pop_color, size = point_size)+
+    geom_point(color = "white", size = inset_point_size, 
+               data = hyst_example |> filter(am_logic))+
+    theme_minimal()+
+    ylab("Water Temperature (F)")+
+    xlab("Air Temperature (F)")+
+    ylim(c(41, 49))+
+    xlim(c(22, 48))+
+    geom_segment(aes(x = 27, xend = 27, 
+                     y = 42.1, yend = 43.3), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = font_color)+
+    geom_segment(aes(x = 41, xend = 41, 
+                     y = 48, yend = 46), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = font_color)+
+    geom_point(data = data.frame(airT = c(25, 25), waterT = c(46.5, 47)),
+               color = pop_color, size = point_size)+
+    geom_point(data = data.frame(airT = 25, waterT = 47),
+               color = "white", size = inset_point_size)+
+    geom_text(label = "a.m.", y = 47, x = 25, hjust = -0.4,
+               color = pop_color)+
+    geom_text(label = "p.m.", y = 46.5, x = 25, hjust = -0.4,
+               color = pop_color)+
+    theme(panel.background = element_blank(),
+          axis.text = element_text(size = 18, color = font_color),
+          axis.title = element_text(size = 18, color = font_color))
  )
+```
 
-
+```{r animation}
+(animated_plot <- ggplot(hyst_example, aes(x = airT, y = waterT)) +
+    geom_point(color = pop_color, size = point_size)+
+    theme_minimal()+
+    ylim(c(41, 49))+
+    xlim(c(22, 48))+
+    transition_states(time)+
+    annotation_raster(usgs_logo, 
+                      ymin = 41, ymax = 41.9, xmin = 40, xmax = 48) +
+    shadow_mark(alpha = 0.5, size = inset_point_size, color = pop_color)+
+    labs(title = "April 4, 2019 {closest_state}")+
+    ylab("Water Temperature (F)")+
+    xlab("Air Temperature (F)")+
+    theme(plot.background = element_rect(fill = background_color),
+          axis.text = element_text(size = 18, color = font_color),
+          axis.title = element_text(size = 18, color = font_color),
+          plot.title = element_text(size = 24, family = font_legend))
+ )
+animation_to_save <- animated_plot  + exit_shrink()
+anim_save("out/20230420_correlation_aaarcher.gif", animation = animation_to_save)
 
 ```
 
@@ -111,43 +205,63 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 
 **Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
-```{r cowplot, fig.width = 16, fig.height = 9}
+```{r cowplot, fig.width = 9, fig.height = 9}
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
   # a background
   draw_grob(canvas,
             x = 0, y = 1,
-            height = 9, width = 16,
+            height = 9, width = 9,
             hjust = 0, vjust = 1) +
   # the main plot
   draw_plot(main_plot,
-            x = 0.01,
-            y = 0.01,
-            height = 1) +
+            x = 0.034,
+            y = 0.08,
+            height = 0.77,
+            width = 0.85) +
   # explainer text
-  draw_label("Explainer text",
+  draw_label("April 19, 2019 data from Paine Run, Shenandoah National Park.\nChart by Althea A. Archer. Data from https://doi.org/10.5066/P97ULKSM",
              fontfamily = supporting_font,
              x = 0.96,   
-             y = 0.05,
+             y = 0.04,
              size = 14,
              hjust = 1,
              vjust = 0,
-             color = font_color)+
+             color = pop_color)+
   # Title
-  draw_label("Title",
+  draw_label("Stream Temperature Hysteresis",
              x = 0.04,
-             y = 0.285,
+             y = 0.95,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
              fontfamily = font_legend,
              color = font_color,
-             size = 55) +
+             size = 35) +
+  # Title
+  draw_label("Hysteresis: a phenomenon in which the value of\n  a physical property lags behind changes in\n  the effect causing it.",
+             x = 0.04,
+             y = 0.9,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 20) +
+  draw_label("Stream temperature takes\nlonger to warm during the day\nand longer to cool at night\nthan air temperature.",
+             x = 0.45,
+             y = 0.3,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 20)+
   # Add logo
   draw_image(usgs_logo, 
              x = 0.04,
-             y = 0.05,
-             width = 0.1, 
+             y = 0.04,
+             width = 0.12, 
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)
 
@@ -155,8 +269,8 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
 # e.g. `20230101_part-to-whole-cnell.png`
-ggsave(filename = "out/20230000_prompt_name.png", 
-       width = 16, height = 9, dpi = 300)
+ggsave(filename = "out/20230420_correlation_aaarcher.png", 
+       width = 9, height = 9, dpi = 300)
 ```
 
 ## Supporting information
