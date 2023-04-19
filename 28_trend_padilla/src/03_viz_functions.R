@@ -105,7 +105,7 @@ annual_max_ice_plot <- function(ice_tibble, homes_factor = TRUE) {
   out <- 
     ggplot(data = df_max_ice_yday, aes(x = year, y = perc_ice_cover)) +
     geom_line(color = "gray60") +
-    geom_point(fill = "gray15") +
+    geom_point(fill = "gray15", size = 0.75) +
     geom_smooth(method = lm, se = FALSE) +
     geom_hline(aes(yintercept = perc_ice_avg), color = "gray15", linetype = "dashed") +
     labs(title = "", x = "", y = "") +
