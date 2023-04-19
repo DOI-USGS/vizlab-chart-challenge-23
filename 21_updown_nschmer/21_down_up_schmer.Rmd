@@ -4,7 +4,7 @@ author: "Natalie Schmer"
 date: "2023-04-13"
 output: html_document
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ## Instructions for using this template
@@ -46,8 +46,9 @@ library(here)
 library(lubridate)
 library(tidylog)
 library(gghighlight)
-#install.packages("geofacet")
 library(geofacet)
+library(scico)
+
 ```
 
 
@@ -192,6 +193,13 @@ temp_data <- renameNWISColumns(temp_data)
 saveRDS(temp_data, file = here::here("21_updown_nschmer/in/temp_data.RDS"))
 names(temp_data)
 
+
+# test <- readNWISsite("01467200")
+# test2 <- whatNWISdata(siteNumber = "01467200", service = "dv", parameterCd = "00010")
+# 
+# temp_data_test <- readNWISdv("01467200", "00010", "", "", "00003")
+
+
 ```
 
 Pull and format data 
@@ -213,18 +221,19 @@ temp_data_avg <- temp_data %>%
   group_by(DOY, site_no) %>% 
   mutate(mean = mean(temp_value, na.rm =T)) %>% 
   ungroup() %>% 
-  select(DOY, site_no, mean, temp_value) %>% 
+  group_by(site_no) %>% 
+  mutate(ts_start = min(Date),
+         ts_end = max(Date),
+         ts_years = (as.numeric(difftime(ts_end, ts_start, units = "days")))/365,
+         Years = round(ts_years, 0)) %>% 
+  select(DOY, site_no, ts_start, ts_end, ts_years, Years, mean, temp_value) %>% 
   distinct() %>% 
   left_join(., final_list) %>% 
-  mutate(start_yr = year(begin_date),
-         end_yr = year(end_date),
-         Years = end_yr - start_yr
          # ,
          # site_type = case_when(site_tp_cd == "ST" ~ "Stream",
          #                       site_tp_cd == "GW" ~ "Groundwater",
          #                       site_tp_cd == "LK" ~ "Lake",
          #                       site_tp_cd == "ES" ~ "Estuary")
-         ) %>% 
   distinct() %>% 
 #%>% 
  #  mutate(label = paste0(state, ", ", start_yr, ", ",site_type),
@@ -243,8 +252,9 @@ temp_data_avg <- temp_data %>%
   mutate(state_avg = mean(temp_value, na.rm =T))
  #   mutate(Temp_Diff = abs(max(mean) - min(mean)))
 
-temp_data_avg <- temp_data_avg %>% 
-  mutate(Region = factor(Region, levels = c("Northwest", "North Central", "Midwest", "Northeast", "Hawaii", "Southwest", "South Central", "Southeast"))) 
+# temp_data_avg <- temp_data_avg %>% 
+#   mutate(Region = factor(Region, levels = c("Northwest", "North Central", "Midwest", "Northeast", "Hawaii", "Southwest", "South Central", "Southeast"))) 
+
 
 saveRDS(temp_data_avg, file = here::here("21_updown_nschmer/in/temp_data_avg.RDS"))
 ```
@@ -259,16 +269,16 @@ This chunk is where the main ggplot grob definition and set-up occurs. You may h
 
 ```{r plotting}
 # Load some custom fonts and set some custom settings
-font_legend <- "Pirata One"
-sysfonts::font_add_google("Pirata One")
+font_legend <- "Open Sans"
+sysfonts::font_add_google("Open Sans")
 supporting_font <- "Source Sans Pro"
 sysfonts::font_add_google("Source Sans Pro")
 showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
 showtext::showtext_auto(enable = TRUE)
 
 # Define colors
-background_color = "#0A1927"
-font_color = "#ffffff"
+font_color = "#0A1927"
+background_color = "#ffffff"
 
 # The background canvas for your viz
 canvas <- grid::rectGrob(
@@ -278,172 +288,130 @@ canvas <- grid::rectGrob(
 )
 
 # Load in USGS logo (also a black logo available)
-usgs_logo <- magick::image_read(here::here("usgs_logo_white.png")) 
+usgs_logo <- magick::image_read(here::here("usgs_logo_black.png")) 
 
 # Main plot
 # Remove DC from grid
 my_grid <- us_state_grid1 %>% 
   filter(code != "DC")
 
-(main_plot <-  ggplot(temp_data_avg, aes(x = DOY, y = mean, group = site_no)) +
-  geom_line()+
-    geom_line(aes(x = DOY, y = state_avg, group = site_no, color = state_avg) )+
-  facet_geo(~ state, grid = my_grid)+
-  ggthemes::theme_few()+
-   labs(y = "Mean Temperature for DOY",
-        color= "Temperature (C)"))
+#extract axis from this plot:
+# (template_plot <- ggplot(temp_data_avg, 
+#                       aes(x = DOY, y = mean, group = site_no, color = Years)) +
+#     geom_line(linewidth =1, alpha = 0.7)+
+#     # geom_line(aes(x = DOY, y = state_avg, group = site_no), color = "black", linetype = "dashed", show_guide = TRUE)+
+#     ggthemes::theme_few()+
+#     scale_color_gradient(low = "#d9d0ff", high = "#08008c")+
+#     #scale_colour_scico(palette = "devon")+
+#     scale_y_continuous(breaks = c(0, 25, 50))+
+#     theme(strip.background = element_blank(),
+#           strip.text = element_text(size = 16),
+#           strip.placement = "inside",
+#           strip.background.x = element_blank(),
+#           # axis.line = element_blank(),
+#           # axis.ticks = element_blank(),
+#           axis.text = element_text(size = 14),
+#           axis.text.x = element_text(angle = 45, vjust = 0.3, hjust=0.5),
+#           axis.title = element_text(size = 16),
+#           axis.title.x = element_text(vjust = -0.06),
+#           axis.ticks.x = element_blank(),
+#           axis.ticks.y = element_blank(),
+#           panel.border = element_blank(),
+#           #plot.title = element_text(size = 14, face = "bold"),
+#           #plot.background = element_blank(),
+#           panel.background = element_blank(),
+#           panel.spacing.x = unit(-2, "pt"),
+#           panel.spacing.y = unit(-5, "pt"),
+#           plot.margin = margin(0, 0, 0, 0, "pt"),
+#           legend.box.background = element_rect(fill = background_color, color = NA),
+#           legend.position = c(0.95, 0.25))+
+#     facet_geo(~ state, grid = my_grid)+
+#     labs(y = expression("Mean Temperature (°C) for DOY"),
+#         color= "Years of Record"))
+# 
+# x_axis <- get_x_axis(template_plot)
+# y_axis <- get_y_axis(template_plot)
+# legend <- get_legend(template_plot)
+
+
+(main_plot <-  ggplot(temp_data_avg, 
+                      aes(x = DOY, y = mean, group = site_no, color = Years)) +
+    geom_line(linewidth =1, alpha = 0.7)+
+    # geom_line(aes(x = DOY, y = state_avg, group = site_no), color = "black", linetype = "dashed", show_guide = TRUE)+
+    scale_color_gradient(low = "#d9d0ff", high = "#08008c")+
+    scale_y_continuous(breaks = c(0, 25, 50))+
+    scale_x_continuous(breaks = c(1, 183, 365))+
+    facet_geo(~ state, grid = my_grid)+
+    labs(y = expression("Mean Temperature (°C) for DOY"),
+        color= "Years of Record")+
+    ggthemes::theme_few()+    
+    theme(strip.background = element_blank(),
+          strip.text = element_text(size = 16),
+          strip.placement = "inside",
+          strip.background.x = element_blank(),
+          # axis.line = element_blank(),
+          # axis.ticks = element_blank(),
+          axis.text = element_blank(),
+          axis.text.x = element_blank(),
+          axis.title = element_text(size =14),
+          #axis.title.x = element_blank(),
+          panel.border = element_blank(),
+          #plot.title = element_text(size = 14, face = "bold"),
+          #plot.background = element_blank(),
+          panel.background = element_blank(),
+          panel.spacing.x = unit(-2, "pt"),
+          panel.spacing.y = unit(-5, "pt"),
+          plot.margin = margin(0, 0, 0, 0, "pt"),
+          legend.box.background = element_rect(fill = background_color, color = NA),
+          legend.position = c(0.95, 0.25),
+          legend.text = element_text(size = 12),
+          legend.title = element_text(size = 14))+
+          
+    labs(y = expression("Mean Temperature (°C) for DOY"),
+        color= "Years of Record"))
+
+
+
+#########
+
+
+
+# (main_plot <-  ggplot(temp_data_avg, 
+#                       aes(x = DOY, y = mean, group = site_no, color = Years)) +
+#     geom_line(linewidth =1, alpha = 0.7)+
+#     # geom_line(aes(x = DOY, y = state_avg, group = site_no), color = "black", linetype = "dashed", show_guide = TRUE)+
+#     ggthemes::theme_few()+
+#     #scale_color_gradient(low = "blue", high = "red")+
+#     scale_colour_scico(palette = "devon")+
+#     scale_y_continuous(breaks = c(0, 25, 50))+
+#     theme(strip.background = element_blank(),
+#           strip.text = element_text(size = 16),
+#           strip.placement = "inside",
+#           strip.background.x = element_blank(),
+#           # axis.line = element_blank(),
+#           # axis.ticks = element_blank(),
+#           axis.text = element_text(size = 14),
+#           axis.text.x = element_text(angle = 45, vjust = 0.3, hjust=0.5),
+#           axis.title = element_text(size = 16),
+#           axis.title.x = element_text(vjust = -0.06),
+#           panel.border = element_blank(),
+#           #plot.title = element_text(size = 14, face = "bold"),
+#           #plot.background = element_blank(),
+#           panel.background = element_blank(),
+#           panel.spacing.x = unit(-2, "pt"),
+#           panel.spacing.y = unit(-5, "pt"),
+#           plot.margin = margin(0, 0, 0, 0, "pt"),
+#           legend.box.background = element_rect(fill = background_color, color = NA),
+#           legend.position = c(0.95, 0.25))+
+#     #facet_geo(~ state, grid = my_grid)+
+#     labs(y = expression("Mean Temperature (°C) for DOY"),
+#         color= "Years of Record"))
 
 
 # ggplot(temp_data_avg %>% filter(state == "MS"), aes(x = DOY, y = mean, group = site_no)) +
 #   geom_line()
 
 
-
-```
-
-## ALL
-```{r, eval=FALSE}
-ggplot(temp_data_avg, aes(x = DOY, y = mean, group = state, color = Years)) +
-  geom_line()+
-  ggthemes::theme_few()+
-  #theme_void()+
-  #geom_dl(aes(label= label2), method="last.points")+
-  #geom_dl(aes(label = state_abrv), method = "first.points")+
-  labs(y= "Mean Water Temperature (C)")
-```
-
-
-## Region
-```{r, eval=FALSE}
-(temp_lines_static_reg <- ggplot(temp_data_avg, aes(x = DOY, y = mean, group = state, color = Years)) +
-    geom_line()+
-    ggthemes::theme_few()+
-    #theme_void()+
-    geom_dl(aes(label= label2), method="last.points")+
-    geom_dl(aes(label = state), method = "first.points")+
-    labs(y= "Mean Water Temperature (C)")+
-    facet_wrap(~Region, ncol = 4))
-```
-
-## NOT streams
-How to retain facets? 
-```{r, eval=FALSE}
-ggplot(temp_data_avg, aes(x = DOY, y = mean, group = state, color = Years)) +
-    geom_line()+
-    ggthemes::theme_few()+
-    #theme_void()+
-    #geom_dl(aes(label= label2), method="last.points")+
-    #geom_dl(aes(label = state), method = "first.points")+
-    gghighlight(site_type != "Stream")+
-    labs(y= "Mean Water Temperature (C)")+
-    facet_wrap(~Region, ncol = 4)
-```
-
-# Show temp diff
-```{r, eval=FALSE}
-
-ggplot(temp_data_avg, aes(x = DOY, y = mean, group = state, color = Temp_Diff)) +
-  geom_line()+
-  ggthemes::theme_few()+
-  #theme_void()+
-  #geom_dl(aes(label= label2), method="last.points")+
-  #geom_dl(aes(label = state_abrv), method = "first.points")+
-  labs(y= "Mean Water Temperature (C)")+
-  scale_color_gradient(low = "blue", high = "red")+
-  facet_wrap(~Region, ncol = 4)
-
-
-
-# check temp dist
-hist(unique(temp_data_avg$Temp_Diff))
-
-temp_low_change <- temp_data_avg %>% 
-  filter(Temp_Diff < 11)
-
-ggplot(temp_data_avg, aes(x = DOY, y = mean, group = state, color = Temp_Diff)) +
-  geom_line()+
-  ggthemes::theme_few()+
-  #theme_void()+
-  #geom_dl(aes(label= label2), method="last.points")+
-  #geom_dl(aes(label = state_abrv), method = "first.points")+
-  labs(y= "Mean Water Temperature (C)")+
-  scale_color_gradient(low = "blue", high = "red")+
-  facet_wrap(~Region, ncol = 4)+
-  gghighlight(Temp_Diff < 11, keep_scales = T)
-
-```
-
-# "Special" Sites
-```{r, eval=FALSE}
-
-ggplot(temp_data_avg, aes(x = DOY, y = mean, group = state, color = Temp_Diff)) +
-  geom_line()+
-  ggthemes::theme_few()+
-  #theme_void()+
-  #geom_dl(aes(label= label2), method="last.points")+
-  #geom_dl(aes(label = state_abrv), method = "first.points")+
-  labs(y= "Mean Water Temperature (C)")+
-  scale_color_gradient(low = "blue", high = "red")+
-  facet_wrap(~Region, ncol = 4)+
-  gghighlight(state %in% c("HI", "AZ", "NM"), keep_scales = T)
-
-```
-
-
-# Geofaceting (also main)
-```{r, eval=F}
-ggplot(temp_data_avg, aes(x = DOY, y = mean, group = state)) +
-  geom_line()+
-  #coord_flip() +
-  facet_geo(~ state)+
-  ggthemes::theme_few()
-
-```
-
-# Site checking for TX and VT
-```{r, eval=FALSE}
-# tx <- temp_data_avg %>% 
-#   filter(state == "TX")
-# 
-# tx_cont <- temp_data %>% 
-#   filter(site_no == "08086400")
-
-  temps_sites <- whatNWISdata(stateCd = "TX", service = "dv", parameterCd = "00010", statCd= "00003")
-
-  temps_sites <- temps_sites %>% 
-    filter(count_nu > 364)
-
-  #some sites are discontinued, pull to see and then delete those sites 
-  site_test <- c(temps_sites$site_no)
-  
-  disc.test <- readNWISdv(site_test, "00010", "2022-04-12", "2023-04-12")
-  
-  disc.test <- renameNWISColumns(disc.test)
-  
-  #remove sites that have any discontinued
-  discontinued <- disc.test %>% 
-    filter(Wtemp_cd == "P Dis")
-  
-  # remove those stations from the station list and then figure out which site had the max count vs earliest start 
-  
-  temps_sites <- temps_sites %>% 
-    filter(!site_no %in% discontinued$site_no) 
-
-  max_count <- temps_sites %>% 
-    filter(end_date == max(end_date)) %>% 
-    filter(count_nu == max(count_nu, na.rm =T))
-  
-  earliest_start <- temps_sites %>% 
-    filter(end_date == max(end_date)) %>%
-    filter(begin_date == min(begin_date))
-  
-  site_compare <- rbind(max_count, earliest_start)
-  
-  site_compare <- site_compare %>% 
-    mutate(state = i) %>% 
-    relocate(state, everything())
-  
-  sites_comparison <- bind_rows(sites_comparison, site_compare)
 
 ```
 
@@ -465,32 +433,96 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             hjust = 0, vjust = 1) +
   # the main plot
   draw_plot(main_plot,
-            x = 0.01,
-            y = 0.01,
-            height = 1) +
-  # explainer text
-  draw_label("Stream temperatures around the US using the 5 longest daily temperature records per state where possible.",
+            x = 0.03,
+            y = 0.03,
+            height = 0.8,
+            width = 0.9) +
+  #add axis and legend
+  # draw_plot(x_axis,
+  #           x = 0.04,
+  #           y = 0.01,
+  #           height = 0.04,
+  #           width = 0.07)+
+  # draw_plot(y_axis,
+  #           x = 0.1,
+  #           y = 0.1,
+  #           height = 0.05,
+  #           width = 0.05)+
+  # draw_plot(legend,
+  #           x= 0.9,
+  #           y = 0.4,
+  #           height = 0.15)+
+  draw_label("Day 1", 
              fontfamily = supporting_font,
-             x = 0.96,   
-             y = 0.05,
-             size = 14,
+             x = 0.07,   
+             y = 0.018,
+             angle = -25,
+             vjust = 0.5,
              hjust = 1,
+             size = 14,
+             color = font_color)+
+  draw_label("Day 365", 
+             fontfamily = supporting_font,
+             x = 0.15,   
+             y = 0.01,
+             angle = -25,
+             vjust = 0.5,
+             hjust = 1,
+             size = 14,
+             color = font_color)+
+  draw_label("0", 
+             fontfamily = supporting_font,
+             x = 0.035,   
+             y = 0.051,
+             size = 14,
+             hjust = 0,
+             vjust = 0,
+             angle = 0,
+             color = font_color)+
+    draw_label("25", 
+             fontfamily = supporting_font,
+             x = 0.03,   
+             y = 0.085,
+             size = 14,
+             hjust = 0,
+             vjust = 0,
+             angle = 0,
+             color = font_color)+ 
+  draw_label("50", 
+             fontfamily = supporting_font,
+             x = 0.03,   
+             y = 0.12,
+             size = 14,
+             hjust = 0,
+             vjust = 0,
+             angle = 0,
+             color = font_color)+
+
+
+
+  #explainer text
+  draw_label("Stream temperatures for each U.S. state using the 5 longest daily temperature records where possible.\nTemperatures are averaged by DOY (Day of Year) over all available years.\nThe oldest site started daily value records in October 1964! (USGS-01467200: Delaware River at Penn's Landing, Philadelphia, PA)",
+             fontfamily = supporting_font,
+             x = 0.05,   
+             y = 0.85,
+             size = 16,
+             hjust = 0,
              vjust = 0,
              color = font_color)+
   # Title
-  draw_label("Continental Stream Temperatures",
+  draw_label("Long-term Daily Stream Temperatures",
              x = 0.04,
-             y = 0.285,
+             y = 0.98,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
-             fontfamily = font_legend,
+             fontfamily = supporting_font,
              color = font_color,
-             size = 55) +
+             size = 40) +
   # Add logo
   draw_image(usgs_logo, 
-             x = 0.04,
-             y = 0.05,
+             x = 0.89,
+             y = 0.92,
              width = 0.1, 
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)
@@ -499,7 +531,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
 # e.g. `20230101_part-to-whole-cnell.png`
-ggsave(filename = "21_updown_nschmer/out/20230421_downupward_nschmer.png", 
+ggsave(filename = here::here("21_updown_nschmer/out/20230421_downupward_nschmer.png"), 
        width = 16, height = 9, dpi = 300)
 ```
 
@@ -507,9 +539,9 @@ ggsave(filename = "21_updown_nschmer/out/20230421_downupward_nschmer.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. The USGS has a long data collection history, including water temperature 
+1. Long-term monitoring is essential in managing our water resources to identify changes over time and space. Water temperature is an important variable to measure as it has major influence on biological and chemical activity in stream ecosystems. 
 
 ### Data source(s)
 
-Data sources here.
+NWIS
 
