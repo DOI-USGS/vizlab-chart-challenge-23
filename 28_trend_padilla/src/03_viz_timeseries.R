@@ -1,4 +1,14 @@
-annual_max_ice_plot <- function(ice_tibble, homes_factor = TRUE) {
+#' Plot annual maximum ice cover time series for the Great Lakes
+#'
+#' This function takes a tibble of ice cover data for the Great Lakes and calculates the
+#' annual maximum ice cover and the day of year when it occurred for each water year.
+#' It then creates a time series plot for each lake, showing the annual maximum ice cover for each year on the y-axis and the water year on the x-axis.
+#'
+#' @param ice_tibble A tibble containing ice cover data for the Great Lakes
+#' @param homes_order A logical indicating whether the lakes should be ordered according
+#' to their location on the Great Lakes HOMES scale (TRUE) or in alphabetical order (FALSE). Default is TRUE.
+#' 
+annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
   
   # calculate data.frame for max ice and yday by water year
   df_max_ice_yday <- ice_tibble |> 
@@ -12,28 +22,47 @@ annual_max_ice_plot <- function(ice_tibble, homes_factor = TRUE) {
     summarize(yday_avg = mean(wy_yday),
               perc_ice_avg = mean(perc_ice_cover))
   
-  df_max_ice_yday <- left_join(df_max_ice_yday, df_avg)
+  df_max_ice_yday <- left_join(df_max_ice_yday, df_avg) |> group_by(lake)
   
-  if(homes_factor) {
-    df_max_ice_yday$lake <- 
-      factor(df_max_ice_yday$lake,
-             levels = c("Basin", "Huron", "Ontario",
-                        "Michigan", "Erie", "Superior"))
+  
+  ls_ice_ts <- df_max_ice_yday |> 
+    group_map(~ create_ice_timeseries(.x)) |> 
+    setNames(attributes(df_max_ice_yday)$groups[[1]])
+  
+  # add factor levels
+  if(homes_order) {
+    ls_ice_ts <- ls_ice_ts[c("Basin", "Huron", "Ontario",
+                         "Michigan", "Erie", "Superior")]
   }
   
-  # maximum perc_ice by year
-  out <- 
-    ggplot(data = df_max_ice_yday, aes(x = year, y = perc_ice_cover)) +
+  return(ls_ice_ts)
+}
+
+#' Create time series plot for ice cover data
+#'
+#' This function creates a time series plot of ice cover data for a given lake.
+#' The plot shows the percent ice cover on the y-axis and the year on the x-axis.
+#' The plot includes a linear regression line, a dashed line indicating the lake's
+#' average percent ice cover, and points representing individual observations.
+#'
+#' @param tbl A tibble containing ice cover data for a single lake.
+#'
+#' @return A time series plot of ice cover data for a single lake. 
+#' 
+create_ice_timeseries <- function(tbl) {
+  
+  ts <- 
+    ggplot(data = tbl, aes(x = year, y = perc_ice_cover)) +
     geom_line(color = "gray60") +
     geom_point(fill = "gray15", size = 0.75) +
-    geom_smooth(method = lm, se = FALSE) +
+    geom_smooth(method = lm, se = FALSE, linewidth = 0.25) +
     geom_hline(aes(yintercept = perc_ice_avg), color = "gray15", linetype = "dashed") +
     labs(title = "", x = "", y = "") +
     scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
-    facet_grid(vars(lake), switch = "y") +
+    scale_y_continuous(limits = c(0,100)) +
     theme_minimal() +
     theme(strip.text = element_blank()) +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
   
-  return(out)
+  return(ts)
 }

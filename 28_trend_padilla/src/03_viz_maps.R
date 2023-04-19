@@ -1,4 +1,14 @@
-
+#' Create a simple spatial object for lakes
+#'
+#' This function creates a simple spatial object representing the outline of lakes
+#' from ESRI shapefiles. The resulting object can be used for visualizing the lakes
+#' or as a spatial join target.
+#'
+#' @param esri_files A character vector of file paths pointing to ESRI shapefiles
+#' representing the lakes. Only files ending in ".shp" will be processed.
+#'
+#' @returns A simple spatial object representing the outline of the lakes.
+#' 
 make_simple_lake_sf <- function(esri_files) {
   map_out <- st_read(esri_files[grepl(".shp", esri_files)]) |> 
     st_union() |> 
@@ -6,6 +16,8 @@ make_simple_lake_sf <- function(esri_files) {
   
   return(map_out)
 }
+
+
 
 create_great_lakes_maps <- function(in_zips, homes_order = TRUE) {
   
@@ -54,8 +66,19 @@ create_great_lakes_maps <- function(in_zips, homes_order = TRUE) {
 }
 
 
-
-
+#' Plot a clean map for a lake sf object
+#'
+#' This function creates a clean map of the lakes represented as a simple feature object.
+#' The map is displayed with a blue fill color and a dark blue border. By default, the
+#' function also adjusts the aspect ratio of the plot to make it square.
+#'
+#' @param map_sf An `sf` object representing the outline of the lakes.
+#'
+#' @param square_bbox A logical value indicating whether to adjust the aspect ratio
+#' of the plot to make it square. Defaults to TRUE.
+#'
+#' @returns A ggplot2 object representing the clean map of lakes.
+#'
 plot_clean_map <- function(map_sf, square_bbox = TRUE) {
   
   map_clean <- 
@@ -65,9 +88,9 @@ plot_clean_map <- function(map_sf, square_bbox = TRUE) {
     facet_grid(vars(lake), switch = "y") +
     ggthemes::theme_map() +
     theme(strip.background = element_rect(colour = NA, fill = NA),
-          strip.text = element_text(face = "bold")) +
-    # this is here to diagnose the problems with patchwork
-    theme(plot.background = element_rect(color = "deepskyblue3", size = 3))
+          strip.text = element_text(face = "bold"))# +
+    # # this is here to diagnose the problems with patchwork
+    # theme(plot.background = element_rect(color = "deepskyblue3", size = 3))
   
   if(square_bbox) {
     orig_bbox <- st_bbox(map_sf) |> st_as_sfc()
@@ -82,8 +105,16 @@ plot_clean_map <- function(map_sf, square_bbox = TRUE) {
   
 }
 
+#' Create a square bounding box from an existing bounding box
+#'
+#' Given an existing bounding box, this function calculates a new bounding box
+#' that is square in shape and has the same center point as the original bounding box.
+#'
+#' @param bbox An object of class "bbox", typically produced by the `st_bbox` function from the "sf" package.
+#' @return An object of class "bbox" with the same CRS as the original bounding box, but with its dimensions adjusted to form a square.
+#' 
 make_square_bbox <- function(bbox) {
-  # browser()
+  
   # Get the extent of the bounding box
   extent <- st_bbox(bbox)
   
