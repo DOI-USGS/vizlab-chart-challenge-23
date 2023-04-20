@@ -50,15 +50,6 @@ This is also a good place to load any data from other built-in packages such as 
 # Load drought properties data from ScienceBase
 #sbtools::authenticate_sb()
 
-file_in_path_discrete <- "in/EcoDrought Discrete_VA.csv"
-if(!file.exists(file_in_path_discrete)){ # if files don't exist, download
-  sbtools::item_file_download(sb_id = "624decacd34e21f82766c9da",
-                              names = "EcoDrought Discrete_VA.csv",
-                              destinations =  "in/EcoDrought Discrete_VA.csv",
-                              overwrite_file = F)
-}
-discrete <- readr::read_csv(file_in_path_discrete)
-
 file_in_path_continuous <- "in/EcoDrought Continuous_VA.csv"
 if(!file.exists(file_in_path_continuous)){ # if files don't exist, download
   sbtools::item_file_download(sb_id = "624decacd34e21f82766c9da",
@@ -101,50 +92,6 @@ hyst_example <- continuous |>
   arrange(time) |>
   left_join(metadata, by = "Site_ID")
 
-hyst_exampleSummer <- continuous |> 
-  filter(year(DateTime_EST) == 2021,
-         yday(DateTime_EST) == 241,
-         !is.na(AirTemperature_HOBO_degF),
-         !is.na(WaterTemperature_HOBO_DegF)) |>
-  rename(dt = DateTime_EST,
-         waterT = WaterTemperature_HOBO_DegF,
-         airT = AirTemperature_HOBO_degF) |>
-  mutate(time = hms::as_hms(dt),
-         am_logic = am(time),
-         daytime = case_when(time %in% as_hms(3600*seq(5.5, 16, by = 0.5)) ~ TRUE,
-                             TRUE ~ FALSE)) |>
-  arrange(time) |>
-  left_join(metadata, by = "Site_ID")
-
-
-whole_month <- continuous |> 
-  filter(year(DateTime_EST) == 2019,
-         month(DateTime_EST) == 4,
-         !is.na(AirTemperature_HOBO_degF),
-         !is.na(WaterTemperature_HOBO_DegF)) |>
-  rename(dt = DateTime_EST,
-         waterT = WaterTemperature_HOBO_DegF,
-         airT = AirTemperature_HOBO_degF) |>
-  mutate(time = hms::as_hms(dt),
-         am_logic = am(time)) |>
-  arrange(dt) |>
-  left_join(metadata, by = "Site_ID")
-
-full_record <- continuous |> 
-  filter(!is.na(AirTemperature_HOBO_degF),
-         !is.na(WaterTemperature_HOBO_DegF)) |>
-  rename(dt = DateTime_EST,
-         waterT = WaterTemperature_HOBO_DegF,
-         airT = AirTemperature_HOBO_degF) |>
-  mutate(time = hms::as_hms(dt),
-         am_logic = am(time)) |>
-  arrange(dt) |>
-  left_join(metadata, by = "Site_ID")
-
-test2021 <- full_record |> filter(year(dt) == 2021)
-ggplot(test2021 |> filter(month(dt) == 4), aes(x = airT, y = waterT, group = yday(dt))) + geom_path(linewidth = 0.2) + facet_wrap(~ yday(dt)) + coord_fixed(ratio = 1)#+ theme_void()
-
-ggplot(hyst_exampleSummer, aes(x = airT, y = waterT, group = yday(dt))) + geom_point() + facet_wrap(~ yday(dt)) #+ theme_void()
 
 ```
 
@@ -292,15 +239,6 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = font_legend,
              color = font_color,
              size = 24) +
-  # draw_label("In the morning, it takes longer\nfor the stream to warm than the air.",
-  #            x = 0.56,
-  #            y = 0.375,
-  #            hjust = 0,
-  #            vjust = 1,
-  #            lineheight = 0.75,
-  #            fontfamily = font_legend,
-  #            color = font_color,
-  #            size = 24)+
   # Add logo
   draw_image(usgs_logo, 
              x = 0.04,
@@ -321,9 +259,10 @@ ggsave(filename = "out/20230420_correlation_aaarcher.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Key takeaways here
+1. Many fish, like brook trout, need water temperature to be just right 
+2. This relationship between air & stream temperature is critical for fish habitat health.
 
 ### Data source(s)
 
-Data sources here.
+doi.org/10.5066/P97ULKSM 
 
