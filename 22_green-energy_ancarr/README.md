@@ -10,7 +10,7 @@ Date for your prompt in April: 22
 
 Image: 
 
-![20230422_green-energy_ancarr](out/20230422_green-energy_ancarr.png)
+![20230422_green-energy_ancarr](/uploads/285172545a56a4d07495f4ad22b10a79/20230422_green-energy_ancarr.png)
 
 Your key takeaways (1-2 sentences each):
 
