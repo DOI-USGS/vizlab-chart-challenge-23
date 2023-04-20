@@ -264,14 +264,14 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             y = -0.05,
             width = 0.95) +
   # explainer text
-  draw_label("April 27, 2019 data from Paine Run, Shenandoah National Park.\nChart by Althea A. Archer. Data from https://doi.org/10.5066/P97ULKSM",
+  draw_label("Chart by Althea A. Archer.\nApril 27, 2019 data from Paine Run, Shenandoah National Park.\nData from https://doi.org/10.5066/P97ULKSM",
              fontfamily = supporting_font,
              x = 0.96,   
              y = 0.04,
-             size = 14,
+             size = 20,
              hjust = 1,
              vjust = 0,
-             color = pop_color)+
+             color = font_color)+
   # Title
   draw_label("Hysteresis",
              x = 0.04,
