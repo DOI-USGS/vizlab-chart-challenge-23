@@ -10,9 +10,11 @@ Date for your prompt in April: April 20
 
 Image:
 
-Share the link in this document with the format `![](out/20230000_prompt-example_name.png)`:
+![20230420_correlation_aaarcher](/uploads/fc1165babce62d73744269b2438a232f/20230420_correlation_aaarcher.png)
 
-![](out/20230420_correlation_aaarcher.png)
+Gif:
+
+![20230420_correlation_aaarcher](/uploads/291689bd8133a3464aac8d259287cc9b/20230420_correlation_aaarcher.gif)
 
 Key messages: 
 
