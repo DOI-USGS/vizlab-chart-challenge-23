@@ -7,15 +7,7 @@ output: html_document
 
 ## Instructions for using this template
 
-> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
 
-1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
-2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
-3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
-4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
-5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
-
-This website has great information on how to use RMarkdown: https://yihui.org/knitr/
 
 ## Set up
 
@@ -36,6 +28,7 @@ library(readr) # best for reading and writing csvs
 library(sbtools)
 library(lubridate)
 library(gganimate)
+library(hms)
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -95,14 +88,16 @@ This next section is for doing any pre-processing steps, data joins, etc, to get
 # Isolate example of hysteresis
 hyst_example <- continuous |> 
   filter(year(DateTime_EST) == 2019,
-         yday(DateTime_EST) == 91,
+         yday(DateTime_EST) == 117,
          !is.na(AirTemperature_HOBO_degF),
          !is.na(WaterTemperature_HOBO_DegF)) |>
   rename(dt = DateTime_EST,
          waterT = WaterTemperature_HOBO_DegF,
          airT = AirTemperature_HOBO_degF) |>
   mutate(time = hms::as_hms(dt),
-         am_logic = am(time)) |>
+         am_logic = am(time),
+         daytime = case_when(time %in% as_hms(3600*seq(5.5, 16, by = 0.5)) ~ TRUE,
+                             TRUE ~ FALSE)) |>
   arrange(time) |>
   left_join(metadata, by = "Site_ID")
 
@@ -119,6 +114,19 @@ whole_month <- continuous |>
   arrange(dt) |>
   left_join(metadata, by = "Site_ID")
 
+full_record <- continuous |> 
+  filter(!is.na(AirTemperature_HOBO_degF),
+         !is.na(WaterTemperature_HOBO_DegF)) |>
+  rename(dt = DateTime_EST,
+         waterT = WaterTemperature_HOBO_DegF,
+         airT = AirTemperature_HOBO_degF) |>
+  mutate(time = hms::as_hms(dt),
+         am_logic = am(time)) |>
+  arrange(dt) |>
+  left_join(metadata, by = "Site_ID")
+
+test2021 <- full_record |> filter(year(dt) == 2019)
+ggplot(test2021 |> filter(month(dt) == 4), aes(x = airT, y = waterT, group = yday(dt))) + geom_path(linewidth = 0.2) + facet_wrap(~ yday(dt)) + coord_fixed(ratio = 1)#+ theme_void()
 
 ```
 
@@ -158,33 +166,43 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png") |>
 
 # Main plot
 (main_plot <- ggplot(hyst_example, aes(x = airT, y = waterT)) +
+    geom_smooth(method = "lm", se = FALSE, color = "white",
+                linetype = "dashed")+
     geom_point(color = pop_color, size = point_size)+
     geom_point(color = "white", size = inset_point_size, 
-               data = hyst_example |> filter(am_logic))+
+               data = hyst_example |> filter(daytime))+
+    geom_point(color = font_color, size = inset_point_size, 
+               data = hyst_example |> filter(time %in% c(hms::as_hms(3600*6),
+                                                         hms::as_hms(3600*11))))+
     theme_minimal()+
     ylab("Water Temperature (F)")+
     xlab("Air Temperature (F)")+
-    ylim(c(41, 49))+
-    xlim(c(22, 48))+
-    geom_segment(aes(x = 27, xend = 27, 
-                     y = 42.1, yend = 43.3), 
+    ylim(c(47, 56))+
+    xlim(c(44, 70))+
+    geom_curve(aes(x = 46, xend = 55,
+                     y = 48, yend = 49.2),
                  arrow = arrow(length = unit(0.03, "npc")),
-                 color = font_color)+
-    geom_segment(aes(x = 41, xend = 41, 
-                     y = 48, yend = 46), 
-                 arrow = arrow(length = unit(0.03, "npc")),
-                 color = font_color)+
-    geom_point(data = data.frame(airT = c(25, 25), waterT = c(46.5, 47)),
-               color = pop_color, size = point_size)+
-    geom_point(data = data.frame(airT = 25, waterT = 47),
-               color = "white", size = inset_point_size)+
-    geom_text(label = "a.m.", y = 47, x = 25, hjust = -0.4,
-               color = pop_color)+
-    geom_text(label = "p.m.", y = 46.5, x = 25, hjust = -0.4,
-               color = pop_color)+
+                 color = font_color,
+               angle = 150, curvature = 0.4, color = font_color)+
+    # geom_segment(aes(x = 41, xend = 41, 
+    #                  y = 48, yend = 46), 
+    #              arrow = arrow(length = unit(0.03, "npc")),
+    #              color = font_color)+
+    geom_point(data = data.frame(airT = c(45, 45), waterT = c(54, 54.5)),
+              color = pop_color, size = point_size)+
+    geom_point(data = data.frame(airT = 45, waterT = 54.5),
+              color = "white", size = inset_point_size)+
+    geom_text(label = "day", y = 54.5, x = 45.5, hjust = -0,
+             color = pop_color)+
+    geom_text(label = "6 a.m.", y = 48.8, x = 45.5, hjust = -0,
+             color = font_color)+
+    geom_text(label = "night", y = 54, x = 45.5, hjust = -0,
+              color = pop_color)+
+    geom_text(label = "11 a.m.", y = 50, x = 56, hjust = -0,
+             color = font_color)+
     theme(panel.background = element_blank(),
           axis.text = element_text(size = 18, color = font_color),
-          axis.title = element_text(size = 18, color = font_color))
+          axis.title = element_text(size = 18, color = font_color, face = "bold"))
  )
 ```
 
@@ -196,8 +214,8 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png") |>
     theme_minimal()+
     ylab("Water Temperature (F)")+
     xlab("Air Temperature (F)")+
-    ylim(c(41, 49))+
-    xlim(c(22, 48))+
+    ylim(c(47, 56))+
+    xlim(c(44, 70))+
    facet_wrap(~ yday(dt))+
     theme(panel.background = element_blank(),
           axis.text = element_text(size = 18, color = font_color),
@@ -210,18 +228,18 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png") |>
 (animated_plot <- ggplot(hyst_example, aes(x = airT, y = waterT)) +
     geom_point(color = pop_color, size = point_size)+
     theme_minimal()+
-    ylim(c(41, 49))+
-    xlim(c(22, 48))+
+    ylim(c(47, 56))+
+    xlim(c(44, 70))+
     transition_states(time)+
     annotation_raster(usgs_logo, 
                       ymin = 41, ymax = 41.9, xmin = 40, xmax = 48) +
     shadow_mark(alpha = 0.5, size = inset_point_size, color = pop_color)+
-    labs(title = "April 4, 2019 {closest_state}")+
+    labs(title = "April 27, 2019 {closest_state}")+
     ylab("Water Temperature (F)")+
     xlab("Air Temperature (F)")+
     theme(plot.background = element_rect(fill = background_color),
           axis.text = element_text(size = 18, color = font_color),
-          axis.title = element_text(size = 18, color = font_color),
+          axis.title = element_text(size = 18, color = font_color, face = "bold"),
           plot.title = element_text(size = 24, family = font_legend))
  )
 animation_to_save <- animated_plot  + exit_shrink()
@@ -251,7 +269,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 0.77,
             width = 0.85) +
   # explainer text
-  draw_label("April 19, 2019 data from Paine Run, Shenandoah National Park.\nChart by Althea A. Archer. Data from https://doi.org/10.5066/P97ULKSM",
+  draw_label("April 27, 2019 data from Paine Run, Shenandoah National Park.\nChart by Althea A. Archer. Data from https://doi.org/10.5066/P97ULKSM",
              fontfamily = supporting_font,
              x = 0.96,   
              y = 0.04,
@@ -260,7 +278,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0,
              color = pop_color)+
   # Title
-  draw_label("Stream Temperature Hysteresis",
+  draw_label("Hysteresis",
              x = 0.04,
              y = 0.95,
              hjust = 0,
@@ -270,7 +288,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              color = font_color,
              size = 35) +
   # Title
-  draw_label("Hysteresis: a phenomenon in which the value of\n  a physical property lags behind changes in\n  the effect causing it.",
+  draw_label("A phenomenon in which the value of a physical property\nlags behind changes in the effect causing it.",
              x = 0.04,
              y = 0.9,
              hjust = 0,
@@ -279,7 +297,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = font_legend,
              color = font_color,
              size = 20) +
-  draw_label("Stream temperature takes\nlonger to warm during the day\nand longer to cool at night\nthan air temperature.",
+  draw_label("For example, here stream\ntemperature takes longer\nto warm during the day\nthan air temperature.",
              x = 0.45,
              y = 0.3,
              hjust = 0,
