@@ -51,6 +51,7 @@ fish_data <- fish_data |>
 
 # take out duration and confidence intervals
 fish_data <- fish_data[fish_data$variable %in% c("Onset", "Cessation"), ]
+fish_data_uncertainty <- select(fish_data, -c("RCP_26", "RCP_45", "RCP_60", "RCP_85")) # save this to bring back in later
 fish_data <- select(fish_data, -c("RCP_26_CI", "RCP_45_CI", "RCP_60_CI", "RCP_85_CI"))
 
 
@@ -62,6 +63,10 @@ fish_data_origin_dates$origin_date <- as.Date(fish_data_origin_dates$origin_date
 fish_data_long <- gather(fish_data, condition, value, RCP_26:RCP_85)
 fish_data_long <- full_join(fish_data_long, fish_data_origin_dates, by = c("species", "variable", "condition"))
 fish_data_long$end_date <- fish_data_long$origin_date + fish_data_long$value
+
+# bring in uncertainty
+fish_data_uncertainty_long <- gather(fish_data_uncertainty, condition, confidence_interval, RCP_26_CI:RCP_85_CI)
+fish_data_uncertainty_long$condition <- substr(fish_data_uncertainty_long$condition, 1, 6)
 ```
 
 ```{r processing_extra_data, eval = FALSE, include = FALSE}
@@ -117,13 +122,34 @@ theme_usgs <- function(legend.position = "right"){
 }
 ```
 
-Add in y location for bar/segment plot:
 ```{r plotting_add_extra_info}
-y_location <- tibble(variable = rep(c("Onset", "Cessation"), 1, each =4), 
-                     condition = rep(c("RCP_26", "RCP_45", "RCP_60", "RCP_85"), 2), 
-                     y = rep(c(1:4) + 5, 2))
+# y_location <- tibble(variable = rep(c("Onset", "Cessation"), 1, each =4), 
+#                      condition = rep(c("RCP_26", "RCP_45", "RCP_60", "RCP_85"), 2), 
+#                      y = rep(c(1:4) + 5, 2))
 
-fish_data_long <- full_join(fish_data_long, y_location, by = c("variable", "condition"))
+
+# make into wide format for plot
+fish_data_long <- fish_data_long |> 
+  select(-c(origin_date, value))
+fish_data_wide <- spread(fish_data_long, variable, end_date)
+names(fish_data_wide)[names(fish_data_wide)=="Onset"] <- "onset"
+names(fish_data_wide)[names(fish_data_wide)=="Cessation"] <- "cessation"
+
+# bring in uncertainty
+fish_data_uncertainty_wide <- spread(fish_data_uncertainty_long, variable, confidence_interval)
+names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Onset"] <- "onset_ci"
+names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Cessation"] <- "cessation_ci"
+
+fish_data_wide <- full_join(fish_data_wide, fish_data_uncertainty_wide, by = c("species", "period", "condition"))
+
+# add in y location for bar/segment plot
+y_location <- tibble(condition = c("RCP_26", "RCP_45", "RCP_60", "RCP_85"),
+                     y = rep(c(1:4)+5))
+fish_data_wide <- full_join(fish_data_wide, y_location, by = c("condition"))
+
+# offset the y locations and mess with spacing for historical vs. future so they slightly overlap but don't overlap across the RCPs
+fish_data_wide <- fish_data_wide |>
+  mutate(y_offset = ifelse(period == "Historical", (y - 5)*2 + 5 - 0.5, (y - 5)*2 + 5))
 ```
 
 ## Produce final plot
@@ -137,23 +163,15 @@ ggplot(data = fish_data_long, aes(x = end_date, y = variable)) +
 
 Bar/segment plot
 ```{r plotting_2}
-# this business is to get the full duration from onset to cessation to be one long segment
-fish_data_long_2 <- fish_data_long |>
-  group_by(condition, species) |>
-  summarize(min_onset = min(end_date), 
-            max_end = max(origin_date), 
-            y = mean(y)
-  )
-
 # main base plot
-ggplot(data = fish_data_long) + 
-  geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "grey25", linewidth = 10, show.legend = FALSE) +
-  geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "#D2C6E1" , linewidth = 9.5, show.legend = FALSE) +
-  geom_segment(aes(x = origin_date, xend = end_date, y = y, yend = y, col = period, group = period, linewidth = period), show.legend = FALSE) + 
-  scale_color_manual(values = c("white", "#faf6fe")) +
-  scale_alpha_manual(values = c(1, 0.7)) + # using alpha to take out historical
+ggplot(data = fish_data_wide) + 
+  # geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "grey25", linewidth = 10, show.legend = FALSE) +
+  # geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "#D2C6E1" , linewidth = 9.5, show.legend = FALSE) +
+  geom_segment(aes(x = onset, xend = cessation, y = y_offset, yend = y_offset, col = period, alpha = period), linewidth = 8 , show.legend = FALSE) + 
+  scale_color_manual(values = c("grey50", "#815aa5")) +
+  scale_alpha_manual(values = c(0.7, 0.7)) + # use alpha = 1 to take out historical
   scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
-  scale_y_continuous(limits = c(0, 10)) +
+  scale_y_continuous(limits = c(0, 13)) +
   coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
   facet_wrap(~species) +
   labs(x = "", 
@@ -176,13 +194,8 @@ ggsave("out/11_circular_ewhite_base.png", width = 16, height = 9, units = "in", 
 ```
 
 ```{r gif}
-
-ggplot(data = fish_data_long) + 
-  geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "grey25", linewidth = 10, show.legend = FALSE) +
-  geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "#D2C6E1" , linewidth = 9.5, show.legend = FALSE) +
-  geom_segment(aes(x = origin_date, xend = end_date, y = y, yend = y, col = period, group = period, linewidth = period), show.legend = FALSE) + 
-  scale_color_manual(values = c("white", "#faf6fe")) +
-  scale_alpha_manual(values = c(1, 0.7)) + # using alpha to take out historical
+ggplot(data = fish_data_wide[fish_data_wide$period == "Historical", ]) + 
+  geom_segment(aes(x = onset, xend = cessation, y = y, yend = y), col = "#815aa5", alpha = 0.7, linewidth = 8.2 , show.legend = FALSE) + 
   scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
   scale_y_continuous(limits = c(0, 10)) +
   coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
@@ -203,9 +216,86 @@ ggplot(data = fish_data_long) +
         strip.background = element_blank(), 
         strip.text.x = element_blank())
 
-ggsave("out/11_circular_ewhite_base1.png", width = 16, height = 9, units = "in", dpi = 1200)
+ggsave("out/11_circular_ewhite_gif_1.png", width = 16, height = 9, units = "in", dpi = 1200)
+
+ggplot() + 
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset, xend = cessation, y = y, yend = y), col = "grey30", linewidth = 8.2 , show.legend = FALSE) +
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset, xend = cessation, y = y, yend = y), col = "grey90", linewidth = 8 , show.legend = FALSE) +
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], col = "#815aa5", alpha = 0.7, aes(x = onset, xend = cessation, y = y, yend = y), linewidth = 8.2 , show.legend = FALSE) + 
+  scale_alpha_manual(values = c(0.7, 0.7)) + # use alpha = 1 to take out historical
+  scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
+  scale_y_continuous(limits = c(0, 10)) +
+  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
+  facet_wrap(~species) +
+  labs(x = "", 
+       y = "", 
+       title = "FISH IN HOT WATER", 
+       subtitle = "Under projected climate change scenarios, the American Shad and Striped Bass of the Hudson River Estuary are predicted to spawn 15 days earlier on average."
+       # caption = "Data Source: Nack, C. et. al. (2019). https://doi.org/10.1002/mcf2.10076
+       # Plot made by Ellie White, ewhite@usgs.gov 04/02/2023"
+       ) +
+  theme_bw()+
+  theme(plot.title = element_text(vjust = 3, size = 14, face = "bold", family="sans"),
+        plot.subtitle = element_text(vjust = 3, size = 12,family="sans"), 
+        axis.text.y = element_blank(), 
+        axis.ticks = element_blank(), 
+        panel.border = element_blank(), 
+        strip.background = element_blank(), 
+        strip.text.x = element_blank())
+
+ggsave("out/11_circular_ewhite_gif_2.png", width = 16, height = 9, units = "in", dpi = 1200)
+
+# animate
+library(magick)
+library(magrittr)
+list.files(path='/$PATH/', pattern = '*.png', full.names = TRUE) %>% 
+        image_read() %>% # reads each path file
+        image_join() %>% # joins image
+        image_animate(fps=4) %>% # animates, can opt for number of loops
+        image_write("FileName.gif") # write to current dir
 
 ```
+
+```{r plotting_3}
+# # this business is to get the full duration from onset to cessation to be one long segment
+# fish_data_long_2 <- fish_data_long |>
+#   group_by(condition, species) |>
+#   summarize(min_onset = min(end_date), 
+#             max_end = max(origin_date), 
+#             y = mean(y)
+#   )
+# 
+# # main base plot
+# ggplot(data = fish_data_long) + 
+#   geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "grey25", linewidth = 10, show.legend = FALSE) +
+#   geom_segment(data = fish_data_long_2, aes(x = min_onset, xend = max_end, y = y, yend = y), col = "#D2C6E1" , linewidth = 9.5, show.legend = FALSE) +
+#   geom_segment(aes(x = origin_date, xend = end_date, y = y, yend = y, col = period, group = period, linewidth = period), show.legend = FALSE) + 
+#   scale_color_manual(values = c("white", "#faf6fe")) +
+#   scale_alpha_manual(values = c(1, 0.7)) + # using alpha to take out historical
+#   scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
+#   scale_y_continuous(limits = c(0, 10)) +
+#   coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
+#   facet_wrap(~species) +
+#   labs(x = "", 
+#        y = "", 
+#        title = "FISH IN HOT WATER", 
+#        subtitle = "Under projected climate change scenarios, the American Shad and Striped Bass of the Hudson River Estuary are predicted to spawn 15 days earlier on average."
+#        # caption = "Data Source: Nack, C. et. al. (2019). https://doi.org/10.1002/mcf2.10076
+#        # Plot made by Ellie White, ewhite@usgs.gov 04/02/2023"
+#        ) +
+#   theme_bw()+
+#   theme(plot.title = element_text(vjust = 3, size = 14, face = "bold", family="sans"),
+#         plot.subtitle = element_text(vjust = 3, size = 12,family="sans"), 
+#         axis.text.y = element_blank(), 
+#         axis.ticks = element_blank(), 
+#         panel.border = element_blank(), 
+#         strip.background = element_blank(), 
+#         strip.text.x = element_blank())
+# 
+# ggsave("out/11_circular_ewhite_base.png", width = 16, height = 9, units = "in", dpi = 1200)
+```
+
+
 
 recreating figure in paper for sanity
 ```{r plotting_with_extra_data, eval = FALSE, include = FALSE}
@@ -277,20 +367,46 @@ group_data <- tibble(
   spawning = factor(c("Onset", "Cessation"), levels = c("Onset", "Cessation")), 
   period = factor(c("Historical", "Future"), levels = c("Historical", "Future"))) |>
   expand(species, spawning, period) |>
-  mutate(group_num = 8:1) # don't know why but interactions in ggplot are backwards, so, go decsending 
+  mutate(group_num = 8:1) # don't know why but interactions in ggplot are backwards, so, go descending 
 
 p_data <- full_join(layer_data(p), group_data, by = join_by(group == group_num))
-  
+p_data <- p_data |>
+  group_by(period) |>
+  mutate(y = ifelse(spawning == "Onset", y + 1.05 , y),
+         date_formatted = format(as.Date(x, origin = "2015-01-01")))
 
-ggplot(data = p_data, aes(x = x, y = y)) +
-  geom_step(aes(col = period, group = group))+
-  scale_color_brewer(palette = "Accent") +
-  # scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
+# get rid of Inf and -Inf
+p_data <- p_data[!is.infinite(p_data$x), ]
+p_data$date_formatted <- as.Date(p_data$date_formatted, format = "%Y-%m-%d")
+p_data_wide <- spread(p_data, period, y)
+  
+ggplot(data = p_data, aes(x = date_formatted, y = y)) +
+  geom_step(aes(col = period, group = group)) +
+  geom_rect(aes(xmin = date_formatted, xmax = lead(date_formatted), ymin = y, ymax = y, group = group), fill = "blue") +
+  scale_y_continuous(limits = c(-4, 2.1)) +
+  scale_color_manual(values = c("grey60", "#815aa5")) +
+  scale_x_date(limits = c(as.Date("2060-01-01"), as.Date("2060-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
+  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) +
   facet_wrap(~species) +
   labs(x = "RCP 8.5 Scenario", y = "Cumulative Probability") +
   theme_bw()+
   theme(axis.text.y = element_blank(),
         axis.ticks = element_blank())
+
+
+ggplot(data = p_data_wide) + #[p_data_wide$spawning == "Onset", ]
+  geom_step(aes(x = date_formatted, y = Historical), col = "grey60") +
+  geom_step(aes(x = date_formatted, y = Future), col = "#815aa5") +
+  geom_rect(aes(xmin = date_formatted, xmax = lead(date_formatted), ymin = Future, ymax = Historical), fill = "grey60") +
+  scale_y_continuous(limits = c(-4, 2.1)) +
+  scale_x_date(limits = c(as.Date("2060-01-01"), as.Date("2060-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
+  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) +
+  facet_wrap(~species) +
+  labs(x = "RCP 8.5 Scenario", y = "Cumulative Probability") +
+  theme_bw()+
+  theme(axis.text.y = element_blank(),
+        axis.ticks = element_blank())
+
 
 ggsave("out/11_circular_probability.png", width = 16, height = 9, units = "in", dpi = 1200)
 ```
