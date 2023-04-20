@@ -422,6 +422,17 @@ final_plot <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items
              fontface = 'bold',
              color = '#08008c',
              size = 44) +
+  # author and data source text
+  draw_label(stringr::str_wrap(paste('Natalie Schmer, USGS', 
+                   "Data: USGS NWIS", sep = '\n'), 25),
+             fontfamily = supporting_font,
+             fontface = 'italic',
+             x = 0.95,   
+             y = 0.115,
+             size = 12,
+             hjust = 1,
+             vjust = 0,
+             color = '#6D6D6D')+
   # Add logo
   draw_image(usgs_logo,
              x = 0.95,
