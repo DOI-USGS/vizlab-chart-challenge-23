@@ -10,7 +10,7 @@ Date for your prompt in April: 04/03/2023
 
 Image: 
 
-![Beyond A Reasonable Drought!](out/final_drought.png)
+![20230419_anthropocene_ewhite](/uploads/3db85b3d13c6a27fc634f628dcf023d6/20230419_anthropocene_ewhite.png)
 
 Your key takeaways (1-2 sentences each):
 
