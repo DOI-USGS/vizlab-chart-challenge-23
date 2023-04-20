@@ -10,7 +10,7 @@ Date for your prompt in April: April 21
 
 Image:
 
-
+![20230421_downupward_nschmer](/uploads/a84494b14e2ec2989060bea24ea5ffae/20230421_downupward_nschmer.png)
 
 Your key takeaways (1-2 sentences each):
 
