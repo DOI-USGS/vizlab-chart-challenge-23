@@ -177,7 +177,8 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png") |>
     ylab("Water Temperature (F)")+
     xlab("Air Temperature (F)")+
     theme(plot.background = element_rect(fill = "white", color = NA),
-          axis.text = element_text(size = 18, color = font_color),
+          axis.text = element_text(size = 18, color = font_color,
+                                   margin = margin(t = 10, r = 0, b = 0, l = 0)),
           axis.title = element_text(size = 18, color = font_color, face = "bold"),
           plot.title = element_text(size = 24, family = font_legend))+
     coord_fixed(ratio = 1)+
@@ -230,7 +231,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              color = font_color,
              size = 60) +
   # Title
-  draw_label("(noun) - A phenomenon in which the value of a physical property\n         lags behind changes in the effect causing it.",
+  draw_label("hys•ter•e•sis (noun) A phenomenon in which the value of a physical\n               property lags behind changes in the effect causing it.",
              x = 0.10,
              y = 0.86,
              hjust = 0,
