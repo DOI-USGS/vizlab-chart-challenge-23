@@ -32,6 +32,7 @@ Define libraries here.
 # Load libraries
 library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
+library(WDI) # get world bank data
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -50,10 +51,22 @@ This is also a good place to load any data from other built-in packages such as 
 
 
 ```{r load}
-# Add your code here
+# Indicator codes for % of annual freshwater withdrawals in the US for
 
+# agriculture
+agr <- "ER.H2O.FWAG.ZS"
 
+# domestic
+dom <- "ER.H2O.FWDM.ZS"
 
+# industry
+ind <- "ER.H2O.FWIN.ZS"
+
+# volume of annual freshwater withdrawals in the US in billions of cubic meters
+vol <- "ER.H2O.FWTL.K3"
+
+# fetch all of this data
+df <- WDI(indicator=c(agr, dom, ind, vol)) %>% dplyr::filter(country=="United States")
 ```
 
 ## Get data ready for plotting
@@ -63,8 +76,7 @@ This next section is for doing any pre-processing steps, data joins, etc, to get
 
 ```{r processing}
 # Add your processing code here
-
-
+head(df)
 ```
 
 ## Set up main plot
@@ -155,7 +167,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
 # e.g. `20230101_part-to-whole-cnell.png`
-ggsave(filename = "out/20230000_prompt_name.png", 
+ggsave(filename = "out/20230430_worldbank_jhariharan.png", 
        width = 16, height = 9, dpi = 300)
 ```
 
