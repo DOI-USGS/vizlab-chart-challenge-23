@@ -24,4 +24,4 @@ Key programs and/or packages used:
 
 `R` packages `dataRetrieval`, `geofacet`, `ggplot2`, `cowplot`
 
-Overall method to create this viz:
+Overall method to create this viz: Use `geofacet` and `ggalluvial` to chart U.S. water use from 1985-2015 across eight categories.
