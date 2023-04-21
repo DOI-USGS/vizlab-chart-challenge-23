@@ -213,8 +213,8 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              color = elnino_dark,
              size = 60) +
   # el nino description
-  draw_label("Wetter weather in the Southern U.S.\nand drier weather in the North.",
-             x = 0.55,
+  draw_label("el Niño periods bring wetter weather in the Southern U.S.\n      and drier weather in the North.",
+             x = 0.30,
              y = 0.93,
              hjust = 0,
              vjust = 1,
@@ -222,14 +222,6 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = handwriting_font,
              color = "#36454F",
              size = 24) +
-  # el nino curve
-  geom_curve(aes(x = 0.775, xend = 0.86,
-                 y = 0.85, yend = 0.80),
-             curvature = 0.2,
-             linewidth = 0.5,
-             color = "#36454F", 
-             arrow = grid::arrow(length = unit(0.75, 'lines')),
-             lineend = "round") +
   # la nina
   draw_label("la Niña",
              x = 0.05,
@@ -241,23 +233,15 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              color = lanina_dark,
              size = 60) +
   # la nina description
-    draw_label("Drier weather in the Southern U.S.\nand wetter weather in the North.",
-             x = 0.40,
-             y = 0.21,
+    draw_label("la Niña periods bring drier weather in the Southern U.S.\n      and wetter weather in the North.",
+             x = 0.30,
+             y = 0.20,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
              fontfamily = handwriting_font,
              color = "#36454F",
              size = 24) +
-  # la nina curve
-  geom_curve(aes(x = 0.460, xend = 0.54,
-                 y = 0.225, yend = 0.35),
-             curvature = -0.2,
-             linewidth = 0.5,
-             color = "#36454F", 
-             arrow = grid::arrow(length = unit(0.75, 'lines')),
-             lineend = "round") +
   # Add logo
   draw_image(usgs_logo, 
              x = 0.03,
