@@ -161,7 +161,7 @@ theme_facet <- function(base = 12, bkgd_color, text_color, text_size, text_famil
 # Build national alluvial plot + scale bar
 (national_plot <- ggplot(munged_national) +
     geom_alluvium(aes(year, wu_bgd, fill = wu_category, alluvium = wu_category), decreasing = FALSE, alpha = 0.8) +
-    geom_rect(aes(xmin = 2015.3, xmax = 2016, ymin = 0, ymax = 100), fill = bar_color, color = NA) +
+    geom_rect(aes(xmin = 2015.3, xmax = 2016, ymin = 0, ymax = 100), fill = bar_color, color = NA) + # national water use units = bgd, so bar height = 100
     scale_fill_manual(values = category_colors, name  = '') +
     scale_x_continuous(expand = c(0,0), 
                        sec.axis = dup_axis(
@@ -208,7 +208,7 @@ usa_grid <- make_carto_grid()
 # Build state alluvial plots + scale bars and then facet
 (facet_plot <- ggplot(munged_state) + 
     geom_alluvium(data = munged_state, aes(year, total_watersource_mgd, fill = wu_category, alluvium = wu_category), decreasing = FALSE, alpha = 0.8) +
-    geom_rect(aes(xmin = 2015.5, xmax = 2017, ymin = 0, ymax = 1000), fill = bar_color, color = NA) +
+    geom_rect(aes(xmin = 2015.5, xmax = 2017, ymin = 0, ymax = 1000), fill = bar_color, color = NA) + # state water use units = mgd, so bar height = 1000
     scale_x_continuous(expand = c(0,0), limits = c(1985, 2017)) +
     scale_fill_manual(values = category_colors, name  = '') +
     theme_void() +
