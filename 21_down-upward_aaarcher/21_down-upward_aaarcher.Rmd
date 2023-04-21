@@ -87,7 +87,7 @@ elnino_long <- elnino_rename |>
   mutate(month_numeric = match(month, month.name),
          date = lubridate::my(sprintf("%s-%s", month_numeric, Year)))
 
-# Create subset for plotting dates
+# Create subset for plotting dates as y-axis on the chart
 year_labels <- data.frame(
   date = as.Date(sprintf("%s-01-01", seq(1950, 2020, by = 5))),
   index = rep(0, 15),
@@ -99,9 +99,6 @@ year_labels <- data.frame(
 
 ## Set up main plot
 
-This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
-
-> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
 
 ```{r plotting}
 # Load some custom fonts and set some custom settings
@@ -120,7 +117,7 @@ font_color = "black"
 elnino_color = "#7DaDB8"
 elnino_dark = "#1194a7"
 lanina_color = "#A280AE"
-lanina_dark = "#A280AE"#"#7675AA"
+lanina_dark = "#A280AE"
 
 # The background canvas for your viz
 canvas <- grid::rectGrob(
@@ -132,19 +129,25 @@ canvas <- grid::rectGrob(
 # Load in USGS logo (also a black logo available)
 usgs_logo <- magick::image_read("../usgs_logo_white.png") |>
   image_colorize(100, "#36454F")
+
+# Load background image and make it transparent
 background_image <- magick::image_read("in/background_paint.png") |>
   magick::image_fx(expression = "0.45*a", channel = "alpha")
 
+# Create the main plot 
 (main_plot <- ggplot(elnino_long, 
                      aes(x = date, y = index, group = date)) +
+    # main data
     geom_linerange(aes(ymin = 0, ymax = index, color = sign(index))) +
     scale_color_gradient2(low = lanina_color, mid = "black", high = elnino_color)+
     scale_x_date(breaks = "5 year", date_labels = "%Y", 
                  limits = as.Date(c("1949-01-01", "2023-09-01")))+
+    # y-axis on chart
     geom_linerange(data = year_labels, aes(ymin = -0.135, ymax = 0.135), color = "#36454F") +
     geom_hline(yintercept = 0, color = "#ffffff", linewidth = 6)+
     geom_text(data = year_labels, aes(label = label), color = "#36454F", size = 5,
               fontface = "bold", family = supporting_font) +
+    # thematic settings
     theme_minimal()+
     ylim(c(-2.6,2.6))+
     ylab("Oceanic\nNiño\nIndex\n(ONI)")+
@@ -178,6 +181,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             x = 0, y = 1,
             height = 9, width = 16,
             hjust = 0, vjust = 1) +
+  # watercolored background
   draw_image(background_image, 
              x = 0.025,
              y = 0.152,
@@ -190,7 +194,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 0.68,
             width = 0.99) +
   # explainer text
-  draw_label("Chart by Althea A. Archer.\nData from NOAA: origin.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php",
+  draw_label("Chart by Althea A. Archer.\nData from NOAA: origin.cpc.ncep.noaa.gov",
              fontfamily = supporting_font,
              x = 0.97,   
              y = 0.04,
@@ -198,7 +202,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              hjust = 1,
              vjust = 0,
              color = "#36454F")+
-  # el nino
+  # el nino title
   draw_label("el Niño",
              x = 0.05,
              y = 0.95,
@@ -208,6 +212,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = font_legend,
              color = elnino_dark,
              size = 60) +
+  # el nino description
   draw_label("Wetter weather in the Southern U.S.\nand drier weather in the North.",
              x = 0.55,
              y = 0.93,
@@ -217,6 +222,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = handwriting_font,
              color = "#36454F",
              size = 24) +
+  # el nino curve
   geom_curve(aes(x = 0.775, xend = 0.86,
                  y = 0.85, yend = 0.80),
              curvature = 0.2,
@@ -234,6 +240,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = font_legend,
              color = lanina_dark,
              size = 60) +
+  # la nina description
     draw_label("Drier weather in the Southern U.S.\nand wetter weather in the North.",
              x = 0.40,
              y = 0.21,
@@ -243,6 +250,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = handwriting_font,
              color = "#36454F",
              size = 24) +
+  # la nina curve
   geom_curve(aes(x = 0.460, xend = 0.54,
                  y = 0.225, yend = 0.35),
              curvature = -0.2,
@@ -270,9 +278,12 @@ ggsave(filename = "out/20230421_down-upward_aaarcher.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-1. Key takeaways here
+1. Ocean currents cycle between warmer (el Niño) and cooler (la Niña) periods.   
+2. In the U.S., el Niño causes wetter weather in the south and la Niña causes wetter weather in the north.  
 
 ### Data source(s)
 
-Data sources here.
+NOAA Climate Prediction Center
+
+https://www.climate.gov/news-features/understanding-climate/climate-variability-oceanic-niño-index 
 
