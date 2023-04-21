@@ -14,7 +14,7 @@ Image:
 
 Your key takeaways (1-2 sentences each):
 
-1. First key takeaway here (more than one key takeaways are optional)
+1. For the U.S. as a whole, water use has declined since 1985. But patterns for individual states look different -- in some, the total amount of water use has changed considerably, while in others there has been more fluctuation of how water is used.
 
 Your data sources:
 
