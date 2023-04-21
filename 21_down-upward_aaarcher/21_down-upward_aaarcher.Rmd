@@ -60,7 +60,7 @@ elnino <- readr::read_csv("in/elnino_index.csv")
 
 ## Get data ready for plotting
 
-First, process the El Nino/La Nina indices. The data come in with month as columns, years as rows. Need to make it long format with month and year as separate fields.
+First, process the el Niño/la Niña indices. The data come in with month as columns, years as rows. Need to make it long format with month and year as separate fields.
 
 ```{r processing}
 # Rename months. They are 3-month windows centered on one month. Rename to that one month

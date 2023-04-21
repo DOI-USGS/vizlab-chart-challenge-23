@@ -21,7 +21,7 @@ Your key takeaways (1-2 sentences each):
 
 Your data sources:
 
-El Nino & La Nina data from: https://origin.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php
+El Niño & La Niña data from: https://origin.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php
 
 - NOAA/ National Weather Service
 - National Centers for Environmental Prediction
