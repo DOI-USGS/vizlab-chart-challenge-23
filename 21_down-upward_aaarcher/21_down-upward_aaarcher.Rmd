@@ -87,11 +87,14 @@ elnino_long <- elnino_rename |>
   mutate(month_numeric = match(month, month.name),
          date = lubridate::my(sprintf("%s-%s", month_numeric, Year)))
 
+# Create subset for plotting dates
+year_labels <- data.frame(
+  date = as.Date(sprintf("%s-01-01", seq(1950, 2020, by = 5))),
+  index = rep(0, 15),
+  label = seq(1950, 2020, by = 5)
+)
 
 ```
-
-Process drought data by selecting the 100 month severe droughts by year
-
 
 
 ## Set up main plot
@@ -106,12 +109,18 @@ font_legend <- "Satisfy"
 sysfonts::font_add_google("Satisfy")
 supporting_font <- "Source Sans Pro"
 sysfonts::font_add_google("Source Sans Pro")
+handwriting_font <- "Shadows Into Light"
+sysfonts::font_add_google("Shadows Into Light")
 showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
 showtext::showtext_auto(enable = TRUE)
 
 # Define colors
 background_color = "white"
 font_color = "black"
+elnino_color = "#7DaDB8"
+elnino_dark = "#1194a7"
+lanina_color = "#A280AE"
+lanina_dark = "#A280AE"#"#7675AA"
 
 # The background canvas for your viz
 canvas <- grid::rectGrob(
@@ -122,17 +131,20 @@ canvas <- grid::rectGrob(
 
 # Load in USGS logo (also a black logo available)
 usgs_logo <- magick::image_read("../usgs_logo_white.png") |>
-  image_colorize(100, "#666666")
-background_image <- magick::image_read("in/IMG_7007.png") |>
+  image_colorize(100, "#36454F")
+background_image <- magick::image_read("in/background_paint.png") |>
   magick::image_fx(expression = "0.45*a", channel = "alpha")
 
 (main_plot <- ggplot(elnino_long, 
                      aes(x = date, y = index, group = date)) +
     geom_linerange(aes(ymin = 0, ymax = index, color = sign(index))) +
-    scale_color_gradient2(low = "#de77ae", mid = "black", high = "#4292c6")+
+    scale_color_gradient2(low = lanina_color, mid = "black", high = elnino_color)+
     scale_x_date(breaks = "5 year", date_labels = "%Y", 
-                 limits = as.Date(c("1949-01-01", "2020-01-01")))+
-    geom_hline(yintercept = 0, color = "black")+
+                 limits = as.Date(c("1949-01-01", "2023-09-01")))+
+    geom_linerange(data = year_labels, aes(ymin = -0.135, ymax = 0.135), color = "#36454F") +
+    geom_hline(yintercept = 0, color = "#ffffff", linewidth = 6)+
+    geom_text(data = year_labels, aes(label = label), color = "#36454F", size = 5,
+              fontface = "bold", family = supporting_font) +
     theme_minimal()+
     ylim(c(-2.6,2.6))+
     ylab("Oceanic\nNiño\nIndex\n(ONI)")+
@@ -140,10 +152,11 @@ background_image <- magick::image_read("in/IMG_7007.png") |>
           panel.background = element_blank(),
           axis.title.x = element_blank(),
           axis.title.y = element_text(family = supporting_font, face = "bold",
-                                      angle = 0, vjust = 0.4, hjust = 0,
-                                      size = 18),
-          axis.text = element_text(family = supporting_font,
-                                   size = 18, face = "bold"),
+                                      angle = 0, vjust = 0.42, hjust = 0,
+                                      size = 18, color = "#36454F"),
+          axis.text.y = element_text(family = supporting_font,
+                                   size = 14, color = "#36454F", face = "bold"),
+          axis.text.x = element_blank(),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank())
  )
@@ -166,16 +179,16 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 9, width = 16,
             hjust = 0, vjust = 1) +
   draw_image(background_image, 
-             x = -0.01,
-             y = -0.025,
-             height = 1.00,
-             width = 1.05)+
+             x = 0.025,
+             y = 0.152,
+             height = 0.8,
+             width = 0.98)+
   # the main plot
   draw_plot(main_plot,
             x = 0.01,
-            y = 0.10,
+            y = 0.18,
             height = 0.68,
-            width = 0.96) +
+            width = 0.99) +
   # explainer text
   draw_label("Chart by Althea A. Archer.\nData from NOAA: origin.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php",
              fontfamily = supporting_font,
@@ -184,56 +197,59 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              size = 14,
              hjust = 1,
              vjust = 0,
-             color = "#999999")+
-  
-  # Title
-  draw_label("From 1950 to today, naturally occurring changes in oceanic currents\nhave caused warmer (el Niño) and cooler (la Niña) periods.",
-             x = 0.03,
+             color = "#36454F")+
+  # el nino
+  draw_label("el Niño",
+             x = 0.05,
              y = 0.95,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
-             fontfamily = supporting_font,
-             color = font_color,
-             size = 35) +
-  # Title
-  draw_label("el Niño",
-             x = 0.12,
-             y = 0.80,
-             hjust = 0,
-             vjust = 1,
-             lineheight = 0.75,
              fontfamily = font_legend,
-             color = "#084594",
+             color = elnino_dark,
              size = 60) +
-  draw_label("In the U.S., el Niño events cause wetter weather in the South\nand drier weather in the North.",
-             x = 0.36,
-             y = 0.76,
+  draw_label("Wetter weather in the Southern U.S.\nand drier weather in the North.",
+             x = 0.55,
+             y = 0.93,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
-             fontfamily = font_legend,
-             color = "#084594",
-             size = 18) +
-  # Title
+             fontfamily = handwriting_font,
+             color = "#36454F",
+             size = 24) +
+  geom_curve(aes(x = 0.775, xend = 0.86,
+                 y = 0.85, yend = 0.80),
+             curvature = 0.2,
+             linewidth = 0.5,
+             color = "#36454F", 
+             arrow = grid::arrow(length = unit(0.75, 'lines')),
+             lineend = "round") +
+  # la nina
   draw_label("la Niña",
-             x = 0.12,
-             y = 0.19,
+             x = 0.05,
+             y = 0.15,
              hjust = 0,
              vjust = 0,
              lineheight = 0.75,
              fontfamily = font_legend,
-             color = "#c51b7d",
+             color = lanina_dark,
              size = 60) +
-  draw_label("In the U.S., la Niña events cause drier weather in the South\nand wetter weather in the North.",
-             x = 0.36,
-             y = 0.22,
+    draw_label("Drier weather in the Southern U.S.\nand wetter weather in the North.",
+             x = 0.40,
+             y = 0.21,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
-             fontfamily = font_legend,
-             color = "#c51b7d",
-             size = 18) +
+             fontfamily = handwriting_font,
+             color = "#36454F",
+             size = 24) +
+  geom_curve(aes(x = 0.460, xend = 0.54,
+                 y = 0.225, yend = 0.35),
+             curvature = -0.2,
+             linewidth = 0.5,
+             color = "#36454F", 
+             arrow = grid::arrow(length = unit(0.75, 'lines')),
+             lineend = "round") +
   # Add logo
   draw_image(usgs_logo, 
              x = 0.03,
