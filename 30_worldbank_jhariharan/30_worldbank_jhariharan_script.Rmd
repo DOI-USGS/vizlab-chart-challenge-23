@@ -75,8 +75,12 @@ This next section is for doing any pre-processing steps, data joins, etc, to get
 
 
 ```{r processing}
-# Add your processing code here
-head(df)
+# rename columns
+df <- dplyr::rename(df, agriculture = agr)
+df <- dplyr::rename(df, domestic = dom)
+df <- dplyr::rename(df, industry = ind)
+# re-format table for plotting
+df_tidy <- tidyr::pivot_longer(df, cols=5:7, names_to="use", values_to="amount")
 ```
 
 ## Set up main plot
@@ -109,7 +113,7 @@ canvas <- grid::rectGrob(
 usgs_logo <- magick::image_read("../usgs_logo_white.png") 
 
 # Main plot
-(main_plot <- ggplot()
+(main_plot <- ggplot(df_tidy, aes(x=year, y=amount*.data[[vol]], fill=use)) + geom_bar(stat="identity", colour="white") + xlim(1989, 2020) + xlab("Year") + ylab("Volume of Freshwater Withdrawal, billions of cubic meters") + ggtitle("Annual Freshwater Withdrawals in the United States (1990-2019)", subtitle="World Bank World Development Indicators Data") + labs(fill="EXPLANATION")
  )
 
 
@@ -134,8 +138,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   # the main plot
   draw_plot(main_plot,
             x = 0.01,
-            y = 0.01,
-            height = 1) +
+            y = 0.2,
+            height = 0.7,
+            width = 0.98) +
   # explainer text
   draw_label("Explainer text",
              fontfamily = supporting_font,
@@ -145,16 +150,16 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              hjust = 1,
              vjust = 0,
              color = font_color)+
-  # Title
-  draw_label("Title",
-             x = 0.04,
-             y = 0.285,
-             hjust = 0,
-             vjust = 1,
-             lineheight = 0.75,
-             fontfamily = font_legend,
-             color = font_color,
-             size = 55) +
+  # # Title
+  # draw_label("Title",
+  #            x = 0.04,
+  #            y = 0.285,
+  #            hjust = 0,
+  #            vjust = 1,
+  #            lineheight = 0.75,
+  #            fontfamily = font_legend,
+  #            color = font_color,
+  #            size = 55) +
   # Add logo
   draw_image(usgs_logo, 
              x = 0.04,
