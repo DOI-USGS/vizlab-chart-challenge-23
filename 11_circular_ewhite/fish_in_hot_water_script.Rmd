@@ -56,7 +56,7 @@ fish_data <- fish_data |>
 # take out duration and confidence intervals
 fish_data <- fish_data[fish_data$variable %in% c("Onset", "Cessation"), ]
 fish_data_uncertainty <- select(fish_data, -c("RCP_26", "RCP_45", "RCP_60", "RCP_85")) # save this to bring back in later
-fish_data <- select(fish_data, -c("RCP_26_CI", "RCP_45_CI", "RCP_60_CI", "RCP_85_CI"))
+fish_data <- select(fish_data, -c("RCP_26_SE", "RCP_45_SE", "RCP_60_SE", "RCP_85_SE"))
 
 # prep origin dates 
 fish_data_origin_dates <- gather(fish_data_origin_dates, condition, origin_date, RCP_26:RCP_85)
@@ -68,7 +68,7 @@ fish_data_long <- full_join(fish_data_long, fish_data_origin_dates, by = c("spec
 fish_data_long$end_date <- fish_data_long$origin_date + fish_data_long$value
 
 # prep uncertainty in dates to be brought in later
-fish_data_uncertainty_long <- gather(fish_data_uncertainty, condition, confidence_interval, RCP_26_CI:RCP_85_CI)
+fish_data_uncertainty_long <- gather(fish_data_uncertainty, condition, confidence_interval, RCP_26_SE:RCP_85_SE)
 fish_data_uncertainty_long$condition <- substr(fish_data_uncertainty_long$condition, 1, 6)
 ```
 
@@ -136,8 +136,8 @@ names(fish_data_wide)[names(fish_data_wide)=="Cessation"] <- "cessation"
 
 # bring in uncertainty that was prepped before
 fish_data_uncertainty_wide <- spread(fish_data_uncertainty_long, variable, confidence_interval)
-names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Onset"] <- "onset_ci"
-names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Cessation"] <- "cessation_ci"
+names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Onset"] <- "onset_se"
+names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Cessation"] <- "cessation_se"
 
 fish_data_wide <- full_join(fish_data_wide, fish_data_uncertainty_wide, by = c("species", "period", "condition"))
 
@@ -165,10 +165,10 @@ ggplot(data = fish_data_long, aes(x = end_date, y = variable)) +
 library(ggnewscale)
 ggplot() +
   geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "grey") +
-  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset-onset_ci, xend = cessation + cessation_ci, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "grey") +
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "grey") +
   new_scale_colour() +
   geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "#815aa5") +
-  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset-onset_ci, xend = cessation + cessation_ci, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "#815aa5") +
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "#815aa5") +
   scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
   scale_y_continuous(limits = c(0, 13)) +
   coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
@@ -246,7 +246,7 @@ animation <- ggplot(data = fish_data_ts_plot) +
   labs(x = "", 
        y = "", 
        title = "FISH IN HOT WATER", 
-       subtitle = "Under projected the climate change scenario RCP 8.5, the American Shad and Striped Bass of the Hudson River Estuary are predicted to spawn XX days earlier on average.
+       subtitle = "RCP 8.5: Business-as-Usual.
        Year: {frame_time}
        "
        # caption = "Data Source: Nack, C. et. al. (2019). https://doi.org/10.1002/mcf2.10076
