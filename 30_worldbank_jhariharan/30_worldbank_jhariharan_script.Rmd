@@ -113,7 +113,7 @@ canvas <- grid::rectGrob(
 usgs_logo <- magick::image_read("../usgs_logo_white.png") 
 
 # Main plot
-(main_plot <- ggplot(df_tidy, aes(x=year, y=amount*.data[[vol]], fill=use)) + geom_bar(stat="identity", colour="white") + xlim(1989, 2020) + xlab("Year") + ylab("Volume of Freshwater Withdrawal, billions of cubic meters") + ggtitle("Annual Freshwater Withdrawals in the United States (1990-2019)", subtitle="World Bank World Development Indicators Data") + labs(fill="EXPLANATION")
+(main_plot <- ggplot(df_tidy, aes(x=year, y=amount*.data[[vol]], fill=use)) + geom_bar(stat="identity", colour="white") + xlim(1989, 2020) + xlab("Year") + ylab("Volume of Freshwater Withdrawal, billions of cubic meters") + ggtitle("Annual Freshwater Withdrawals in the United States (1990-2019)", subtitle="World Bank World Development Indicators Data") + labs(fill="EXPLANATION") + theme(panel.background = element_blank(), plot.background = element_blank(), text = element_text(colour = "white"), legend.background = element_blank(), axis.text = element_text(colour = "white"), axis.ticks = element_line(colour = "white"))
  )
 
 
@@ -142,7 +142,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 0.7,
             width = 0.98) +
   # explainer text
-  draw_label("Explainer text",
+  draw_label("World Bank World Development Indicators Data, The World Bank Group, 2023.\nData acquisition and plotting done in the R programming language using the WDI, ggplot2, and tidyverse packages.",
              fontfamily = supporting_font,
              x = 0.96,   
              y = 0.05,
