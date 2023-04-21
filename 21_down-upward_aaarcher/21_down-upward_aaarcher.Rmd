@@ -33,8 +33,7 @@ Define libraries here.
 library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
 
-library(lubridate)
-library(sf)
+library(lubridate) # for date parsing
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
