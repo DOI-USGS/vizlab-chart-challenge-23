@@ -32,9 +32,9 @@ Define libraries here.
 # Load libraries
 library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
-library(RColorBrewer)
-library(geofacet)
-library(ggalluvial)
+library(RColorBrewer) # for color palette
+library(geofacet) # for the facet map of the U.S.
+library(ggalluvial) # for the alluvial plots
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
