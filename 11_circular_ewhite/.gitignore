@@ -28,6 +28,7 @@
 *.html
 documents/
 documents/*
+scratch.Rmd
 
 # Spatial
 *.cpg
