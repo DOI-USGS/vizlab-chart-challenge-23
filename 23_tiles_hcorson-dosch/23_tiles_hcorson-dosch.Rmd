@@ -53,7 +53,7 @@ This is also a good place to load any data from other built-in packages such as 
 
 
 ```{r load}
-# Add your code here
+# Water use data loaded manually
 national_wu <- readr::read_csv('in/national_water_use.csv', col_types = cols())
 state_wu <- readr::read_csv('in/state_water_use.csv', col_types = cols())
 ```
@@ -64,8 +64,8 @@ This next section is for doing any pre-processing steps, data joins, etc, to get
 
 
 ```{r processing}
-# Add your processing code here
-
+# Munge national water use
+# filter to 1985+, set category names
 munged_national <- filter(national_wu, year >= 1985, !wu_category=='commercial') %>% # commercial not measured in 2015
     mutate(wu_category = case_when(
       wu_category == 'thermoelectric power' ~ 'thermoelectric',
@@ -74,6 +74,7 @@ munged_national <- filter(national_wu, year >= 1985, !wu_category=='commercial')
       TRUE ~ wu_category
     ))
   
+# Identify ranking of categories in 2015, nationally
 ranked_categories_2015 <- munged_national %>%
     filter(year == 2015) %>%
     group_by(wu_category) %>%
@@ -81,8 +82,11 @@ ranked_categories_2015 <- munged_national %>%
     arrange(total_vol) %>%
     pull(wu_category)
 
+# use rankings to set factor, and therefore legend, order
 munged_national <- mutate(munged_national, wu_category = factor(wu_category, levels = ranked_categories_2015))
 
+# Munge state water use
+# Add state abbreviations, filter out commercial water use, set category names
 state_info <- tibble(
   state_name = c(state.name, 'Puerto Rico', 'Virgin Islands'),
   state_abbr = c(state.abb, 'PR', 'VI')
@@ -128,10 +132,11 @@ canvas <- grid::rectGrob(
 # Load in USGS logo (also a black logo available)
 usgs_logo <- magick::image_read("../usgs_logo_black.png") 
 
-category_colors <-  c(RColorBrewer::brewer.pal(7, 'Dark2'), '#A0BFEC') #, '#E2E2E2') # add blue for PS and light grey for NA values
+# set colors for categories of water use
+category_colors <-  c(RColorBrewer::brewer.pal(7, 'Dark2'), '#A0BFEC') # add blue for PS
 names(category_colors) <- c('aquaculture','domestic','industrial','livestock','thermoelectric','mining','irrigation','public supply')
 
-
+# Set a theme for the plots
 theme_facet <- function(base = 12, bkgd_color, text_color, text_size, text_family){
   theme_classic(base_size = base) +
     theme(strip.background = element_blank(),
@@ -153,7 +158,7 @@ theme_facet <- function(base = 12, bkgd_color, text_color, text_size, text_famil
   
 }
 
-# Main plot
+# Build national alluvial plot + scale bar
 (national_plot <- ggplot(munged_national) +
     geom_alluvium(aes(year, wu_bgd, fill = wu_category, alluvium = wu_category), decreasing = FALSE, alpha = 0.8) +
     geom_rect(aes(xmin = 2015.3, xmax = 2016, ymin = 0, ymax = 100), fill = bar_color, color = NA) +
@@ -189,23 +194,20 @@ theme_facet <- function(base = 12, bkgd_color, text_color, text_size, text_famil
 
 
 ```{r plotting2}
-state_fips <- (unique(state_wu$state_cd))
-state_plots <- purrr::map(state_fips, function(state_code) {
-    # geom_area(data = filter(munged_state, state_cd == state_code), aes(year, total_watersource_mgd, fill = wu_category))
-  geom_alluvium(data = filter(munged_state, state_cd == state_code), aes(year, total_watersource_mgd, fill = wu_category, alluvium = wu_category), decreasing = FALSE, alpha = 0.8)
-})
+# Build state facets
 
 make_carto_grid <- function() {
   us_state_grid1 %>% #us_state_without_DC_grid1
     add_row(row = 7, col = 10, code = "PR", name = "Puerto Rico") %>% # add PR
     add_row(row = 7, col = 11, code = "VI", name = "U.S. Virgin Islands") %>% # add VI
-    filter(code != "DC") # remove DC (doesn't have counties)
+    filter(code != "DC") # remove DC
 }
 
 usa_grid <- make_carto_grid()
 
+# Build state alluvial plots + scale bars and then facet
 (facet_plot <- ggplot(munged_state) + 
-    state_plots + 
+    geom_alluvium(data = munged_state, aes(year, total_watersource_mgd, fill = wu_category, alluvium = wu_category), decreasing = FALSE, alpha = 0.8) +
     geom_rect(aes(xmin = 2015.5, xmax = 2017, ymin = 0, ymax = 1000), fill = bar_color, color = NA) +
     scale_x_continuous(expand = c(0,0), limits = c(1985, 2017)) +
     scale_fill_manual(values = category_colors, name  = '') +
@@ -223,7 +225,10 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 **Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
 ```{r cowplot, fig.width = 16, fig.height = 9}
+# pull legend from national plot
 plot_legend <- get_legend(national_plot)
+
+# arrange plots on canvas
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
   # a background
@@ -234,13 +239,13 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   # the national plot
   draw_plot(national_plot + theme(legend.position = 'None'),
             x = 0.06,
-            y = 0.186,
+            y = 0.187,
             width = 0.26,
             height = 0.555) +
   # the state facet plot
   draw_plot(facet_plot + theme(legend.position = 'None'),
             x = 0.35,
-            y = 0.1,
+            y = 0.101,
             width = 0.6,
             height = 0.75) +
   # add legend
@@ -255,7 +260,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = supporting_font,
              fontface = 'bold',
              x = 0.325,   
-             y = 0.27,
+             y = 0.271,
              size = axis_text_size,
              hjust = 0,
              vjust = 0.5,
@@ -265,7 +270,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = supporting_font,
              fontface = 'bold',
              x = 0.46,   
-             y = 0.145,
+             y = 0.146,
              size = axis_text_size,
              hjust = 0,
              vjust = 0.5,
@@ -277,7 +282,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontface = 'italic',
              x = 0.95,   
              y = 0.05,
-             size = axis_text_size,
+             size = 12,
              hjust = 1,
              vjust = 0,
              color = '#6D6D6D')+
