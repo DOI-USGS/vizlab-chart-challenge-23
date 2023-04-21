@@ -282,7 +282,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0,
              color = '#6D6D6D')+
   # Title
-  draw_label("Patterns in water use - 1985 to 2015",
+  draw_label("Patterns in U.S. water use - 1985 to 2015",
              x = 0.05,
              y = 0.95,
              hjust = 0,
