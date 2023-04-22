@@ -8,7 +8,6 @@ output:
 ---
 
 ## Set up
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -19,6 +18,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse) 
 library(readr) 
 library(scales)
+library(gganimate)
+library(scico)
 ```
 
 ## Load files
@@ -33,8 +34,6 @@ This extra data came from the author in personal communications 04/03/2023
 I modified the spreadsheet to be more R friendly
 
 It's a time series record spanning 1950-2099 of fish spawning onset and cessation dates (modeled values)
-
-Maybe we can use this later to make a probability of spawning on the y axis. for now, we don't need it.
 
 ```{r load_extra_data}
 fish_data_ts <- read_csv("in/fish_data_from_nack.csv")
@@ -70,6 +69,20 @@ fish_data_long$end_date <- fish_data_long$origin_date + fish_data_long$value
 # prep uncertainty in dates to be brought in later
 fish_data_uncertainty_long <- gather(fish_data_uncertainty, condition, confidence_interval, RCP_26_SE:RCP_85_SE)
 fish_data_uncertainty_long$condition <- substr(fish_data_uncertainty_long$condition, 1, 6)
+
+# make into wide format 
+fish_data_long <- fish_data_long |> 
+  select(-c(origin_date, value))
+fish_data_wide <- spread(fish_data_long, variable, end_date)
+names(fish_data_wide)[names(fish_data_wide)=="Onset"] <- "onset"
+names(fish_data_wide)[names(fish_data_wide)=="Cessation"] <- "cessation"
+
+# bring in uncertainty that was prepped before
+fish_data_uncertainty_wide <- spread(fish_data_uncertainty_long, variable, confidence_interval)
+names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Onset"] <- "onset_se"
+names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Cessation"] <- "cessation_se"
+
+fish_data_wide <- full_join(fish_data_wide, fish_data_uncertainty_wide, by = c("species", "period", "condition"))
 ```
 
 ```{r processing_extra_data, include = FALSE}
@@ -94,6 +107,18 @@ fish_data_ts <- fish_data_ts |>
 # make long format
 fish_data_ts_long <- gather(fish_data_ts, spawning, value, Onset:Cessation)
 fish_data_ts_long$spawning <- factor(fish_data_ts_long$spawning, levels = c("Onset", "Cessation"))
+```
+
+Now to add extra things for plotting purposes only:
+```{r plotting_add_extra_info}
+# add in y location for segment plot
+y_location <- tibble(condition = c("RCP_26", "RCP_45", "RCP_60", "RCP_85"),
+                     y = rep(c(1:4)*2 + 5))
+fish_data_wide <- full_join(fish_data_wide, y_location, by = c("condition"))
+
+# offset the y locations and mess with spacing for historical vs. future so they slightly overlap but don't overlap across the RCPs
+fish_data_wide <- fish_data_wide |>
+  mutate(y_offset = ifelse(period == "Historical", y - 0.5, y))
 ```
 
 ## Set up main plot
@@ -125,34 +150,8 @@ theme_usgs <- function(legend.position = "right"){
 }
 ```
 
-Prep data for plot:
-```{r plotting_add_extra_info}
-# make into wide format 
-fish_data_long <- fish_data_long |> 
-  select(-c(origin_date, value))
-fish_data_wide <- spread(fish_data_long, variable, end_date)
-names(fish_data_wide)[names(fish_data_wide)=="Onset"] <- "onset"
-names(fish_data_wide)[names(fish_data_wide)=="Cessation"] <- "cessation"
-
-# bring in uncertainty that was prepped before
-fish_data_uncertainty_wide <- spread(fish_data_uncertainty_long, variable, confidence_interval)
-names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Onset"] <- "onset_se"
-names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Cessation"] <- "cessation_se"
-
-fish_data_wide <- full_join(fish_data_wide, fish_data_uncertainty_wide, by = c("species", "period", "condition"))
-
-# add in y location for segment plot
-y_location <- tibble(condition = c("RCP_26", "RCP_45", "RCP_60", "RCP_85"),
-                     y = rep(c(1:4)*2 + 5))
-fish_data_wide <- full_join(fish_data_wide, y_location, by = c("condition"))
-
-# offset the y locations and mess with spacing for historical vs. future so they slightly overlap but don't overlap across the RCPs
-fish_data_wide <- fish_data_wide |>
-  mutate(y_offset = ifelse(period == "Historical", y - 0.5, y))
-```
-
 ## Produce plots
-```{r plotting, include = FALSE}
+```{r plotting_simple, include = FALSE}
 # First, a dot chart for my own sanity
 ggplot(data = fish_data_long, aes(x = end_date, y = variable)) +
   geom_point(aes(col = condition)) + 
@@ -165,10 +164,10 @@ ggplot(data = fish_data_long, aes(x = end_date, y = variable)) +
 library(ggnewscale)
 ggplot() +
   geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "grey") +
-  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "grey") +
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "grey") + # for standard error end bits
   new_scale_colour() +
   geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "#815aa5") +
-  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "#815aa5") +
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "#815aa5") + # for standard error end bits
   scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
   scale_y_continuous(limits = c(0, 13)) +
   coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
@@ -189,10 +188,10 @@ ggplot() +
         strip.background = element_blank(),
         strip.text.x = element_blank())
 
-ggsave("out/11_circular_ewhite_base.png", width = 16, height = 9, units = "in", dpi = 1200)
+ggsave("out/26_local-change_ewhite_base.png", width = 16, height = 9, units = "in", dpi = 1200)
 ```
 
-```{r checking_original_data_with_extra_data, include = FALSE}
+```{r plotting_paper_figure, include = FALSE}
 # recreating figure in paper for sanity
 ggplot(data = fish_data_ts_long[fish_data_ts_long$year > 1950, ], aes(x = year, y = value)) +
   geom_point(aes(shape = species, col = species)) +
@@ -200,8 +199,10 @@ ggplot(data = fish_data_ts_long[fish_data_ts_long$year > 1950, ], aes(x = year, 
   labs(x="", y="Predicted Date of Spawning") +
   theme_usgs()
 # it matches! Hooray
+```
 
-
+## Tests and Checks
+```{r checking_original_data_with_extra_data}
 # is the mean what is reported for onset and cessation deviations in the linear modeling? 
 fish_data_ts_summarized <- fish_data_ts_long |>
   group_by(species, condition, period, spawning) |>
@@ -221,10 +222,12 @@ fish_data_summarized_summarized$`mean(mean_value)`[1] - fish_data_summarized_sum
 
 # onset
 fish_data_summarized_summarized$`mean(mean_value)`[2] - fish_data_summarized_summarized$`mean(mean_value)`[4]
+
+# never mind, we aren't going to recreate the author's analysis, going to take the paper values as they are
 ```
 
-Let's make a gif with the extra data instead?
-```{r gif}
+## Produce Gif
+```{r gif, eval = FALSE}
 # make the yearly data wide so onset and cessation columns are side by side
 fish_data_ts_wide <- spread(fish_data_ts_long, spawning, value)
 
@@ -234,8 +237,6 @@ fish_data_ts_plot <- fish_data_ts_wide |>
   filter(year != 1950) |>
   mutate(year = as.integer(year))
 
-library(gganimate)
-library(scico)
 animation <- ggplot(data = fish_data_ts_plot) + 
   geom_segment(aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 1 , show.legend = FALSE) + 
   scale_color_scico(palette = "tokyo") +
@@ -257,14 +258,16 @@ animation <- ggplot(data = fish_data_ts_plot) +
         plot.subtitle = element_text(vjust = 3, size = 12,family="sans"), 
         # axis.text.y = element_blank(), 
         axis.ticks = element_blank(), 
-        panel.border = element_blank(), 
-        strip.background = element_blank(), 
-        strip.text.x = element_blank()) +
+        # panel.border = element_blank(), 
+        # strip.background = element_blank(), 
+        # strip.text.x = element_blank()
+        ) +
   # Here comes the gganimate specific bits
   transition_time(year) +
   shadow_mark(past = TRUE, future = FALSE, alpha = 0.3) 
 
-anim_save("out/11_circular_ewhite_animated.gif", animation, width = 16, height = 9, units = "in", res = 900)
+a <- animate(animation, end_pause = 30, width = 16, height = 9, units = "in", res = 300)
+anim_save("out/26_local-change_ewhite.gif", a)
 ```
 
 ## Supporting information
@@ -285,11 +288,11 @@ DOI: https://doi.org/10.1002/mcf2.10076
 
 ### Process 
 
-1) produced `out/[day]_ewhite_base.png` with ggplot
+1) produced `out/25_local-change_ewhite_base.png` with ggplot
 
-2) made markups in powerpoint 
+2) made markups in PowerPoint 
 
-3) final plot is called `out/[day]_ewhite_final.png`
+3) final plot is called `out/25_local-change_ewhite_final.png`
 
 
 
