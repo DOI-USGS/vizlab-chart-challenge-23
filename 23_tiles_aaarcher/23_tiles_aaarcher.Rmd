@@ -1,27 +1,17 @@
 ---
-title: "Example for Chart Challenge"
+title: "When is drought?"
 author: "Althea Archer"
 date: "2023-03-10"
 output: html_document
 ---
 
-## Instructions for using this template
 
-> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
-
-1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
-2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
-3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
-4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
-5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
-
-This website has great information on how to use RMarkdown: https://yihui.org/knitr/
 
 ## Set up
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
+knitr::opts_chunk$set(warning = FALSE)
 ```
 
 
@@ -70,15 +60,7 @@ if(!file.exists(drought_properties_7d_file)){ # if files don't exist, download
 }
 drought_properties_7d <- readr::read_csv(drought_properties_7d_file) 
 
-# Drought Properties - 7day window - 1921-2020 dataset
-drought_properties_7d_file100 <- "in/Drought_Properties_jd_07d_wndw_100.csv"
-if(!file.exists(drought_properties_7d_file100)){ # if files don't exist, download
-  sbtools::item_file_download(sb_id = "62f463c5d34eacf5397395d9",
-                              names = "Drought_Properties_jd_07d_wndw.csv",
-                              destinations =  "in/Drought_Properties_jd_07d_wndw_100.csv",
-                              overwrite_file = FALSE)
-}
-drought_properties_7d_100yr <- readr::read_csv(drought_properties_7d_file100) 
+
 
 
 file_in_metadata <- "in/study_watersheds_metadata.csv"
@@ -202,56 +184,6 @@ droughts_long <- droughts_100_join_CASC |>
 
 ```
 
-### Processing for the "where is drought" viz
-
-```{r processing_100yr}
-# Select appropriate threshold (here 2%)
-droughts_2pct_100yr <- drought_properties_7d_100yr |> 
-  # Join metadata and take out DC
-  left_join(metadata |> select(StaID, STATE), by = "StaID") |>
-  filter(! STATE == "DC") |>
-  # Select 2% threshold
-  filter(threshold == 2) |>
-  mutate(year = lubridate::year(start)) |>
-  # remove couple from 2020 (uncomplete year)
-  filter(year < 2020) 
-
-droughts_100perYear_100yr <- droughts_2pct_100yr |>
-  # Group by year
-  group_by(year) |>
-  # and get top 100
-  slice_max(order_by = severity, n = 100)
-
-droughts_100_join_CASC_100yr <- droughts_100perYear_100yr |>
-  # Join with CASCs
-  mutate(CASC = case_when(STATE %in% c("MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH") ~ "Midwest",
-                          STATE %in% c("MT", "WY", "CO", "ND", "SD", "NE", "KS") ~ "North Central",
-                          STATE %in% c("ME", "NH", "VT", "MA", "CT", "RI", "DC",
-                                       "NY", "NJ", "PA", "DE", "MD", "WV", "VA", "KY") ~ "Northeast",
-                          STATE %in% c("WA", "OR", "ID") ~ "Northwest",
-                          STATE %in% c("NM", "TX", "OK", "LA") ~ "South Central",
-                          STATE %in% c("NC", "SC", "GA", "AL", "MS", "FL", "TN", "AR") ~ "Southeast",
-                          STATE %in% c("AZ", "UT", "NV") ~ "Southwest",
-                          STATE %in% "CA" ~ "California",
-                          TRUE ~ "not sorted"),
-         CASC = factor(CASC, levels = c("California", "Southwest", "South Central", "Southeast",
-                                        "Northeast", "Midwest", "North Central", "Northwest")))
-
-# Which streamgages? This is used for determining where droughts are
-gages_with_drought_100yr <- droughts_100_join_CASC_100yr |> 
-  group_by(StaID) |>
-  summarise(num_droughts = n()) |>
-  left_join(metadata, by = "StaID")
-
-gages_with_drought_decade_100yr <- droughts_100_join_CASC_100yr |> 
-  mutate(decade = year(floor_date(start, years(10)))) |>
-  group_by(StaID, decade) |>
-  summarise(num_droughts = n()) |>
-  left_join(metadata, by = "StaID")
-
-
-
-```
 
 
 
