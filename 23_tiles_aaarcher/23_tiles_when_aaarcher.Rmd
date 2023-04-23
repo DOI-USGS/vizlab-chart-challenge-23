@@ -437,7 +437,12 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
            x = Xmargin + 0.24,
            y = Ybase + Yjitter*3 - 0.08,
            color = "#e05915", size = support_size, family = annotation_font,
-           hjust = 0)
+           hjust = 0)+
+  # Add logo
+  draw_text("DRAFT", 
+             x = 0.25,
+             y = Ymargin,
+            color = "#e05915", size = title_size)
 
 
 # Save the final image in Twitter's 16 by 9 format

@@ -1,0 +1,369 @@
+---
+title: "Where is drought?"
+author: "Althea Archer"
+date: "2023-03-10"
+output: html_document
+---
+
+
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+
+library(sbtools)
+library(lubridate)
+library(sf)
+library(spData)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Add your code here
+# Load drought properties data from ScienceBase
+#authenticate_sb() (username includes email address)
+
+# Drought Properties - 7day window - 1921-2020 dataset
+drought_properties_7d_file100 <- "in/Drought_Properties_jd_07d_wndw_100.csv"
+if(!file.exists(drought_properties_7d_file100)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "62f463c5d34eacf5397395d9",
+                              names = "Drought_Properties_jd_07d_wndw.csv",
+                              destinations =  "in/Drought_Properties_jd_07d_wndw_100.csv",
+                              overwrite_file = FALSE)
+}
+drought_properties_7d_100yr <- readr::read_csv(drought_properties_7d_file100) 
+
+
+file_in_metadata <- "in/study_watersheds_metadata.csv"
+if(!file.exists(file_in_metadata)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "62793493d34e8d45aa6e3ba9",
+                              names = "study_watersheds_metadata.csv",
+                              destinations = file_in_metadata,
+                              overwrite_file = F)
+}
+metadata <- readr::read_csv(file_in_metadata, show_col_types = FALSE) |>
+  select(StaID, STANAME, DRAIN_SQKM, HUC02, LAT_GAGE, LNG_GAGE, STATE,
+         national_1981, national_1951, national_1921, HCDN_2009)
+
+
+```
+
+## Get data ready for plotting
+  
+
+### Spatial mapping data
+
+```{r spatial}
+# Download US State boundaries as sf object
+states_sf <- spData::us_states
+# add in state names, too
+st_crosswalk <- data.frame(NAME = state.name,
+                           STATE = state.abb)
+# Merge in CASC info
+states_CASC <- states_sf |>
+  mutate("CASC" = case_when(NAME %in% c("Minnesota", "Iowa", "Missouri", 
+                                       "Wisconsin", "Illinois", "Indiana", 
+                                       "Michigan", "Ohio") ~ "Midwest",
+                          NAME %in% c("Montana", "Wyoming", "Colorado", "North Dakota", 
+                                       "South Dakota", "Nebraska", "Kansas") ~ "North Central",
+                          NAME %in% c("Maine", "New Hampshire", "Vermont", "Massachusetts", 
+                                       "Connecticut", "Rhode Island",
+                                       "New York", "New Jersey", "Pennsylvania", 
+                                       "Delaware", "Maryland", "West Virginia", 
+                                       "Virginia", "Kentucky", "District of Columbia") ~ "Northeast",
+                          NAME %in% c("Washington", "Oregon", "Idaho") ~ "Northwest",
+                          NAME %in% c("New Mexico", "Texas", 
+                                      "Oklahoma", "Louisiana") ~ "South Central",
+                          NAME %in% c("North Carolina", "South Carolina", "Georgia", "Alabama", 
+                                       "Mississippi", "Florida", "Tennessee", 
+                                       "Arkansas") ~ "Southeast",
+                          NAME %in% c("Arizona",
+                                       "Utah", "Nevada") ~ "Southwest",
+                          NAME == "California" ~ "California",
+                          TRUE ~ "not sorted")) |>
+  left_join(st_crosswalk, by = "NAME")
+
+# convert id to CASC for mapping just regions to make them look "exploded"
+mapping_data_regions <- states_CASC |>
+  group_by(CASC) |>
+  summarise(id = unique(CASC))
+
+# CASC names 
+CASC_names <- unique(states_CASC$CASC)
+```
+  
+
+
+### Processing for the "where is drought" viz
+
+```{r processing_100yr}
+# Select appropriate threshold (here 2%)
+droughts_2pct_100yr <- drought_properties_7d_100yr |> 
+  # Join metadata and take out DC
+  left_join(metadata |> select(StaID, STATE), by = "StaID") |>
+  filter(! STATE == "DC") |>
+  # Select 2% threshold
+  filter(threshold == 2) |>
+  mutate(year = lubridate::year(start))  |>
+  # calculate decade
+  mutate(decade = year(floor_date(start, years(10))),
+         historical = case_when(year <= 1970 ~ "Historical",
+                          year > 1970 ~ "Recent"))
+
+droughts_100perDecade_100yr <- droughts_2pct_100yr |>
+  # Group by decade
+  group_by(decade) |>
+  # remove couple from 2020 (uncomplete year)
+  filter(year < 2020) |>
+  # and get top 100
+  slice_max(order_by = severity, n = 100)|>
+  left_join(metadata, by = "StaID")
+
+droughts_100perRecord_100yr <- droughts_2pct_100yr |>
+  # and get top 100
+  slice_max(order_by = severity, n = 100)|>
+  left_join(metadata, by = "StaID")
+
+# Which streamgages? This is used for determining where droughts are 
+
+# Full 100-year record
+gages_with_drought_100yr <- droughts_100perRecord_100yr |> 
+  group_by(StaID) |>
+  summarise(num_droughts = n()) |>
+  left_join(metadata, by = "StaID")
+
+
+# By decade
+gages_with_drought_decade_100yr <- droughts_100perDecade_100yr |> 
+  group_by(StaID, decade) |>
+  summarise(num_droughts = n()) |>
+  left_join(metadata, by = "StaID")
+
+
+
+```
+
+
+
+
+
+## Set up global plotting settings
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Source Sans Pro"
+supporting_font <- "Source Sans Pro"
+annotation_font <- "Shadows Into Light"
+sysfonts::font_add_google("Source Sans Pro")
+sysfonts::font_add_google("Shadows Into Light")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Font sizes
+title_size <- 50
+support_size <- 24
+
+# Define colors
+background_color = "#c2dde6"
+font_color = "#431c5d"
+pop_color = "#e05915"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 16,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+
+
+
+
+```
+
+
+### Making the "where is drought" viz
+
+```{r plot_mapCONUS}
+(map_plot <- ggplot(data = states_CASC) +
+   geom_sf(fill = "#e6e9f0", color = background_color, linewidth = 0.5) +
+   geom_point(data = droughts_100perRecord_100yr |> filter(historical == "Historical"),
+              aes(x = LNG_GAGE, y = LAT_GAGE, size = severity/80),
+              color = "black")+
+   geom_point(data = droughts_100perRecord_100yr |> filter(historical == "Historical"),
+              aes(x = LNG_GAGE, y = LAT_GAGE, color = historical, size = severity/100),
+              color = "grey")+
+   geom_point(data = droughts_100perRecord_100yr |> filter(historical == "Recent"),
+              aes(x = LNG_GAGE, y = LAT_GAGE, size = severity/80),
+              color = "black")+
+   geom_point(data = droughts_100perRecord_100yr |> filter(historical == "Recent"),
+              aes(x = LNG_GAGE, y = LAT_GAGE, color = historical, size = severity/100),
+              color = pop_color)+
+   theme_void()+
+   theme(legend.position = "none")
+)
+```
+
+
+```{r decade_plots}
+# Chart settings
+Ymargin <- 0.04
+Xmargin <- 0.04
+
+# CASC Plots
+Xbase <- 1-Xmargin # from right
+Ybase <- Ymargin*2 # from bottom
+Yjitter <- (0.40 - 2*Ymargin)/2
+Xjitter <- (1 - 2*Xmargin)/5 # total jitter
+Xwidth <- 0.15
+
+decades <- unique(droughts_100perDecade_100yr$decade)
+
+# Function to make regional plots
+draw_decade_plots <- map(1:length(decades), function(x){
+  # create temporary plot
+  plot_temp <- ggplot(data = states_CASC) +
+   geom_sf(fill = "#e6e9f0", color = background_color, linewidth = 0.5) +
+    facet_wrap(~ decade) + 
+   geom_point(data = droughts_100perDecade_100yr |> filter(decade == decades[x]),
+              aes(x = LNG_GAGE, y = LAT_GAGE, size = severity/80),
+              color = "black")+
+   geom_point(data = droughts_100perDecade_100yr |> filter(decade == decades[x]),
+              aes(x = LNG_GAGE, y = LAT_GAGE, color = historical, size = severity/110),
+              color = pop_color)+
+   theme_void()+
+    theme(legend.position = "none")
+  
+  if(decades[x] > 1960){
+    Y_position <- Ybase
+  } else {
+    Y_position <- Ybase + Yjitter
+  } 
+  
+  if(decades[x] %in% c(1920, 1970)){
+    X_position <- Xbase - (4*Xjitter)
+  } else if(decades[x] %in% c(1930, 1980)){
+    X_position <- Xbase - (3*Xjitter)
+  } else if(decades[x] %in% c(1940, 1990)){
+    X_position <- Xbase - (2*Xjitter)
+  } else if(decades[x] %in% c(1950, 2000)){
+    X_position <- Xbase - (1*Xjitter)
+  } else {
+    X_position <- Xbase
+  }
+  
+  draw_plot(plot_temp,
+            x = X_position,
+            y = Y_position,
+            hjust = 1,
+            height = Yjitter,
+            width = Xjitter) 
+
+})
+```
+
+#### Produce final plot
+
+
+```{r cowplot, fig.width = 16, fig.height = 16}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 16, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_decade_plots +
+  draw_plot(map_plot,
+            y = 0.63,
+            x = 0.5,
+            hjust = 0.5,
+            vjust = 0.5, 
+            width = 0.9) +
+  # explainer text
+  draw_label("Chart by Althea A Archer. Exceptional droughts defined with 2% variable 7-day thresholds.\nData based on streamflow records from 1831 streamgages: doi.org/10.5066/P92FAASD",
+             fontfamily = supporting_font,
+             x = 1 - Xmargin,   
+             y = Ymargin,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+  # Title
+  draw_label("Where have droughts happened?",
+             x = Xmargin,
+             y = 1 - Ymargin,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 1.0,
+             fontfamily = font_legend,
+             color = font_color,
+             size = title_size) +
+  
+  # Title
+  draw_label("These are the 100 most severe exceptional droughts\nsince 1920 across all 100-years and by decade.",
+             x = Xmargin,
+             y = 1 - Ymargin - Ymargin ,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 1.0,
+             fontfamily = supporting_font,
+             color = font_color,
+             size = support_size) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = Xmargin,
+             y = Ymargin,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230423_timeseries-tiles_whereDrought_aaarcher.png", 
+       width = 16, height = 16, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Key takeaways here
+
+### Data source(s)
+
+Data sources here.
+
