@@ -406,27 +406,30 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              width = 0.1, 
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)+
-    geom_segment(aes(x = Xbase - Xjitter*2 - 0.153, xend = Xbase - Xjitter*2 - 0.153, 
-                     y = Ybase + Yjitter*2 + 0.122, yend = Ybase + Yjitter*2 + 0.2), 
-                 arrow = arrow(length = unit(0.01, "npc")),
-                 color = pop_color,
-             lineend = 'round',
-             linewidth = 1.5)+
+  # Y-axis explainer
+  geom_segment(aes(x = Xbase - Xjitter*2 - 0.153, xend = Xbase - Xjitter*2 - 0.153, 
+                   y = Ybase + Yjitter*2 + 0.122, yend = Ybase + Yjitter*2 + 0.2), 
+               arrow = arrow(length = unit(0.01, "npc")),
+               color = pop_color,
+               lineend = 'round',
+               linewidth = 1.5)+
   draw_text("Number of\ndroughts",
-           x = Xmargin + 0.025,
-           y = Ybase + Yjitter*3 - 0.08,
-           color = pop_color, size = support_size, family = annotation_font,
-           hjust = 0)+
+            x = Xmargin + 0.025,
+            y = Ybase + Yjitter*3 - 0.08,
+            color = pop_color, size = support_size, family = annotation_font,
+            hjust = 0)+
+  # Facts
   draw_text("Droughts more\n  common January\n   through March",
-           x = Xmargin + Xjitter*2 - 0.12,
-           y = Ybase + Yjitter*3 - 0.08,
-           color = pop_color, size = support_size, family = annotation_font,
-           hjust = 0)+
+            x = Xmargin + Xjitter*2 - 0.12,
+            y = Ybase + Yjitter*3 - 0.08,
+            color = pop_color, size = support_size, family = annotation_font,
+            hjust = 0)+
   draw_text("Droughts shifting\nto later\nin year\nsince\n1950s",
-           x = Xmargin + Xjitter*2 + 0.028,
-           y = Ybase + Yjitter*2 - 0.10,
-           color = pop_color, size = support_size, family = annotation_font,
-           hjust = 0)+
+            x = Xmargin + Xjitter*2 + 0.028,
+            y = Ybase + Yjitter*2 - 0.10,
+            color = pop_color, size = support_size, family = annotation_font,
+            hjust = 0)+
+  # X-axis explainer
   geom_curve(aes(xend = Xbase - Xjitter*2 - 0.062, x = Xbase - Xjitter*2 - 0.145,
                  yend = Ybase + Yjitter*2 + 0.115, y = Ybase + Yjitter*2 + 0.2),
              arrow = grid::arrow(length = unit(0.75, 'lines')),
@@ -436,14 +439,14 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              lineend = 'round',
              linewidth = 1.5)+
   draw_text("Calendar\n   year",
-           x = Xmargin + 0.24,
-           y = Ybase + Yjitter*3 - 0.08,
-           color = pop_color, size = support_size, family = annotation_font,
-           hjust = 0)+
+            x = Xmargin + 0.24,
+            y = Ybase + Yjitter*3 - 0.08,
+            color = pop_color, size = support_size, family = annotation_font,
+            hjust = 0)+
   # Add logo
   draw_text("DRAFT", 
-             x = 0.25,
-             y = Ymargin,
+            x = 0.25,
+            y = Ymargin,
             color = pop_color, size = title_size)
 
 

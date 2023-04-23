@@ -194,20 +194,7 @@ droughts_1000perRecord_100yr <- droughts_combined |>
   # and get top 100
   slice_max(order_by = severity, n = 1000)
 
-# Which streamgages? This is used for determining where droughts are 
 
-# Full 100-year record
-gages_with_drought_100yr <- droughts_100perRecord_100yr |> 
-  group_by(StaID) |>
-  summarise(num_droughts = n()) |>
-  left_join(metadata, by = "StaID")
-
-
-# By decade
-gages_with_drought_decade_100yr <- droughts_100perDecade_100yr |> 
-  group_by(StaID, decade) |>
-  summarise(num_droughts = n()) |>
-  left_join(metadata, by = "StaID")
 
 
 
@@ -265,8 +252,15 @@ usgs_logo <- magick::image_read("../usgs_logo_white.png")
               aes(x = LNG_GAGE, y = LAT_GAGE),
               color = offwhite_color, size = 4)+
    geom_point(data = droughts_1000perRecord_100yr,
-              aes(x = LNG_GAGE, y = LAT_GAGE, color = historical),
+              aes(x = LNG_GAGE, y = LAT_GAGE),
               color = pop_color, size = 3)+
+   # most severe called out
+      geom_point(data = droughts_1000perRecord_100yr |> filter(severity == 626.90),
+              aes(x = LNG_GAGE, y = LAT_GAGE),
+              color = "black", size = 4)+
+   geom_point(data = droughts_1000perRecord_100yr |> filter(severity == 626.90),
+              aes(x = LNG_GAGE, y = LAT_GAGE),
+              color = pop_color, size = 2.8)+
    theme_void()+
    theme(legend.position = "none")
 )
@@ -300,7 +294,9 @@ draw_decade_plots <- map(1:length(decades), function(x){
               aes(x = LNG_GAGE, y = LAT_GAGE, color = historical),
               color = pop_color, size = 3)+
    theme_void()+
-    theme(legend.position = "none")
+    theme(strip.text = element_text(size = support_size, color = font_color,
+                                    family = supporting_font, face = "bold"),
+          legend.position = "none")
   
   if(decades[x] > 1960){
     Y_position <- Ybase
@@ -387,6 +383,22 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              width = 0.1, 
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)+
+  # Most severe drought
+  geom_curve(aes(x = Xbase - Xjitter*4 - 0.1, xend = Xbase - Xjitter*4 - 0.05,
+                 y = Ybase + Yjitter*3 - 0.08, yend = Ybase + Yjitter*3 + 0.012),
+             arrow = grid::arrow(length = unit(0.75, 'lines')),
+             curvature = -0.40,
+             angle = 150,
+             color = pop_color,
+             lineend = 'round',
+             linewidth = 1.5)+
+  draw_text("The most severe drought\non record was also the longest,\nlasting from March 10, 1924 to Feb. 12, 1926",
+            y = 0.455,
+            x = 0.132,
+            family = annotation_font,
+            color = pop_color,
+            size = support_size,
+            hjust = 0)+
   # Add logo
   draw_text("DRAFT", 
              x = 0.25,
