@@ -24,7 +24,7 @@ p2_targets <- list(
   # calc summary for alt-text
   tar_target(
     p2_ice_summary,
-    calc_ice_summary_stats(p2_ice_data, homes_order = TRUE)
+    calc_ice_summary_stats(p2_ice_data, homes_order = FALSE)
   )
   
 )

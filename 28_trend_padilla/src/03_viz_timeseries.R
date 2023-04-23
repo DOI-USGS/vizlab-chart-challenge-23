@@ -32,8 +32,11 @@ annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
   
   # re-org data
   if(homes_order) {
-    ls_ice_ts <- ls_ice_ts[c("Basin", "Huron", "Ontario",
+    ls_maps <- ls_maps[c("Basin", "Huron", "Ontario",
                          "Michigan", "Erie", "Superior")]
+  } else {
+    ls_maps <- ls_maps[c("Basin", "Superior", "Michigan",
+                         "Huron", "Erie", "Ontario")]
   }
   
   return(ls_ice_ts)
@@ -53,7 +56,7 @@ annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
 create_ice_timeseries <- function(tbl) {
   
   ts <- 
-    ggplot(data = tbl, aes(x = year, y = perc_ice_cover)) +
+    ggplot(data = tbl, aes(x = wy, y = perc_ice_cover)) +
     geom_line(color = "gray60") +
     geom_point(fill = "gray15", size = 0.75) +
     geom_smooth(method = lm, se = FALSE, linewidth = 0.25) +
@@ -63,7 +66,7 @@ create_ice_timeseries <- function(tbl) {
     scale_y_continuous(limits = c(0,100)) +
     theme_minimal() +
     theme(axis.text.y = element_text(size = 14))
-    theme(strip.text = element_blank())
+    # theme(strip.text = element_blank())
   
   # conditionally remove x-axis labels for lakes that aren't superior+
   # if(tbl$lk[1] == "Superior") { # tall
@@ -80,6 +83,70 @@ create_ice_timeseries <- function(tbl) {
   #   theme(plot.background = element_rect(color = "green", linewidth = 3)) +
     ts <- ts +
       theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+  
+  return(ts)
+}
+
+annual_max_ice_deviation <- function(ice_tibble, homes_order = TRUE) {
+  
+  # calculate data.frame for max ice and yday by water year
+  df_max_ice_yday <- ice_tibble |> 
+    group_by(lake, wy) |> 
+    # in case of a tie, take the first instance of a max value
+    slice_max(perc_ice_cover, na_rm = TRUE, n = 1, with_ties = FALSE) |> 
+    arrange(lake, date)
+  
+  # calculate lake average yday and max ice for reference
+  df_avg <- df_max_ice_yday |> 
+    group_by(lake) |> 
+    summarize(wy_yday_avg = mean(wy_yday),
+              perc_ice_avg = mean(perc_ice_cover))
+  
+  df_max_ice_yday <- left_join(df_max_ice_yday, df_avg) |> group_by(lake)
+  df_max_ice_yday$lk <- df_max_ice_yday$lake # add a dummy lake column
+  df_max_ice_yday <- df_max_ice_yday |> 
+    mutate(ice_deviation = perc_ice_cover - perc_ice_avg,
+           ice_rpd = (perc_ice_cover - perc_ice_avg) / perc_ice_avg * 100,
+           day_deviation = wy_yday - wy_yday_avg)
+    
+  ls_ice_ts <- df_max_ice_yday |> 
+    group_map(~ create_ice_barplot(.x)) |> 
+    setNames(attributes(df_max_ice_yday)$groups[[1]])
+  
+  # re-org data
+  if(homes_order) {
+    ls_maps <- ls_maps[c("Basin", "Huron", "Ontario",
+                         "Michigan", "Erie", "Superior")]
+  } else {
+    ls_maps <- ls_maps[c("Basin", "Superior", "Michigan",
+                         "Huron", "Erie", "Ontario")]
+  }
+  
+  return(ls_ice_ts)
+}
+
+create_ice_barplot <- function(tbl) {
+  # browser()
+  ts <- 
+    ggplot(data = tbl, aes(wy, ice_rpd)) + geom_bar(stat = "identity") +
+    labs(title = "", x = "", y = "") +
+    scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
+    scale_y_continuous(limits = c(-100, 100)) +
+    theme_minimal() +
+    theme(axis.text.y = element_text(size = 14))
+  
+  # conditionally remove x-axis labels for lakes that aren't superior+
+  # if(tbl$lk[1] == "Superior") { # tall
+  if(tbl$lk[1] == "Erie" | tbl$lk[1] == "Ontario") { # wide
+    ts <- ts + 
+      theme(axis.text.x = element_text(size = 14, angle = 0, hjust = 0.5, vjust = 0.5))
+  } else {
+    ts <- ts + 
+      theme(axis.text.x = element_blank())
+  }
+
+  ts <- ts +
+    theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
   
   return(ts)
 }

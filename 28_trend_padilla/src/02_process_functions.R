@@ -157,17 +157,18 @@ calc_ice_summary_stats <- function(ice_tibble, homes_order = TRUE) {
   
   df_summary <- left_join(df_avg, df_2023) |> 
     mutate(
-      abs_change = round(perc_ice_2023 - avg_perc_ice, 0),
-      rpd = round((perc_ice_2023 - avg_perc_ice) / avg_perc_ice * 100, 0)
+      abs_change = round(perc_ice_2023 - avg_perc_ice, 2),
+      rpd = round((perc_ice_2023 - avg_perc_ice) / avg_perc_ice * 100, 2)
     )
   
   # re-org data
   if(homes_order) {
     df_summary <- df_summary |> 
-      arrange(match(lake , 
-                    c("Basin", "Huron", "Ontario", "Michigan", "Erie", "Superior")
-                    )
-              )
+      arrange(match(lake , c("Basin", "Huron", "Ontario", "Michigan", "Erie", "Superior")))
+  } else {
+    
+    df_summary <- df_summary |> 
+      arrange(match(lake , c("Basin", "Superior", "Michigan", "Huron", "Erie", "Ontario")))
   }
   
   return(df_summary)

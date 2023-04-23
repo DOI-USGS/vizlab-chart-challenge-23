@@ -25,7 +25,7 @@ make_simple_lake_sf <- function(esri_files) {
 #' @param homes_order A logical value indicating whether to return the maps in a specific order. Default is TRUE.
 #'
 #' @return A list of ggplot2 objects, each object representing a clean map of a Great Lake and the Basin.
-
+#'
 create_great_lakes_maps <- function(in_zips, homes_order = TRUE) {
   
   # extract all files
@@ -66,7 +66,10 @@ create_great_lakes_maps <- function(in_zips, homes_order = TRUE) {
   # add factor levels
   if(homes_order) {
     ls_maps <- ls_maps[c("Basin", "Huron", "Ontario",
-                         "Michigan", "Erie", "Superior")]
+                             "Michigan", "Erie", "Superior")]
+  } else {
+    ls_maps <- ls_maps[c("Basin", "Superior", "Michigan",
+                         "Huron", "Erie", "Ontario")]
   }
   
   return(ls_maps)
