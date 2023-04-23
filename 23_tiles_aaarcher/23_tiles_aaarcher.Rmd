@@ -145,24 +145,24 @@ CASC_names <- unique(states_CASC$CASC)
 ```{r processing_timing}
 # Select appropriate threshold (here 2%)
 droughts_2pct <- drought_properties_7d |> 
-  # step 0: join metadata and take out DC
+  # Join metadata and take out DC
   left_join(metadata |> select(StaID, STATE), by = "StaID") |>
   filter(! STATE == "DC") |>
-  # step 1: 2% threshold
+  # Select 2% threshold
   filter(threshold == 2) |>
   mutate(year = lubridate::year(start)) |>
-  # remove couple from 2020 (uncomplete year)
+  # remove couple from 2020 (incomplete year)
   filter(year < 2020) 
 
 droughts_100perYear <- droughts_2pct |>
-  # step 2: group by year
+  # Group by year
   group_by(year) |>
   # and get top 100
   slice_max(order_by = severity, n = 100)
 
 
 droughts_100_join_CASC <- droughts_100perYear |>
-  # step 4: join with CASCs
+  # Join with CASCs
   mutate(CASC = case_when(STATE %in% c("MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH") ~ "Midwest",
                           STATE %in% c("MT", "WY", "CO", "ND", "SD", "NE", "KS") ~ "North Central",
                           STATE %in% c("ME", "NH", "VT", "MA", "CT", "RI", "DC",
@@ -199,11 +199,6 @@ droughts_long <- droughts_100_join_CASC |>
   select(-threshold, -previous_end, -days_since_previous_drought,
          -has_the_potential_to_be_impacted_by_missing_values) 
 
-# Which streamgages? This is used for determining where droughts are
-gages_with_drought <- droughts_100_join_CASC |> 
-  group_by(StaID) |>
-  summarise(num_droughts = n()) |>
-  left_join(metadata, by = "StaID")
 
 ```
 
@@ -212,23 +207,23 @@ gages_with_drought <- droughts_100_join_CASC |>
 ```{r processing_100yr}
 # Select appropriate threshold (here 2%)
 droughts_2pct_100yr <- drought_properties_7d_100yr |> 
-  # step 0: join metadata and take out DC
+  # Join metadata and take out DC
   left_join(metadata |> select(StaID, STATE), by = "StaID") |>
   filter(! STATE == "DC") |>
-  # step 1: 2% threshold
+  # Select 2% threshold
   filter(threshold == 2) |>
   mutate(year = lubridate::year(start)) |>
   # remove couple from 2020 (uncomplete year)
   filter(year < 2020) 
 
 droughts_100perYear_100yr <- droughts_2pct_100yr |>
-  # step 2: group by year
+  # Group by year
   group_by(year) |>
   # and get top 100
   slice_max(order_by = severity, n = 100)
 
 droughts_100_join_CASC_100yr <- droughts_100perYear_100yr |>
-  # step 4: join with CASCs
+  # Join with CASCs
   mutate(CASC = case_when(STATE %in% c("MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH") ~ "Midwest",
                           STATE %in% c("MT", "WY", "CO", "ND", "SD", "NE", "KS") ~ "North Central",
                           STATE %in% c("ME", "NH", "VT", "MA", "CT", "RI", "DC",
@@ -268,7 +263,9 @@ gages_with_drought_decade_100yr <- droughts_100_join_CASC_100yr |>
 # Load some custom fonts and set some custom settings
 font_legend <- "Source Sans Pro"
 supporting_font <- "Source Sans Pro"
+annotation_font <- "Shadows Into Light"
 sysfonts::font_add_google("Source Sans Pro")
+sysfonts::font_add_google("Shadows Into Light")
 showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
 showtext::showtext_auto(enable = TRUE)
 
@@ -416,11 +413,8 @@ draw_CASC_plots <- map(1:length(CASC_names), function(x){
 })
 ```
 
-## Produce final plot
+#### Produce final plot
 
-Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
-
-**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
 ```{r cowplot, fig.width = 16, fig.height = 16}
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
@@ -487,7 +481,17 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   draw_text("Number of\ndroughts",
            x = Xmargin + 0.025,
            y = Ybase + Yjitter*3 - 0.08,
-           color = "#e05915", size = support_size, family = supporting_font,
+           color = "#e05915", size = support_size, family = annotation_font,
+           hjust = 0)+
+  draw_text("Droughts more\n  common January\n   through March",
+           x = Xmargin + Xjitter*2 - 0.12,
+           y = Ybase + Yjitter*3 - 0.08,
+           color = "#e05915", size = support_size, family = annotation_font,
+           hjust = 0)+
+  draw_text("Droughts shifting\nto later\nin year\nsince\n1950s",
+           x = Xmargin + Xjitter*2 + 0.028,
+           y = Ybase + Yjitter*2 - 0.10,
+           color = "#e05915", size = support_size, family = annotation_font,
            hjust = 0)+
   geom_curve(aes(xend = Xbase - Xjitter*2 - 0.062, x = Xbase - Xjitter*2 - 0.145,
                  yend = Ybase + Yjitter*2 + 0.115, y = Ybase + Yjitter*2 + 0.2),
@@ -500,7 +504,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   draw_text("Calendar\n   year",
            x = Xmargin + 0.24,
            y = Ybase + Yjitter*3 - 0.08,
-           color = "#e05915", size = support_size, family = supporting_font,
+           color = "#e05915", size = support_size, family = annotation_font,
            hjust = 0)
 
 
@@ -511,6 +515,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
 ggsave(filename = "out/20230423_timeseries-tiles_whenDrought_aaarcher.png", 
        width = 16, height = 16, dpi = 300)
 ```
+
+
+
 
 ## Supporting information
 
