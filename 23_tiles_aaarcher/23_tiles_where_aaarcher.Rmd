@@ -60,6 +60,25 @@ if(!file.exists(drought_properties_7d_file100)){ # if files don't exist, downloa
 }
 drought_properties_7d_100yr <- readr::read_csv(drought_properties_7d_file100) 
 
+# Drought Properties - 7day window - 1951-2020 dataset
+drought_properties_7d_file50 <- "in/Drought_Properties_jd_07d_wndw.csv"
+if(!file.exists(drought_properties_7d_file50)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "627974ccd34e8d45aa6e3c81",
+                              names = "Drought_Properties_jd_07d_wndw.csv",
+                              destinations =  "in/Drought_Properties_jd_07d_wndw.csv",
+                              overwrite_file = FALSE)
+}
+drought_properties_7d_50 <- readr::read_csv(drought_properties_7d_file50) 
+
+# Drought Properties - 7day window - 1981-2020 dataset
+drought_properties_7d_file80 <- "in/Drought_Properties_jd_07d_wndw_80.csv"
+if(!file.exists(drought_properties_7d_file80)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "62f475abd34eacf5397395e8",
+                              names = "Drought_Properties_jd_07d_wndw.csv",
+                              destinations =  "in/Drought_Properties_jd_07d_wndw_80.csv",
+                              overwrite_file = FALSE)
+}
+drought_properties_7d_80 <- readr::read_csv(drought_properties_7d_file80) 
 
 file_in_metadata <- "in/study_watersheds_metadata.csv"
 if(!file.exists(file_in_metadata)){ # if files don't exist, download
@@ -123,33 +142,57 @@ CASC_names <- unique(states_CASC$CASC)
 
 ### Processing for the "where is drought" viz
 
+To capture true history of drought, use increasingly spatially complete data when possible:
+
+1. For 1921-1951, capture all droughts from the 1921-2020 dataset
+2. For 1952-1981, capture all droughts from the 1951-2020 dataset
+3. For 1982-2020, capture all droughts from the 1981-2020 dataset
+
 ```{r processing_100yr}
 # Select appropriate threshold (here 2%)
 droughts_2pct_100yr <- drought_properties_7d_100yr |> 
-  # Join metadata and take out DC
+  # Join metadata
   left_join(metadata |> select(StaID, STATE), by = "StaID") |>
-  filter(! STATE == "DC") |>
   # Select 2% threshold
   filter(threshold == 2) |>
+  filter(lubridate::year(start) <= 1952) 
+
+droughts_2pct_1950s <- drought_properties_7d_50 |> 
+  # Join metadata
+  left_join(metadata |> select(StaID, STATE), by = "StaID") |>
+  # Select 2% threshold
+  filter(threshold == 2) |>
+  filter(lubridate::year(start) > 1952,
+         lubridate::year(start) <= 1982) 
+
+droughts_2pct_1980s <- drought_properties_7d_80 |> 
+  # Join metadata
+  left_join(metadata |> select(StaID, STATE), by = "StaID") |>
+  # Select 2% threshold
+  filter(threshold == 2) |>
+  filter(lubridate::year(start) > 1982) 
+  
+droughts_combined <- droughts_2pct_100yr |>
+  bind_rows(droughts_2pct_1950s) |>
+  bind_rows(droughts_2pct_1980s) |>
   mutate(year = lubridate::year(start))  |>
   # calculate decade
   mutate(decade = year(floor_date(start, years(10))),
          historical = case_when(year <= 1970 ~ "Historical",
-                          year > 1970 ~ "Recent"))
+                          year > 1970 ~ "Recent")) |>
+  left_join(metadata, by = "StaID")
 
-droughts_100perDecade_100yr <- droughts_2pct_100yr |>
+droughts_100perDecade_100yr <- droughts_combined |>
   # Group by decade
   group_by(decade) |>
   # remove couple from 2020 (uncomplete year)
   filter(year < 2020) |>
   # and get top 100
-  slice_max(order_by = severity, n = 100)|>
-  left_join(metadata, by = "StaID")
+  slice_max(order_by = severity, n = 100)
 
-droughts_100perRecord_100yr <- droughts_2pct_100yr |>
+droughts_1000perRecord_100yr <- droughts_combined |>
   # and get top 100
-  slice_max(order_by = severity, n = 100)|>
-  left_join(metadata, by = "StaID")
+  slice_max(order_by = severity, n = 1000)
 
 # Which streamgages? This is used for determining where droughts are 
 
@@ -192,7 +235,9 @@ support_size <- 24
 
 # Define colors
 background_color = "#c2dde6"
+offwhite_color = "#e6e9f0"
 font_color = "#431c5d"
+base_color = "#634B79"
 pop_color = "#e05915"
 
 # The background canvas for your viz
@@ -215,19 +260,13 @@ usgs_logo <- magick::image_read("../usgs_logo_white.png")
 
 ```{r plot_mapCONUS}
 (map_plot <- ggplot(data = states_CASC) +
-   geom_sf(fill = "#e6e9f0", color = background_color, linewidth = 0.5) +
-   geom_point(data = droughts_100perRecord_100yr |> filter(historical == "Historical"),
-              aes(x = LNG_GAGE, y = LAT_GAGE, size = severity/80),
-              color = "black")+
-   geom_point(data = droughts_100perRecord_100yr |> filter(historical == "Historical"),
-              aes(x = LNG_GAGE, y = LAT_GAGE, color = historical, size = severity/100),
-              color = "grey")+
-   geom_point(data = droughts_100perRecord_100yr |> filter(historical == "Recent"),
-              aes(x = LNG_GAGE, y = LAT_GAGE, size = severity/80),
-              color = "black")+
-   geom_point(data = droughts_100perRecord_100yr |> filter(historical == "Recent"),
-              aes(x = LNG_GAGE, y = LAT_GAGE, color = historical, size = severity/100),
-              color = pop_color)+
+   geom_sf(fill = base_color, color = background_color, linewidth = 0.5) +
+   geom_point(data = droughts_1000perRecord_100yr,
+              aes(x = LNG_GAGE, y = LAT_GAGE),
+              color = offwhite_color, size = 4)+
+   geom_point(data = droughts_1000perRecord_100yr,
+              aes(x = LNG_GAGE, y = LAT_GAGE, color = historical),
+              color = pop_color, size = 3)+
    theme_void()+
    theme(legend.position = "none")
 )
@@ -252,14 +291,14 @@ decades <- unique(droughts_100perDecade_100yr$decade)
 draw_decade_plots <- map(1:length(decades), function(x){
   # create temporary plot
   plot_temp <- ggplot(data = states_CASC) +
-   geom_sf(fill = "#e6e9f0", color = background_color, linewidth = 0.5) +
+   geom_sf(fill = base_color, color = background_color, linewidth = 0.5) +
     facet_wrap(~ decade) + 
    geom_point(data = droughts_100perDecade_100yr |> filter(decade == decades[x]),
-              aes(x = LNG_GAGE, y = LAT_GAGE, size = severity/80),
-              color = "black")+
+              aes(x = LNG_GAGE, y = LAT_GAGE),
+              color = offwhite_color, size = 4)+
    geom_point(data = droughts_100perDecade_100yr |> filter(decade == decades[x]),
-              aes(x = LNG_GAGE, y = LAT_GAGE, color = historical, size = severity/110),
-              color = pop_color)+
+              aes(x = LNG_GAGE, y = LAT_GAGE, color = historical),
+              color = pop_color, size = 3)+
    theme_void()+
     theme(legend.position = "none")
   
@@ -311,7 +350,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             vjust = 0.5, 
             width = 0.9) +
   # explainer text
-  draw_label("Chart by Althea A Archer. Exceptional droughts defined with 2% variable 7-day thresholds.\nData based on streamflow records from 1831 streamgages: doi.org/10.5066/P92FAASD",
+  draw_label("Chart by Althea A Archer. Exceptional droughts defined with 2% variable 7-day thresholds.\nData based on streamflow records from 3,198 streamgages: doi.org/10.5066/P92FAASD",
              fontfamily = supporting_font,
              x = 1 - Xmargin,   
              y = Ymargin,
@@ -328,10 +367,11 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              lineheight = 1.0,
              fontfamily = font_legend,
              color = font_color,
-             size = title_size) +
+             size = title_size,
+             fontface = "bold") +
   
   # Title
-  draw_label("These are the 100 most severe exceptional droughts\nsince 1920 across all 100-years and by decade.",
+  draw_label("These are the 1000 most severe exceptional droughts since 1920\nacross all 100 years and by decade.",
              x = Xmargin,
              y = 1 - Ymargin - Ymargin ,
              hjust = 0,
@@ -346,7 +386,12 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              y = Ymargin,
              width = 0.1, 
              hjust = 0, vjust = 0, 
-             halign = 0, valign = 0)
+             halign = 0, valign = 0)+
+  # Add logo
+  draw_text("DRAFT", 
+             x = 0.25,
+             y = Ymargin,
+            color = "#e05915", size = title_size)
 
 
 # Save the final image in Twitter's 16 by 9 format

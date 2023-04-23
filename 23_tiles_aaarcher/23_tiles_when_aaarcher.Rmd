@@ -127,9 +127,8 @@ CASC_names <- unique(states_CASC$CASC)
 ```{r processing_timing}
 # Select appropriate threshold (here 2%)
 droughts_2pct <- drought_properties_7d |> 
-  # Join metadata and take out DC
+  # Join metadata 
   left_join(metadata |> select(StaID, STATE), by = "StaID") |>
-  filter(! STATE == "DC") |>
   # Select 2% threshold
   filter(threshold == 2) |>
   mutate(year = lubridate::year(start)) |>
@@ -208,6 +207,8 @@ support_size <- 24
 # Define colors
 background_color = "#c2dde6"
 font_color = "#431c5d"
+base_color = "#634B79"
+pop_color = "#e05915"
 
 # The background canvas for your viz
 canvas <- grid::rectGrob(
@@ -228,7 +229,7 @@ usgs_logo <- magick::image_read("../usgs_logo_white.png")
 
 ```{r plot_tests1}
 (map_plot <- ggplot(data = states_CASC) +
-    geom_sf(fill = "#e6e9f0", color = background_color, linewidth = 0.5) +
+    geom_sf(fill = base_color, color = background_color, linewidth = 0.5) +
     geom_sf(data = mapping_data_regions, color = background_color, fill = NA, linewidth = 1.5)+
     geom_segment(aes(x = -125, xend = -127, # northwest
                      y = 50, yend = 52), 
@@ -377,7 +378,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0,
              color = font_color)+
   # Title
-  draw_label("When and where have droughts happened?",
+  draw_label("When do droughts happen?",
              x = Xmargin,
              y = 1 - Ymargin,
              hjust = 0,
@@ -385,7 +386,8 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              lineheight = 1.0,
              fontfamily = font_legend,
              color = font_color,
-             size = title_size) +
+             size = title_size,
+             fontface = "bold") +
   
   # Title
   draw_label("These are the 100 most severe exceptional droughts from each year\nsince 1950 by time of year and decade.",
@@ -407,42 +409,42 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
     geom_segment(aes(x = Xbase - Xjitter*2 - 0.153, xend = Xbase - Xjitter*2 - 0.153, 
                      y = Ybase + Yjitter*2 + 0.122, yend = Ybase + Yjitter*2 + 0.2), 
                  arrow = arrow(length = unit(0.01, "npc")),
-                 color = "#e05915",
+                 color = pop_color,
              lineend = 'round',
              linewidth = 1.5)+
   draw_text("Number of\ndroughts",
            x = Xmargin + 0.025,
            y = Ybase + Yjitter*3 - 0.08,
-           color = "#e05915", size = support_size, family = annotation_font,
+           color = pop_color, size = support_size, family = annotation_font,
            hjust = 0)+
   draw_text("Droughts more\n  common January\n   through March",
            x = Xmargin + Xjitter*2 - 0.12,
            y = Ybase + Yjitter*3 - 0.08,
-           color = "#e05915", size = support_size, family = annotation_font,
+           color = pop_color, size = support_size, family = annotation_font,
            hjust = 0)+
   draw_text("Droughts shifting\nto later\nin year\nsince\n1950s",
            x = Xmargin + Xjitter*2 + 0.028,
            y = Ybase + Yjitter*2 - 0.10,
-           color = "#e05915", size = support_size, family = annotation_font,
+           color = pop_color, size = support_size, family = annotation_font,
            hjust = 0)+
   geom_curve(aes(xend = Xbase - Xjitter*2 - 0.062, x = Xbase - Xjitter*2 - 0.145,
                  yend = Ybase + Yjitter*2 + 0.115, y = Ybase + Yjitter*2 + 0.2),
              arrow = grid::arrow(length = unit(0.75, 'lines')),
              curvature = -0.40,
              angle = -88,
-             color = "#e05915",
+             color = pop_color,
              lineend = 'round',
              linewidth = 1.5)+
   draw_text("Calendar\n   year",
            x = Xmargin + 0.24,
            y = Ybase + Yjitter*3 - 0.08,
-           color = "#e05915", size = support_size, family = annotation_font,
+           color = pop_color, size = support_size, family = annotation_font,
            hjust = 0)+
   # Add logo
   draw_text("DRAFT", 
              x = 0.25,
              y = Ymargin,
-            color = "#e05915", size = title_size)
+            color = pop_color, size = title_size)
 
 
 # Save the final image in Twitter's 16 by 9 format
