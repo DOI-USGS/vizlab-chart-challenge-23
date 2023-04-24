@@ -9,7 +9,7 @@
 #' to their location on the Great Lakes HOMES scale (TRUE) or in alphabetical order (FALSE). Default is TRUE.
 #' 
 annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
-  
+  # browser()
   # calculate data.frame for max ice and yday by water year
   df_max_ice_yday <- ice_tibble |> 
     group_by(lake, wy) |> 
@@ -32,10 +32,10 @@ annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
   
   # re-org data
   if(homes_order) {
-    ls_maps <- ls_maps[c("Basin", "Huron", "Ontario",
+    ls_ice_ts <- ls_ice_ts[c("Basin", "Huron", "Ontario",
                          "Michigan", "Erie", "Superior")]
   } else {
-    ls_maps <- ls_maps[c("Basin", "Superior", "Michigan",
+    ls_ice_ts <- ls_ice_ts[c("Basin", "Superior", "Michigan",
                          "Huron", "Erie", "Ontario")]
   }
   
@@ -66,11 +66,10 @@ create_ice_timeseries <- function(tbl) {
     scale_y_continuous(limits = c(0,100)) +
     theme_minimal() +
     theme(axis.text.y = element_text(size = 14))
-    # theme(strip.text = element_blank())
   
   # conditionally remove x-axis labels for lakes that aren't superior+
   # if(tbl$lk[1] == "Superior") { # tall
-  if(tbl$lk[1] == "Superior" | tbl$lk[1] == "Erie") { # wide
+  if(tbl$lk[1] == "Erie" | tbl$lk[1] == "Ontario") { # wide
     ts <- ts + 
       theme(axis.text.x = element_text(size = 14, angle = 0, hjust = 0.5, vjust = 0.5))
   } else {
@@ -115,10 +114,10 @@ annual_max_ice_deviation <- function(ice_tibble, homes_order = TRUE) {
   
   # re-org data
   if(homes_order) {
-    ls_maps <- ls_maps[c("Basin", "Huron", "Ontario",
+    ls_ice_ts <- ls_ice_ts[c("Basin", "Huron", "Ontario",
                          "Michigan", "Erie", "Superior")]
   } else {
-    ls_maps <- ls_maps[c("Basin", "Superior", "Michigan",
+    ls_ice_ts <- ls_ice_ts[c("Basin", "Superior", "Michigan",
                          "Huron", "Erie", "Ontario")]
   }
   
@@ -128,7 +127,8 @@ annual_max_ice_deviation <- function(ice_tibble, homes_order = TRUE) {
 create_ice_barplot <- function(tbl) {
   # browser()
   ts <- 
-    ggplot(data = tbl, aes(wy, ice_rpd)) + geom_bar(stat = "identity") +
+    ggplot(data = tbl, aes(wy, ice_rpd)) + 
+    geom_bar(stat = "identity") +
     labs(title = "", x = "", y = "") +
     scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
     scale_y_continuous(limits = c(-100, 100)) +

@@ -8,7 +8,7 @@
 #' @returns A list of plots, with one plot for each lake
 #' 
 create_combo_plots <- function(maps, timeseries, out_path_pattern = NULL) {
-  
+  # browser()
   # make sure objects match by lake
   stopifnot(names(maps) == names(timeseries))
   
@@ -77,7 +77,7 @@ format_and_combine_plots <- function(x_map, y_ts) {
 #'
 #' @returns A final plot grid with the specified title and a combination of all ggplot objects in the ls_gl_plots list.
 #' 
-create_final_plot <- function(ls_gl_plots, ttl, out_path) {
+create_final_plot <- function(ls_gl_plots, ttl, out_path = NULL) {
   
   lake_nms <- names(ls_gl_plots)
   
@@ -85,9 +85,9 @@ create_final_plot <- function(ls_gl_plots, ttl, out_path) {
     assign(paste0("plot", lake_nms[[i]]), ls_gl_plots[[i]])
   }
   
-  out_plot <- plot_grid(plotBasin, plotHuron,
-                        plotOntario, plotMichigan, 
-                        plotErie, plotSuperior, 
+  out_plot <- plot_grid(plotBasin, plotSuperior, 
+                        plotMichigan, plotHuron,
+                        plotErie, plotOntario, 
                         align = "v", 
                         # ncol = 1) # tall
                         ncol = 2) #wide
@@ -100,11 +100,31 @@ create_final_plot <- function(ls_gl_plots, ttl, out_path) {
       size = 24
     )
   
-  out_plot_w_ttl<- plot_grid(
+  out_plot_w_ttl <- plot_grid(
     title, out_plot,
     ncol = 1,
     rel_heights = c(0.1, 1)
   )
+  
+  
+  if(!is.null(out_path)) {
+    
+    ggsave(filename = out_path, 
+           plot = out_plot_w_ttl, 
+           # height = 12, width = 6, units = "in", # tall
+           height = 9, width = 16, units = "in", # wide
+           dpi = 300, bg = "white")
+    
+    message("returning file path...")
+    return(out_path)
+    
+  } else {
+    
+    message("returning object...")
+    return(out_plot_w_ttl)
+    
+  }
+  
 
   ggsave(filename = out_path, 
          plot = out_plot_w_ttl, 
