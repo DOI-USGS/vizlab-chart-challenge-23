@@ -1,0 +1,39 @@
+# R
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*/_targets/*
+*.Rproj
+*/_targets/
+*/scratch.R
+
+#Python
+*/.ipynb_checkpoints/
+
+.DS_Store
+
+# Large files
+*.ai
+*.gif
+*.psd
+*.nc
+
+# Subdirectory specific files
+# ADD AS USERS SUBMIT CODE IN SUBDIRECTORIES
+*/in/*
+*/out/*
+2_process/out/*
+3_visualize/out/*
+*.html
+documents/
+documents/*
+scratch.Rmd
+
+# Spatial
+*.cpg
+*.dbf
+*.fix
+*.prj
+*.shp
+*.shx
