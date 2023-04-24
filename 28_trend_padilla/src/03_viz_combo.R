@@ -48,9 +48,11 @@ create_combo_plots <- function(maps, timeseries, out_path_pattern = NULL) {
 #' @returns A ggplot object that combines x_map and y_ts plots.
 #' 
 format_and_combine_plots <- function(x_map, y_ts) {
-  
+  # browser()
+
+  # make plot
   ts_margins <- y_ts + 
-    # margin order - trbl
+    theme(legend.position="none") +
     # theme(plot.margin = unit(c(-0.15, 0, 0, 1.47), "in")) # tall
     theme(plot.margin = unit(c(0, 0.1, 0, 2), "in")) # wide
 
@@ -64,6 +66,11 @@ format_and_combine_plots <- function(x_map, y_ts) {
     # draw_plot(map_margins, x = -0.11, y = 0.3, width = 0.5, height = 0.5, scale = 2) # tall
     draw_plot(map_margins, x = -0.11, y = 0.3, width = 0.5, height = 0.5, scale = 1.5) # wide
   
+  out_plot <- 
+    plot_grid(legend, out_plot, 
+              ncol = 1,
+              rel_heights = c(0.1, 1))
+
   return(out_plot)
 }
 
@@ -77,21 +84,27 @@ format_and_combine_plots <- function(x_map, y_ts) {
 #'
 #' @returns A final plot grid with the specified title and a combination of all ggplot objects in the ls_gl_plots list.
 #' 
-create_final_plot <- function(ls_gl_plots, ttl, out_path = NULL) {
-  
+create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) {
+  # browser()
   lake_nms <- names(ls_gl_plots)
   
   for(i in seq_along(ls_gl_plots)) {
     assign(paste0("plot", lake_nms[[i]]), ls_gl_plots[[i]])
   }
+  # browser()
+  # extract legend
+  # margin order - trbl
   
-  out_plot <- plot_grid(plotBasin, plotSuperior, 
+  # legend <- get_legend(plotBasin + theme(legend.box.margin = unit(c(0, 0, 0, 0), "in")))
+  
+  out_plot <- 
+    plot_grid(plotBasin, plotSuperior,
                         plotMichigan, plotHuron,
-                        plotErie, plotOntario, 
-                        align = "v", 
+                        plotErie, plotOntario,
+                        align = "v",
                         # ncol = 1) # tall
                         ncol = 2) #wide
-  
+  # browser()
   # now add the title
   title <- ggdraw() + 
     draw_label(
@@ -99,14 +112,25 @@ create_final_plot <- function(ls_gl_plots, ttl, out_path = NULL) {
       fontface = 'bold',
       size = 24
     )
-  
-  out_plot_w_ttl <- plot_grid(
-    title, out_plot,
-    ncol = 1,
-    rel_heights = c(0.1, 1)
-  )
-  
-  
+
+  if(is.null(legend)) {
+    
+    out_plot_w_ttl <- plot_grid(
+      title, out_plot,
+      ncol = 1,
+      rel_heights = c(0.1, 1)
+    )
+    
+  } else {
+    
+    out_plot_w_ttl <- plot_grid(
+      title, legend, out_plot,
+      ncol = 1,
+      rel_heights = c(0.1, 0.1, 1)
+    )
+    
+  }
+
   if(!is.null(out_path)) {
     
     ggsave(filename = out_path, 

@@ -40,7 +40,8 @@ Load the appropriate targets pipeline outputs
 
 ```{r load}
 
-tar_load(p3_great_lakes_ice_bar_png)
+tar_load(p3_great_lakes_ice_lolli_png)
+plt <- p3_great_lakes_ice_lolli_png
 
 ```
 
@@ -72,7 +73,7 @@ canvas <- grid::rectGrob(
 usgs_logo <- magick::image_read("../usgs_logo_black.png") 
 
 # Main plot
-(main_plot <- p3_great_lakes_ice_bar_png)
+(main_plot <- plt)
 
 ```
 

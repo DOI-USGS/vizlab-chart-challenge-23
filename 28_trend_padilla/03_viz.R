@@ -16,19 +16,22 @@ p3_targets <- list(
   tar_target(
     p3_max_ice_ts_point,
     annual_lake_plots(ice_tibble = p2_ice_data, style = "pointplot", homes_order = FALSE)
-    # annual_max_ice_plot(ice_tibble = p2_ice_data, homes_order = FALSE)
   ),
 
   tar_target(
     p3_max_ice_ts_bar,
     annual_lake_plots(ice_tibble = p2_ice_data, style = "barplot", homes_order = FALSE)
-    # annual_max_ice_deviation(ice_tibble = p2_ice_data, homes_order = FALSE)
   ),
 
   tar_target(
     p3_max_ice_ts_lolli,
     annual_lake_plots(ice_tibble = p2_ice_data, style = "lolliplot", homes_order = FALSE)
-    # annual_max_ice_deviation(ice_tibble = p2_ice_data, homes_order = FALSE)
+  ),
+  
+  # extract one legend before combining plots
+  tar_target(
+    p3_shared_legend_lolli,
+    get_legend(p3_max_ice_ts_lolli[[1]])
   ),
 
   # combine ice plots and maps -----------------------
@@ -56,10 +59,10 @@ p3_targets <- list(
     create_combo_plots(
       map = p3_great_lakes_maps,
       timeseries = p3_max_ice_ts_bar,
-      out_path_pattern = NULL #"out/lake_and_ice_ts_lolli_%s.png"
+      out_path_pattern =  NULL #"out/lake_and_ice_ts_lolli_%s.png"
     )
   ),
-  
+
   # make final plots -----------------------
   
   tar_target(
@@ -75,8 +78,8 @@ p3_targets <- list(
     p3_great_lakes_ice_bar_png,
     create_final_plot(
       ls_gl_plots = p3_ls_combo_plots_bar,
-      ttl = "Percent Deviation from Average Maximum Ice Cover in the Great Lakes (1973-2023)",
-      out_path = NULL#"out/Great_Lakes_Ice_Cover_bar_wide.png"
+      ttl = "Maximum Percent Ice Cover in the Great Lakes: Difference from 50-year Mean (1973-2023)",
+      out_path = "out/Great_Lakes_Ice_Cover_bar_wide.png"
     )
   ),
   
@@ -85,8 +88,9 @@ p3_targets <- list(
     p3_great_lakes_ice_lolli_png,
     create_final_plot(
       ls_gl_plots = p3_ls_combo_plots_lolli,
-      ttl = "Percent Deviation from Average Maximum Ice Cover in the Great Lakes (1973-2023)",
-      out_path = "out/Great_Lakes_Ice_Cover_lolli_wide.png"
+      legend = p3_shared_legend_lolli,
+      ttl = "Maximum Percent Ice Cover in the Great Lakes: Difference from 50-year Mean (1973-2023)",
+      out_path = NULL #"out/Great_Lakes_Ice_Cover_lolli_wide.png"
     )
   )
     
