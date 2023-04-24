@@ -233,9 +233,9 @@ fish_data_summarized_summarized$`mean(mean_value)`[2] - fish_data_summarized_sum
 df_as <- fish_data_ts_plot[fish_data_ts_plot$species=="American Shad", ]
 df_sb <- fish_data_ts_plot[fish_data_ts_plot$species=="Striped Bass", ]
 legend_date_breaks_as <- diff(range(df_as$Onset)) * 0:4 / 4 + min(df_as$Onset)
-legend_date_labels_as <- format(legend_date_breaks_as, "%b-%u")
+legend_date_labels_as <- format(legend_date_breaks_as, "%W")
 legend_date_breaks_sb <- diff(range(df_sb$Onset)) * 0:4 / 4 + min(df_sb$Onset)
-legend_date_labels_sb <- format(legend_date_breaks_sb, "%b-%u")
+legend_date_labels_sb <- format(legend_date_breaks_sb, "%W")
 
 ggplot() +
   geom_segment(data = df_as, aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 0.5) +
