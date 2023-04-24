@@ -227,58 +227,22 @@ fish_data_summarized_summarized$`mean(mean_value)`[2] - fish_data_summarized_sum
 # never mind, we aren't going to recreate the author's analysis, going to take the paper values as they are
 ```
 
-## Produce yearly viz 
-```{r gif, eval = FALSE}
-# make the yearly data wide so onset and cessation columns are side by side
-fish_data_ts_wide <- spread(fish_data_ts_long, spawning, value)
-
-# filter by RCP
-fish_data_ts_plot <- fish_data_ts_wide |>
-  filter(condition == "RCP_85") |>
-  filter(year != 1950) |>
-  mutate(year = as.integer(year))
-
-animation <- ggplot(data = fish_data_ts_plot) +
-  geom_segment(aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 1 , show.legend = FALSE) +
-  scale_color_scico(palette = "tokyo") +
-  scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
-  scale_y_continuous(limits = c(1900, 2120)) +
-  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
-  facet_wrap(~species) +
-  labs(x = "",
-       y = "",
-       title = "FISH IN HOT WATER",
-       subtitle = "RCP 8.5: Business-as-Usual.
-       Year: {frame_time}
-       "
-       # caption = "Data Source: Nack, C. et. al. (2019). https://doi.org/10.1002/mcf2.10076
-       # Plot made by Ellie White, ewhite@usgs.gov 04/02/2023"
-       ) +
-  theme_bw()+
-  theme(plot.title = element_text(vjust = 3, size = 14, face = "bold", family="sans"),
-        plot.subtitle = element_text(vjust = 3, size = 12,family="sans"),
-        # axis.text.y = element_blank(),
-        axis.ticks = element_blank(),
-        # panel.border = element_blank(),
-        # strip.background = element_blank(),
-        # strip.text.x = element_blank()
-        ) +
-  # Here comes the gganimate specific bits
-  transition_time(year) +
-  shadow_mark(past = TRUE, future = FALSE)
-
-animate(animation, end_pause = 30, width = 16, height = 9, units = "in", res = 300, renderer = gifski_renderer())
-anim_save("out/26_local-change_ewhite.gif")
-```
-
+## Produce annual viz (final plot)
 ```{r plotting_annual}
-# or maybe just a static pic 
+# this business is for plot legend
+df_as <- fish_data_ts_plot[fish_data_ts_plot$species=="American Shad", ]
+df_sb <- fish_data_ts_plot[fish_data_ts_plot$species=="Striped Bass", ]
+legend_date_breaks_as <- diff(range(df_as$Onset)) * 0:4 / 4 + min(df_as$Onset)
+legend_date_labels_as <- format(legend_date_breaks_as, "%b-%u")
+legend_date_breaks_sb <- diff(range(df_sb$Onset)) * 0:4 / 4 + min(df_sb$Onset)
+legend_date_labels_sb <- format(legend_date_breaks_sb, "%b-%u")
+
 ggplot() +
-  geom_segment(data = fish_data_ts_plot[fish_data_ts_plot$species=="American Shad", ], aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 1, show.legend = FALSE) +
-  scale_color_scico(palette = "tokyo", guide = guide_colorbar(order = 1)) +
+  geom_segment(data = df_as, aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 0.5) +
+  scale_color_scico(palette = "tokyo", guide = guide_colorbar(order = 1), labels = legend_date_labels_as, breaks = as.numeric(legend_date_breaks_as)) +
   new_scale_colour() +
-  geom_segment(data = fish_data_ts_plot[fish_data_ts_plot$species=="Striped Bass", ], aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 1, show.legend = FALSE) +
-  scale_color_scico(palette = "tokyo", guide = guide_colorbar(order = 2)) +
+  geom_segment(data = df_sb, aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 0.5) +
+  scale_color_scico(palette = "tokyo", guide = guide_colorbar(order = 2), labels = legend_date_labels_sb, breaks = as.numeric(legend_date_breaks_sb)) +
   scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
   scale_y_continuous(limits = c(1900, 2120)) +
   coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
@@ -296,7 +260,8 @@ ggplot() +
         panel.border = element_blank(),
         strip.background = element_blank(),
         strip.text.x = element_blank(), 
-        legend.position = "bottom"
+        legend.position = "bottom", 
+        legend.title = element_blank()
         )
 ggsave("out/26_local-change_ewhite_base2.png", width = 16, height = 9, units = "in", dpi = 1200)
 ```
