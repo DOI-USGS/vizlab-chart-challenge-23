@@ -1,0 +1,269 @@
+---
+title: "Example for Chart Challenge"
+author: "Althea Archer"
+date: "2023-03-10"
+output: html_document
+---
+
+## Instructions for using this template
+
+
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+
+library(sbtools)
+library(lubridate)
+library(gganimate)
+library(hms)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Load drought properties data from ScienceBase
+#sbtools::authenticate_sb()
+
+file_in_path_continuous <- "in/EcoDrought Continuous_VA.csv"
+if(!file.exists(file_in_path_continuous)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "624decacd34e21f82766c9da",
+                              names = "EcoDrought Continuous_VA.csv",
+                              destinations =  "in/EcoDrought Continuous_VA.csv",
+                              overwrite_file = F)
+}
+continuous <- readr::read_csv(file_in_path_continuous)
+
+metadata_in_path <- "in/VA_site_info.csv"
+if(!file.exists(metadata_in_path)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "624decacd34e21f82766c9da",
+                              names = "VA_site_info.csv",
+                              destinations =  "in/VA_site_info.csv",
+                              overwrite_file = F)
+}
+metadata <- readr::read_csv(metadata_in_path)
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Isolate example of hysteresis
+hyst_example <- continuous |> 
+  filter(year(DateTime_EST) == 2019,
+         yday(DateTime_EST) == 117,
+         !is.na(AirTemperature_HOBO_degF),
+         !is.na(WaterTemperature_HOBO_DegF)) |>
+  rename(dt = DateTime_EST,
+         waterT = WaterTemperature_HOBO_DegF,
+         airT = AirTemperature_HOBO_degF) |>
+  mutate(time = hms::as_hms(dt),
+         am_logic = am(time),
+         daytime = case_when(time %in% as_hms(3600*seq(5.5, 16, by = 0.5)) ~ TRUE,
+                             TRUE ~ FALSE)) |>
+  arrange(time) |>
+  left_join(metadata, by = "Site_ID")
+
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Share Tech Mono"  #"Special Elite"
+sysfonts::font_add_google("Share Tech Mono")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "#dddfd4"
+font_color = "#173e43"
+pop_color = "#3fb0ac"
+highlight_color = "#fae596"
+point_size = 7
+inset_point_size = 4
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png") |>
+  magick::image_colorize(100, font_color)
+
+# Main plot
+(main_plot <- ggplot(hyst_example, aes(x = airT, y = waterT)) +
+    geom_smooth(method = "lm", se = FALSE, color = "white",
+                linetype = "dashed")+
+    geom_point(color = pop_color, size = point_size)+
+    geom_point(color = "white", size = inset_point_size, 
+               data = hyst_example |> filter(daytime))+
+    geom_point(color = highlight_color, size = inset_point_size, 
+               data = hyst_example |> filter(time %in% c(hms::as_hms(3600*6),
+                                                         hms::as_hms(3600*11))))+
+    theme_minimal()+
+    ylab("Water Temperature (F)\n")+
+    xlab("\nAir Temperature (F)")+
+    ylim(c(40, 58))+
+    xlim(c(44, 68))+
+    geom_point(data = data.frame(airT = c(45, 45), waterT = c(54, 54.5)),
+              color = pop_color, size = point_size)+
+    geom_point(data = data.frame(airT = 45, waterT = 54.5),
+              color = "white", size = inset_point_size)+
+    geom_text(label = "day", y = 54.5, x = 45.5, hjust = -0,
+             color = pop_color, size = 5)+
+    geom_text(label = "6 a.m.", y = 48.9, x = 45.5, hjust = -0,
+             color = font_color, size = 5)+
+    geom_text(label = "night", y = 54, x = 45.5, hjust = -0,
+              color = pop_color, size = 5)+
+    geom_text(label = "11 a.m.", y = 50, x = 56, hjust = -0,
+             color = font_color, size = 5)+
+    theme(panel.background = element_blank(),
+          axis.text = element_text(size = 20, color = font_color),
+          axis.title = element_text(size = 20, color = font_color))+
+    coord_fixed(ratio = 1)+
+    scale_x_continuous(breaks = seq(44, 68, by = 2))+
+    scale_y_continuous(breaks = seq(40, 58, by = 2))
+ )
+```
+
+
+
+```{r animation}
+(animated_plot <- ggplot(hyst_example, aes(x = airT, y = waterT)) +
+    geom_point(color = pop_color, size = point_size)+
+    theme_minimal()+
+    transition_states(time)+
+    shadow_mark(alpha = 0.5, size = inset_point_size, color = pop_color)+
+    labs(title = "April 27, 2019 {closest_state}")+
+    ylab("Water Temperature (F)")+
+    xlab("Air Temperature (F)")+
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          axis.text = element_text(size = 18, color = font_color,
+                                   margin = margin(t = 10, r = 0, b = 0, l = 0)),
+          axis.title = element_text(size = 18, color = font_color, face = "bold"),
+          plot.title = element_text(size = 24, family = font_legend))+
+    coord_fixed(ratio = 1)+
+    scale_x_continuous(breaks = seq(44, 68, by = 2))+
+    scale_y_continuous(breaks = seq(40, 58, by = 2))
+ )
+animation_to_save <- animate(animated_plot,
+          width = 1600, height = 800, res = 200)  + exit_shrink()
+anim_save("out/20230420_correlation_aaarcher.gif", bg = background_color)
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = 0.034,
+            y = -0.05,
+            width = 0.95) +
+  # explainer text
+  draw_label("Chart by Althea A. Archer.\nApril 27, 2019 data from Paine Run, Shenandoah National Park.\nData from https://doi.org/10.5066/P97ULKSM",
+             fontfamily = supporting_font,
+             x = 0.96,   
+             y = 0.04,
+             size = 20,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+  # Title
+  draw_label("Hysteresis",
+             x = 0.04,
+             y = 0.95,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 60) +
+  # Title
+  draw_label("hys•ter•e•sis (noun) A phenomenon in which the value of a physical\n               property lags behind changes in the effect causing it.",
+             x = 0.10,
+             y = 0.86,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.85,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 24) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.04,
+             y = 0.04,
+             width = 0.12, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230420_correlation_aaarcher.png", 
+       width = 16, height = 9, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Many fish, like brook trout, need water temperature to be just right 
+2. This relationship between air & stream temperature is critical for fish habitat health.
+
+### Data source(s)
+
+doi.org/10.5066/P97ULKSM 
+

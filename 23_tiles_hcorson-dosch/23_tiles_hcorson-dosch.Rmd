@@ -1,0 +1,325 @@
+---
+title: "Tiles"
+author: "Hayley Corson-Dosch"
+date: "2023-04-23"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+library(RColorBrewer) # for color palette
+library(geofacet) # for the facet map of the U.S.
+library(ggalluvial) # for the alluvial plots
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Water use data loaded manually
+national_wu <- readr::read_csv('in/national_water_use.csv', col_types = cols())
+state_wu <- readr::read_csv('in/state_water_use.csv', col_types = cols())
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Munge national water use
+# filter to 1985+, set category names
+munged_national <- filter(national_wu, year >= 1985, !wu_category=='commercial') %>% # commercial not measured in 2015
+    mutate(wu_category = case_when(
+      wu_category == 'thermoelectric power' ~ 'thermoelectric',
+      wu_category == 'self-supplied domestic' ~ 'domestic',
+      wu_category == 'self-supplied industrial' ~ 'industrial',
+      TRUE ~ wu_category
+    ))
+  
+# Identify ranking of categories in 2015, nationally
+ranked_categories_2015 <- munged_national %>%
+    filter(year == 2015) %>%
+    group_by(wu_category) %>%
+    summarize(total_vol = sum(wu_bgd)) %>%
+    arrange(total_vol) %>%
+    pull(wu_category)
+
+# use rankings to set factor, and therefore legend, order
+munged_national <- mutate(munged_national, wu_category = factor(wu_category, levels = ranked_categories_2015))
+
+# Munge state water use
+# Add state abbreviations, filter out commercial water use, set category names
+state_info <- tibble(
+  state_name = c(state.name, 'Puerto Rico', 'Virgin Islands'),
+  state_abbr = c(state.abb, 'PR', 'VI')
+)
+munged_state <- filter(state_wu, !wu_category=='commercial') %>%# commercial not measured in 2015
+  left_join(state_info, by = 'state_name') %>%
+  mutate(wu_category = case_when(
+      wu_category == 'thermoelectric power' ~ 'thermoelectric',
+      wu_category == 'self-supplied domestic' ~ 'domestic',
+      wu_category == 'self-supplied industrial' ~ 'industrial',
+      TRUE ~ wu_category
+    ))
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+axis_text_size <- 16
+axis_title_top_size <- 24
+
+# Define colors
+background_color <- "#ffffff"
+font_color <- "#000000"
+bar_color <- "#000000"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
+
+# set colors for categories of water use
+category_colors <-  c(RColorBrewer::brewer.pal(7, 'Dark2'), '#A0BFEC') # add blue for PS
+names(category_colors) <- c('aquaculture','domestic','industrial','livestock','thermoelectric','mining','irrigation','public supply')
+
+# Set a theme for the plots
+theme_facet <- function(base = 12, bkgd_color, text_color, text_size, text_family){
+  theme_classic(base_size = base) +
+    theme(strip.background = element_blank(),
+          strip.text = element_text(size = text_size, vjust = 1, color = text_color, family = text_family,
+                                    margin = margin(b = -2)),
+          strip.placement = "inside",
+          strip.background.x = element_blank(),
+          axis.line = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill = bkgd_color, color = NA),
+          panel.background = element_blank(),
+          panel.spacing.x = unit(4, "pt"),
+          panel.spacing.y = unit(7, "pt"),
+          plot.margin = margin(0, 0, 0, 0, "pt"),
+          legend.background = element_rect(fill = bkgd_color, color = NA))
+  
+}
+
+# Build national alluvial plot + scale bar
+(national_plot <- ggplot(munged_national) +
+    geom_alluvium(aes(year, wu_bgd, fill = wu_category, alluvium = wu_category), decreasing = FALSE, alpha = 0.8) +
+    geom_rect(aes(xmin = 2015.3, xmax = 2016, ymin = 0, ymax = 100), fill = bar_color, color = NA) + # national water use units = bgd, so bar height = 100
+    scale_fill_manual(values = category_colors, name  = '') +
+    scale_x_continuous(expand = c(0,0), 
+                       sec.axis = dup_axis(
+                         name = "National"
+                       ),
+                       limits = c(1985, 2016),
+                       breaks = c(1985, 1990, 1995, 2000, 2005, 2010, 2015)) +
+    scale_y_continuous(expand = c(0,0)) +
+    theme_void() +
+    theme_facet(base = 12, bkgd_color=background_color, text_color=font_color, text_size = axis_text_size, text_family = supporting_font) +
+    theme(
+      axis.text.y = element_blank(),
+      axis.title.x.top = element_text(size = axis_title_top_size,
+                                      family = supporting_font,
+                                      face = 'bold',
+                                      vjust = 0,
+                                      margin = margin(b = 10)),
+      axis.text.x.bottom = element_text(size = axis_text_size,
+                                        family = supporting_font,
+                                        vjust = 1,
+                                        margin = margin(t = 3)),
+      axis.ticks.x.bottom = element_line(color = 'grey20'),
+      legend.position = 'bottom',
+      legend.text = element_text(size = axis_text_size, family = supporting_font),
+      legend.spacing.y = unit(0.4, 'cm')) +
+    guides(fill = guide_legend(reverse = TRUE, nrow = 2, byrow = TRUE))
+ )
+
+```
+
+
+```{r plotting2}
+# Build state facets
+
+make_carto_grid <- function() {
+  us_state_grid1 %>% #us_state_without_DC_grid1
+    add_row(row = 7, col = 10, code = "PR", name = "Puerto Rico") %>% # add PR
+    add_row(row = 7, col = 11, code = "VI", name = "U.S. Virgin Islands") %>% # add VI
+    filter(code != "DC") # remove DC
+}
+
+usa_grid <- make_carto_grid()
+
+# Build state alluvial plots + scale bars and then facet
+(facet_plot <- ggplot(munged_state) + 
+    geom_alluvium(data = munged_state, aes(year, total_watersource_mgd, fill = wu_category, alluvium = wu_category), decreasing = FALSE, alpha = 0.8) +
+    geom_rect(aes(xmin = 2015.5, xmax = 2017, ymin = 0, ymax = 1000), fill = bar_color, color = NA) + # state water use units = mgd, so bar height = 1000
+    scale_x_continuous(expand = c(0,0), limits = c(1985, 2017)) +
+    scale_fill_manual(values = category_colors, name  = '') +
+    theme_void() +
+    facet_geo(~state_abbr, grid = usa_grid, move_axes = FALSE, scales = "free_y") +
+    theme_facet(base = 12, bkgd_color=background_color, text_color=font_color, text_size = axis_text_size, text_family = supporting_font))
+    
+
+```
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+# pull legend from national plot
+plot_legend <- get_legend(national_plot)
+
+# arrange plots on canvas
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the national plot
+  draw_plot(national_plot + theme(legend.position = 'None'),
+            x = 0.06,
+            y = 0.187,
+            width = 0.26,
+            height = 0.555) +
+  # the state facet plot
+  draw_plot(facet_plot + theme(legend.position = 'None'),
+            x = 0.35,
+            y = 0.101,
+            width = 0.6,
+            height = 0.75) +
+  # add legend
+  draw_plot(plot_legend,
+            x = 0.112,
+            y = 0.755,
+            height = 0.13 ,
+            width = 0.3,
+            hjust = 0) +
+  # national label
+  draw_label(stringr::str_wrap('100 billion gallons per day', 10),
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             x = 0.325,   
+             y = 0.271,
+             size = axis_text_size,
+             hjust = 0,
+             vjust = 0.5,
+             color = bar_color) +
+  # state label
+  draw_label(stringr::str_wrap('1 billion gallons per day', 10),
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             x = 0.46,   
+             y = 0.146,
+             size = axis_text_size,
+             hjust = 0,
+             vjust = 0.5,
+             color = bar_color) +
+  # explainer text
+  draw_label(paste('Hayley Corson-Dosch, USGS', 
+                   "2015 U.S. water use data: https://waterdata.usgs.gov/nwis/wu", sep = '\n'),
+             fontfamily = supporting_font,
+             fontface = 'italic',
+             x = 0.95,   
+             y = 0.05,
+             size = 12,
+             hjust = 1,
+             vjust = 0,
+             color = '#6D6D6D')+
+  # Title
+  draw_label("Changes in U.S. water use - 1985 to 2015",
+             x = 0.05,
+             y = 0.95,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             color = font_color,
+             size = 55) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.05,
+             y = 0.05,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230423_tiles_hcorson-dosch.png", 
+       width = 16, height = 9, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. For the U.S. as a whole, water use has declined since 1985. But patterns for individual states look different -- in some, the total amount of water use has changed considerably, while in others there has been more fluctuation of how water is used.
+
+### Data source(s)
+
+[https://waterdata.usgs.gov/nwis/wu](https://waterdata.usgs.gov/nwis/wu)
+

@@ -1,0 +1,461 @@
+---
+title: "Chart Challenge day 21: Downwards/ upwards"
+author: "Natalie Schmer"
+date: "2023-04-13"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+
+library(dataRetrieval)
+library(directlabels)
+library(here)
+library(lubridate)
+library(tidylog)
+library(geofacet)
+library(scico)
+
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# No data files need to be loaded - data is pulled below
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+```{r, eval=FALSE}
+
+# Set up states
+stateCd
+
+states_og <- stateCd[c(2:9, 11:52),]
+states <- c(states_og$STUSAB)
+
+# Steps
+#1. pull sites for all states
+#2. pull all sites dv for yesterday
+#3. remove any that have "P Dis" (Discontinued)
+#4. choose from remaining sites
+
+
+sites_all <- data.frame()
+
+manual_sites <- data.frame()
+
+
+for(i in unique(states)){
+
+  message("Getting: ", i)
+
+   temps_sites <- whatNWISdata(stateCd = i, service = "dv", parameterCd = "00010", statCd= "00003")
+
+  # want only streams
+  temps_sites <- temps_sites %>%
+    filter(site_tp_cd == "ST")
+
+  #some sites are discontinued, pull to see and then delete those sites
+  site_test <- c(temps_sites$site_no)
+
+  disc.test <- readNWISdv(site_test, "00010", "2022-04-15", "2023-04-15")
+
+  disc.test <- renameNWISColumns(disc.test)
+
+  #remove sites that have any discontinued
+  discontinued <- disc.test %>%
+    filter(Wtemp_cd == "P Dis")
+
+  # remove those stations from the station list and then:
+  # 1. calculate days between beginning and today
+  # 2. calculate data percentage (want at least 75)
+  # 3. Take 5 oldest
+
+  temps_sites <- temps_sites %>%
+    filter(!site_no %in% discontinued$site_no)
+
+
+  temps_sites_2 <- temps_sites %>%
+    arrange(desc(end_date)) %>%
+    slice_max(end_date) %>%
+    mutate(state =i,
+           n_days = as.numeric(difftime(end_date, begin_date, units = "days")),
+           dat_pct = (count_nu/ n_days)*100) %>%
+      filter(dat_pct > 75) %>%
+    slice_min(begin_date, n = 5, with_ties = F)
+
+
+  if(nrow(temps_sites_2) < 5){
+
+     temps_sites_2 <- temps_sites %>%
+       arrange(desc(end_date)) %>%
+       mutate(state =i,
+              n_days = as.numeric(difftime(end_date, begin_date, units = "days")),
+              dat_pct = (count_nu/ n_days)*100) %>%
+       slice_max(count_nu, n = 5, with_ties = F)
+
+    sites_all <- bind_rows(sites_all, temps_sites_2)
+
+           } else
+
+  sites_all <- bind_rows(sites_all, temps_sites_2)
+
+}
+
+# Verification
+states_count <- sites_all %>%
+  group_by(state) %>%
+  mutate(site_count = n())
+
+states_repull <- states_count %>%
+  filter(site_count < 5)
+
+
+unique(states_repull$state)
+
+# Come on, Vermont.....
+   temps_sites <- whatNWISdata(stateCd = "VT", service = "dv", parameterCd = "00010", statCd= "00003")
+
+  # want only streams
+  temps_sites <- temps_sites %>%
+    filter(site_tp_cd == "ST")
+
+  # Looks like there's literally only 3 stream sites?!?
+
+
+# save
+
+saveRDS(sites_all, file = here::here("21_updown_nschmer/in/final_sites.RDS"))
+
+
+final_list <- readRDS(here::here("21_updown_nschmer/in/final_sites.RDS"))
+
+sites <- c(final_list$site_no)
+
+
+temp_data <- readNWISdv(sites, "00010", "", "", "00003")
+
+temp_data <- renameNWISColumns(temp_data)
+
+saveRDS(temp_data, file = here::here("21_updown_nschmer/in/temp_data.RDS"))
+names(temp_data)
+
+
+```
+
+Pull and format data
+```{r, eval = F}
+
+final_list <- readRDS(here::here("21_updown_nschmer/in/final_sites.RDS"))
+
+temp_data <- readRDS(here::here("21_updown_nschmer/in/temp_data.RDS"))
+
+#not all columns are labeled as wtemp so need to pivot
+
+temp_data_avg <- temp_data %>%
+  mutate(DOY = yday(Date)) %>%
+  relocate(DOY, .after = "Date") %>%
+  select(-contains("cd")) %>%
+  pivot_longer(4:ncol(.),
+               names_to = "og_col",
+               values_to = "temp_value") %>%
+  group_by(DOY, site_no) %>%
+  mutate(mean = mean(temp_value, na.rm =T)) %>%
+  ungroup() %>%
+  group_by(site_no) %>%
+  mutate(ts_start = min(Date),
+         ts_end = max(Date),
+         ts_years = (as.numeric(difftime(ts_end, ts_start, units = "days")))/365,
+         Years = round(ts_years, 0)) %>%
+  select(DOY, site_no, ts_start, ts_end, ts_years, Years, mean, temp_value) %>%
+  distinct() %>%
+  left_join(., final_list) %>%
+  distinct() %>%
+   group_by(state, DOY) %>%
+  mutate(state_avg = mean(temp_value, na.rm =T))
+
+
+saveRDS(temp_data_avg, file = here::here("21_updown_nschmer/in/temp_data_avg.RDS"))
+```
+
+```{r read_data}
+# read back in exported data
+temp_data_avg <- readRDS(file = here::here("21_updown_nschmer/in/temp_data_avg.RDS"))
+final_list <- readRDS(here::here("21_updown_nschmer/in/final_sites.RDS"))
+```
+
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Open Sans"
+sysfonts::font_add_google("Open Sans")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+font_color <- "#0A1927"
+background_color <- "#ffffff"
+
+# The background canvas for your viz
+plot_width <- 12
+plot_height <- 9
+canvas <- grid::rectGrob(
+  x = 0, y = 0,
+  width = plot_width, height = plot_height,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read(here::here("usgs_logo_black.png"))
+
+# dataframe to build rectangles behind plots
+# (using panel backgrounds adds backgrounds for empty grid cells
+# in the facet grid when it is added with cowplot)
+state_rect <-
+  tibble(
+    state = unique(temp_data_avg$state),
+    xmin = min(temp_data_avg$DOY),
+    xmax = max(temp_data_avg$DOY),
+    ymin = min(temp_data_avg$mean),
+    ymax = max(temp_data_avg$mean)
+  )
+
+# Main plot
+# Remove DC from grid
+my_grid <- us_state_grid1 %>% 
+  filter(code != "DC")
+
+
+
+(main_plot <-  ggplot(temp_data_avg) +
+    geom_rect(data = state_rect, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax= ymax, group = NA), fill = 'grey98') +
+    geom_line(data = temp_data_avg,
+              aes(x = DOY, y = mean, group = site_no, color = Years), linewidth =1, alpha = 0.7)+
+    scale_color_gradient(low = "#d9d0ff", high = "#08008c") +
+    facet_geo(~ state, grid = my_grid)+
+    labs(y = expression("Mean Temperature (°C) for DOY"),
+         color= "Years of Record")+
+    ggthemes::theme_few()+
+    theme(strip.background = element_blank(),
+          strip.text = element_text(size = 14),
+          strip.placement = "inside",
+          strip.background.x = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text = element_blank(),
+          axis.text.x = element_blank(),
+          axis.title = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          panel.spacing.x = unit(3, "pt"),
+          panel.spacing.y = unit(6, "pt"),
+          plot.margin = margin(0, 0, 0, 0, "pt"),
+          legend.box.background = element_rect(fill = background_color, color = NA),
+          legend.position = c(0.092, 0.99),
+          legend.direction = 'horizontal',
+          legend.text = element_text(size = 14),
+          legend.title = element_text(size = 14),
+          legend.key.width = unit(0.4, "inches"))+
+    labs(y = expression("Mean Temperature (°C)"),
+         color= "Years of Record") +
+    guides(color = guide_colorbar(title.position="top", title.hjust = 0)))
+
+```
+
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+label_size <- 15
+x_buffer <- 0.04
+final_plot <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+                     xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = plot_height, width = plot_width,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = 0.05,
+            y = 0.04,
+            height = 0.75,
+            width = 0.9) +
+  # # Labels, etc
+  draw_label("1",
+             fontfamily = supporting_font,
+             x = x_buffer + 0.1,
+             y = 0.246,
+             angle = 0,
+             vjust = 0.5,
+             hjust = 0.5,
+             size = label_size,
+             color = font_color)+
+  draw_label("365",
+             fontfamily = supporting_font,
+             x = x_buffer + 0.17,
+             y = 0.246,
+             angle = 0,
+             vjust = 0.5,
+             hjust = 0.5,
+             size = label_size,
+             color = font_color)+
+  draw_label("DOY",
+             fontfamily = supporting_font,
+             x = x_buffer + 0.136,
+             y = 0.22,
+             angle = 0,
+             vjust = 0.5,
+             hjust = 0.5,
+             size = label_size,
+             color = font_color,
+             fontface = 'bold')+
+  draw_label("0",
+             fontfamily = supporting_font,
+             x = x_buffer + 0.083,
+             y = 0.256,
+             size = label_size,
+             hjust = 0,
+             vjust = 0,
+             angle = 0,
+             color = font_color)+
+  draw_label("25",
+             fontfamily = supporting_font,
+             x = x_buffer + 0.078,
+             y = 0.284,
+             size = label_size,
+             hjust = 0,
+             vjust = 0,
+             angle = 0,
+             color = font_color)+
+  draw_label("50",
+             fontfamily = supporting_font,
+             x = x_buffer + 0.078,
+             y = 0.313,
+             size = label_size,
+             hjust = 0,
+             vjust = 0,
+             angle = 0,
+             color = font_color)+
+  draw_label(stringr::str_wrap("Mean Temp. (°C)", 5),
+             fontfamily = supporting_font,
+             x = 0.11,
+             y = 0.263,
+             size = label_size,
+             hjust = 1,
+             vjust = 0,
+             angle = 0,
+             color = font_color,
+             fontface = 'bold')+
+  #explainer text
+  draw_label("Stream temperatures for the 5 sites with the longest daily temperature records in each U.S. state.\nTemperatures are averaged by DOY (day of year) over all available years.\nThe oldest site began collecting data in October 1964! (USGS-01467200: Delaware River at Penn's Landing, Philadelphia, PA)",
+             fontfamily = supporting_font,
+             x = 0.05,
+             y = 0.82,
+             size = 15,
+             hjust = 0,
+             vjust = 0,
+             color = font_color)+
+  # Title
+  draw_label("Long-term daily stream temperatures",
+             x = 0.048,
+             y = 0.96,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             color = '#08008c',
+             size = 44) +
+  # author and data source text
+  draw_label(stringr::str_wrap(paste('Natalie Schmer, USGS', 
+                   "Data: USGS NWIS", sep = '\n'), 25),
+             fontfamily = supporting_font,
+             fontface = 'italic',
+             x = 0.95,   
+             y = 0.115,
+             size = 12,
+             hjust = 1,
+             vjust = 0,
+             color = '#6D6D6D')+
+  # Add logo
+  draw_image(usgs_logo,
+             x = 0.95,
+             y = 0.05,
+             width = 0.1,
+             hjust = 1, vjust = 0,
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = here::here("21_updown_nschmer/out/20230421_downupward_nschmer.png"), final_plot,
+       width = plot_width, height = plot_height, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Long-term monitoring is essential in managing our water resources to identify changes over time and space. Water temperature is an important variable to measure as it has major influence on biological and chemical activity in stream ecosystems. 
+
+### Data source(s)
+
+NWIS
+

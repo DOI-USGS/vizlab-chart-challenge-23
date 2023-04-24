@@ -1,0 +1,239 @@
+---
+title: "Networks"
+author: "Hayley Corson-dosch"
+date: "2023-04-17"
+output: html_document
+---
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+library(sf)
+library(scico)
+library(zip)
+library(tools)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Download NHDPlusHR for Potomac Watershed (huc4)
+# NOTE: if download fails, can download zip for huc4 directly from 
+# https://prd-tnm.s3.amazonaws.com/index.html?prefix=StagedProducts/Hydrography/NHDPlusHR/Beta/GDB/
+huc04 <- '0207'
+# build s3 url
+url <- sprintf('https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHDPlusHR/Beta/GDB/NHDPLUS_H_%s_HU4_GDB.zip', huc04)
+
+# set destination, download, and unzip file
+dest_file <- sprintf('in/%s', basename(url))
+download.file(url, dest_file)
+zip::unzip(dest_file, exdir = dirname(dest_file))
+
+# Build geodatabase path
+gdb_path <- sprintf('%s/%s.gdb', dirname(dest_file), tools::file_path_sans_ext(basename(dest_file)))
+
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# Read in flowlines
+streams_sf <- sf::read_sf(gdb_path, quiet = TRUE, layer='NHDFlowline') %>%
+  st_zm()
+# Read in stream order attribute info
+streams_vaa <- sf::read_sf(gdb_path, quiet = TRUE, layer='NHDPlusFlowlineVAA') %>%
+  dplyr::select(NHDPlusID, StreamOrde)
+
+# Join flowlines and attribute data
+streams_sf <- streams_sf %>%
+  inner_join(streams_vaa, by = 'NHDPlusID')
+
+# Set StreamOrde as a factor
+max_level <- max(streams_sf$StreamOrde)
+streams_sf <- streams_sf %>%
+  mutate(StreamOrde = factor(StreamOrde, levels = seq(1, max_level, by = 1)))
+
+# Get summary of length (in km) by stream order
+# Add plotting variables for donut chart
+stream_order_summary <- streams_sf %>%
+  st_drop_geometry() %>%
+  group_by(StreamOrde) %>%
+  summarize(count = n(), total_length_km = sum(LengthKM)) %>%
+  mutate(StreamOrde = factor(StreamOrde, levels = seq(1, max_level, by = 1)),
+         length_fraction = total_length_km/sum(total_length_km),
+         ymax = cumsum(length_fraction),
+         ymin = ymax - length_fraction,
+         label_pos = ymin + (ymax - ymin)/2)
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color <- "#FCFCFD"
+font_color <- "#10304C"
+plot_width <- 9
+plot_height <- 9
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = plot_width, height = plot_height,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png")  %>%
+  image_colorize(100, font_color)
+
+# load in stream order explainer graphic
+stream_order_explainer <- magick::image_read("in/stream_order.png")
+```
+
+```{r plotting2}
+# Main plot
+(main_plot <- ggplot() +
+  geom_sf(data = streams_sf, aes(color = StreamOrde, linewidth = StreamOrde), lineend = "round") +
+  scale_color_manual(values = scico::scico(n = length(unique(streams_sf$StreamOrde)), direction = -1, begin = 0.2, end = 0.8, palette = 'oslo')) +
+  scale_discrete_manual("linewidth", values = seq(0.1, 1.2, length.out = length(unique(streams_sf$StreamOrde)))) +
+  theme_void() +
+  theme(legend.position = 'None'))
+```
+
+```{r plotting3}
+(donut_plot <- ggplot(stream_order_summary, aes(xmin = 4, xmax= 5, ymin= ymin, ymax= ymax, fill = StreamOrde)) +
+  geom_rect() +
+  geom_text(x=5.5, aes(y=label_pos, label = StreamOrde), family = supporting_font, color = font_color, size = 4.5) +
+  coord_polar(theta = 'y') +
+  xlim(c(-1, 5)) +
+  scale_fill_manual(values = scico::scico(n = length(unique(streams_sf$StreamOrde)), direction = -1, begin = 0.2, end = 0.8, palette = 'oslo')) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_void() +
+  theme(legend.position = 'None'))
+```
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = plot_height, width = plot_width,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = -0.1,
+            y = 0.285,
+            height = 0.72) +
+  # explainer
+  draw_image(stream_order_explainer,
+             x = 0.667,
+             y = 0.623,
+             width = 0.27,
+             hjust = 0, vjust = 0,
+             halign = 0, valign = 0) +
+  # the donut plot
+  draw_plot(donut_plot,
+            x = 0.3,
+            y = 0.55,
+            height = 0.4) +
+  # explainer text
+  draw_label(paste('Hayley Corson-Dosch, USGS',"Data: NHDPlusHR", sep = '\n'),
+             fontfamily = supporting_font,
+             x = 0.95,
+             y = 0.05,
+             size = 11,
+             hjust = 1,
+             vjust = 0,
+             color = '#6B6B6B')+
+  # Annotation
+  draw_label(stringr::str_wrap("In the Potomac River watershed, first order streams make up 57% of the network, by length", 20),
+             x = 0.73,
+             y = 0.449,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             color = font_color,
+             size = 18) +
+  # Title
+  draw_label(stringr::str_wrap("Which stream order covers the most distance?",20),
+             x = 0.05,
+             y = 0.05,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             color = font_color,
+             size = 50) +
+  # Add logo
+  draw_image(usgs_logo,
+             x = 0.95,
+             y = 0.09,
+             width = 0.15,
+             hjust = 1, vjust = 0,
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/17_networks_hcorson-dosch.png", 
+       width = plot_width, height = plot_height, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. First order streams dominate river networks, often making up more than half the network by length
+
+
+NHD Plus High Resolution: https://www.usgs.gov/national-hydrography/nhdplus-high-resolution
+

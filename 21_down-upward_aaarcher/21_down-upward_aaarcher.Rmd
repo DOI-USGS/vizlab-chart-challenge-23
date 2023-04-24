@@ -1,0 +1,272 @@
+---
+title: "Example for Chart Challenge"
+author: "Althea Archer"
+date: "2023-03-10"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+
+library(lubridate) # for date parsing
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# El Nino indices from NOAA (scraped from https://origin.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php)
+elnino <- readr::read_csv("in/elnino_index.csv")
+
+```
+
+## Get data ready for plotting
+
+First, process the el Niño/la Niña indices. The data come in with month as columns, years as rows. Need to make it long format with month and year as separate fields.
+
+```{r processing}
+# Rename months. They are 3-month windows centered on one month. Rename to that one month
+elnino_rename <- elnino |>
+  rename(January = DJF,
+         February = JFM,
+         March = FMA,
+         April = MAM,
+         May = AMJ,
+         June = MJJ,
+         July = JJA,
+         August = JAS,
+         September = ASO,
+         October = SON,
+         November = OND,
+         December = NDJ)
+
+# Gather into long format
+elnino_long <- elnino_rename |>
+  pivot_longer(cols = !Year, 
+               names_to = "month",
+               values_to = "index") |>
+  # add month in numeric form and create date field
+  mutate(month_numeric = match(month, month.name),
+         date = lubridate::my(sprintf("%s-%s", month_numeric, Year)))
+
+# Create subset for plotting dates as y-axis on the chart
+year_labels <- data.frame(
+  date = as.Date(sprintf("%s-01-01", seq(1950, 2020, by = 5))),
+  index = rep(0, 15),
+  label = seq(1950, 2020, by = 5)
+)
+
+```
+
+
+## Set up main plot
+
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Satisfy"
+sysfonts::font_add_google("Satisfy")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+handwriting_font <- "Shadows Into Light"
+sysfonts::font_add_google("Shadows Into Light")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "white"
+font_color = "black"
+elnino_color = "#7DaDB8"
+elnino_dark = "#1194a7"
+lanina_color = "#A280AE"
+lanina_dark = "#A280AE"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_white.png") |>
+  image_colorize(100, "#36454F")
+
+# Load background image and make it transparent
+background_image <- magick::image_read("in/background_paint.png") |>
+  magick::image_fx(expression = "0.45*a", channel = "alpha")
+
+# Create the main plot 
+(main_plot <- ggplot(elnino_long, 
+                     aes(x = date, y = index, group = date)) +
+    # main data
+    geom_linerange(aes(ymin = 0, ymax = index, color = sign(index))) +
+    scale_color_gradient2(low = lanina_color, mid = "black", high = elnino_color)+
+    scale_x_date(breaks = "5 year", date_labels = "%Y", 
+                 limits = as.Date(c("1949-01-01", "2023-09-01")))+
+    # y-axis on chart
+    geom_linerange(data = year_labels, aes(ymin = -0.135, ymax = 0.135), color = "#36454F") +
+    geom_hline(yintercept = 0, color = "#ffffff", linewidth = 6)+
+    geom_text(data = year_labels, aes(label = label), color = "#36454F", size = 5,
+              fontface = "bold", family = supporting_font) +
+    # thematic settings
+    theme_minimal()+
+    ylim(c(-2.6,2.6))+
+    ylab("Oceanic\nNiño\nIndex\n(ONI)")+
+    theme(legend.position = "none",
+          panel.background = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(family = supporting_font, face = "bold",
+                                      angle = 0, vjust = 0.42, hjust = 0,
+                                      size = 18, color = "#36454F"),
+          axis.text.y = element_text(family = supporting_font,
+                                   size = 14, color = "#36454F", face = "bold"),
+          axis.text.x = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
+ )
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # watercolored background
+  draw_image(background_image, 
+             x = 0.025,
+             y = 0.152,
+             height = 0.8,
+             width = 0.98)+
+  # the main plot
+  draw_plot(main_plot,
+            x = 0.01,
+            y = 0.18,
+            height = 0.68,
+            width = 0.99) +
+  # explainer text
+  draw_label("Chart by Althea A. Archer.\nData from NOAA: origin.cpc.ncep.noaa.gov",
+             fontfamily = supporting_font,
+             x = 0.97,   
+             y = 0.04,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = "#36454F")+
+  # el nino title
+  draw_label("el Niño",
+             x = 0.05,
+             y = 0.95,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = elnino_dark,
+             size = 60) +
+  # el nino description
+  draw_label("el Niño periods bring wetter weather in the Southern U.S.\n      and drier weather in the North.",
+             x = 0.30,
+             y = 0.93,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = handwriting_font,
+             color = "#36454F",
+             size = 24) +
+  # la nina
+  draw_label("la Niña",
+             x = 0.05,
+             y = 0.15,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = lanina_dark,
+             size = 60) +
+  # la nina description
+    draw_label("la Niña periods bring drier weather in the Southern U.S.\n      and wetter weather in the North.",
+             x = 0.30,
+             y = 0.20,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = handwriting_font,
+             color = "#36454F",
+             size = 24) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.03,
+             y = 0.04,
+             width = 0.08, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230421_down-upward_aaarcher.png", 
+       width = 16, height = 9, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Ocean currents cycle between warmer (el Niño) and cooler (la Niña) periods.   
+2. In the U.S., el Niño causes wetter weather in the south and la Niña causes wetter weather in the north.  
+
+### Data source(s)
+
+NOAA Climate Prediction Center
+
+https://www.climate.gov/news-features/understanding-climate/climate-variability-oceanic-niño-index 
+
