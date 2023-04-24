@@ -8,7 +8,7 @@ p3_targets <- list(
   # channels and Lake St. Clair
   tar_target(
     p3_great_lakes_maps,
-    create_great_lakes_maps(in_zips = p1_gl_gis, homes_order = TRUE)
+    create_great_lakes_maps(in_zips = p1_gl_gis, homes_order = FALSE)
   ),
   
   # make ice plots - timeseries
@@ -55,7 +55,7 @@ p3_targets <- list(
     create_final_plot(
       ls_gl_plots = p3_ls_combo_plots_bar,
       ttl = "Percent Deviation from Average Maximum Ice Cover in the Great Lakes (1973-2023)",
-      out_path = "out/Great_Lakes_Ice_Cover_bar_wide.png"
+      out_path = NULL#"out/Great_Lakes_Ice_Cover_bar_wide.png"
     )
   )
     
