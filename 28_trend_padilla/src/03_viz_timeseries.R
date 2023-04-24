@@ -5,10 +5,11 @@
 #' It then creates a time series plot for each lake, showing the annual maximum ice cover for each year on the y-axis and the water year on the x-axis.
 #'
 #' @param ice_tibble A tibble containing ice cover data for the Great Lakes
+#' @param style A character value indicating plot type. Current options are "point" and "bar".
 #' @param homes_order A logical indicating whether the lakes should be ordered according
 #' to their location on the Great Lakes HOMES scale (TRUE) or in alphabetical order (FALSE). Default is TRUE.
 #' 
-annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
+annual_lake_plots <- function(ice_tibble, style = c("point", "bar", "lolli"), homes_order = TRUE) {
   # browser()
   # calculate data.frame for max ice and yday by water year
   df_max_ice_yday <- ice_tibble |> 
@@ -20,21 +21,44 @@ annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
   # calculate lake average yday and max ice for reference
   df_avg <- df_max_ice_yday |> 
     group_by(lake) |> 
-    summarize(yday_avg = mean(wy_yday),
+    summarize(wy_yday_avg = mean(wy_yday),
               perc_ice_avg = mean(perc_ice_cover))
   
   df_max_ice_yday <- left_join(df_max_ice_yday, df_avg) |> group_by(lake)
   df_max_ice_yday$lk <- df_max_ice_yday$lake # add a dummy lake column
+  df_max_ice_yday <- df_max_ice_yday |> 
+    mutate(ice_deviation = perc_ice_cover - perc_ice_avg,
+           ice_rpd = (perc_ice_cover - perc_ice_avg) / perc_ice_avg * 100,
+           day_deviation = wy_yday - wy_yday_avg)
   
-  ls_ice_ts <- df_max_ice_yday |> 
-    group_map(~ create_ice_timeseries(.x)) |> 
-    setNames(attributes(df_max_ice_yday)$groups[[1]])
+  # Create plot based on selected plot type
+  if(style == "point") {
+    
+    ls_ice_ts <- df_max_ice_yday |> 
+      group_map(~ create_ice_pointplot(.x)) |> 
+      setNames(attributes(df_max_ice_yday)$groups[[1]])
+    
+  } else if(style == "bar") {
+    
+    ls_ice_ts <- df_max_ice_yday |> 
+      group_map(~ create_ice_barplot(.x)) |> 
+      setNames(attributes(df_max_ice_yday)$groups[[1]])
+    
+  } else {
+    
+    ls_ice_ts <- df_max_ice_yday |> 
+      group_map(~ create_ice_lolliplot(.x)) |> 
+      setNames(attributes(df_max_ice_yday)$groups[[1]])
+    
+  }
   
   # re-org data
   if(homes_order) {
+    # HOMES mnemonic
     ls_ice_ts <- ls_ice_ts[c("Basin", "Huron", "Ontario",
                          "Michigan", "Erie", "Superior")]
   } else {
+    # Basin, then by latitude
     ls_ice_ts <- ls_ice_ts[c("Basin", "Superior", "Michigan",
                          "Huron", "Erie", "Ontario")]
   }
@@ -53,7 +77,7 @@ annual_max_ice_plot <- function(ice_tibble, homes_order = TRUE) {
 #'
 #' @return A time series plot of ice cover data for a single lake. 
 #' 
-create_ice_timeseries <- function(tbl) {
+create_ice_pointplot <- function(tbl) {
   
   ts <- 
     ggplot(data = tbl, aes(x = wy, y = perc_ice_cover)) +
@@ -86,44 +110,6 @@ create_ice_timeseries <- function(tbl) {
   return(ts)
 }
 
-annual_max_ice_deviation <- function(ice_tibble, homes_order = TRUE) {
-  
-  # calculate data.frame for max ice and yday by water year
-  df_max_ice_yday <- ice_tibble |> 
-    group_by(lake, wy) |> 
-    # in case of a tie, take the first instance of a max value
-    slice_max(perc_ice_cover, na_rm = TRUE, n = 1, with_ties = FALSE) |> 
-    arrange(lake, date)
-  
-  # calculate lake average yday and max ice for reference
-  df_avg <- df_max_ice_yday |> 
-    group_by(lake) |> 
-    summarize(wy_yday_avg = mean(wy_yday),
-              perc_ice_avg = mean(perc_ice_cover))
-  
-  df_max_ice_yday <- left_join(df_max_ice_yday, df_avg) |> group_by(lake)
-  df_max_ice_yday$lk <- df_max_ice_yday$lake # add a dummy lake column
-  df_max_ice_yday <- df_max_ice_yday |> 
-    mutate(ice_deviation = perc_ice_cover - perc_ice_avg,
-           ice_rpd = (perc_ice_cover - perc_ice_avg) / perc_ice_avg * 100,
-           day_deviation = wy_yday - wy_yday_avg)
-    
-  ls_ice_ts <- df_max_ice_yday |> 
-    group_map(~ create_ice_barplot(.x)) |> 
-    setNames(attributes(df_max_ice_yday)$groups[[1]])
-  
-  # re-org data
-  if(homes_order) {
-    ls_ice_ts <- ls_ice_ts[c("Basin", "Huron", "Ontario",
-                         "Michigan", "Erie", "Superior")]
-  } else {
-    ls_ice_ts <- ls_ice_ts[c("Basin", "Superior", "Michigan",
-                         "Huron", "Erie", "Ontario")]
-  }
-  
-  return(ls_ice_ts)
-}
-
 create_ice_barplot <- function(tbl) {
   # browser()
   ts <- 
@@ -145,6 +131,34 @@ create_ice_barplot <- function(tbl) {
       theme(axis.text.x = element_blank())
   }
 
+  ts <- ts +
+    theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+  
+  return(ts)
+}
+
+create_ice_lolliplot <- function(tbl) {
+  browser()
+  ts <- 
+    ggplot(data = tbl, aes(wy, ice_rpd)) + 
+    geom_linerange(aes(ymin = 0, ymax = ice_rpd, color = ice_rpd), show.legend = FALSE)+
+    geom_point(aes(color = ice_rpd), show.legend = FALSE)+
+    labs(title = "", x = "", y = "") +
+    scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
+    scale_y_continuous(limits = c(-100, 100)) +
+    theme_minimal() +
+    theme(axis.text.y = element_text(size = 14))
+  
+  # conditionally remove x-axis labels for lakes that aren't superior+
+  # if(tbl$lk[1] == "Superior") { # tall
+  if(tbl$lk[1] == "Erie" | tbl$lk[1] == "Ontario") { # wide
+    ts <- ts + 
+      theme(axis.text.x = element_text(size = 14, angle = 0, hjust = 0.5, vjust = 0.5))
+  } else {
+    ts <- ts + 
+      theme(axis.text.x = element_blank())
+  }
+  
   ts <- ts +
     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
   
