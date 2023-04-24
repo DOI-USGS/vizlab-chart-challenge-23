@@ -33,6 +33,7 @@ Define libraries here.
 library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
 library(WDI) # get world bank data
+library(gganimate) # animation!
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -81,6 +82,10 @@ df <- dplyr::rename(df, domestic = dom)
 df <- dplyr::rename(df, industry = ind)
 # re-format table for plotting
 df_tidy <- tidyr::pivot_longer(df, cols=5:7, names_to="use", values_to="amount")
+# fill na values with 0s
+df_tidy <- df_tidy %>% replace(is.na(.), 0)
+# clip years to be between 1990 and 2019
+df_tidy <- df_tidy %>% dplyr::filter(year > 1989) %>% dplyr::filter(year < 2020)
 ```
 
 ## Set up main plot
@@ -113,8 +118,10 @@ canvas <- grid::rectGrob(
 usgs_logo <- magick::image_read("../usgs_logo_white.png") 
 
 # Main plot
-(main_plot <- ggplot(df_tidy, aes(x=year, y=amount*.data[[vol]], fill=use)) + geom_bar(stat="identity", colour="white") + xlim(1989, 2020) + xlab("Year") + ylab("Volume of Freshwater Withdrawal, billions of cubic meters") + ggtitle("Annual Freshwater Withdrawals in the United States (1990-2019)", subtitle="World Bank World Development Indicators Data") + labs(fill="EXPLANATION") + theme(panel.background = element_blank(), plot.background = element_blank(), text = element_text(colour = "white"), legend.background = element_blank(), axis.text = element_text(colour = "white"), axis.ticks = element_line(colour = "white"))
+(main_plot <- ggplot(df_tidy, aes(x = year, y = amount*.data[[vol]])) + geom_col(aes(fill = use)) + xlab("Year") + ylab("Volume of Freshwater Withdrawal, billions of cubic meters") + ggtitle("Annual Freshwater Withdrawals in the United States (1990-2019)", subtitle="World Bank World Development Indicators Data") + labs(fill="EXPLANATION") + theme(panel.background = element_blank(), plot.background = element_blank(), text = element_text(colour = "white", size=14), legend.background = element_blank(), axis.text = element_text(colour = "white", size = 18), axis.ticks = element_line(colour = "white"), plot.title = element_text(size = 30), plot.subtitle = element_text(size = 24), axis.title = element_text(size = 22), legend.title = element_text(size=22), legend.text = element_text(size=18)) + scale_fill_manual(values = c("#ff71ce", "#01cdfe", "#05ffa1"))
  )
+# (main_plot <- ggplot(df_tidy, aes(x=year, y=amount*.data[[vol]], fill=use)) + geom_bar(stat="identity", colour="white") + xlim(1989, 2020) + xlab("Year") + ylab("Volume of Freshwater Withdrawal, billions of cubic meters") + ggtitle("Annual Freshwater Withdrawals in the United States (1990-2019)", subtitle="World Bank World Development Indicators Data") + labs(fill="EXPLANATION") + theme(panel.background = element_blank(), plot.background = element_blank(), text = element_text(colour = "white", size=14), legend.background = element_blank(), axis.text = element_text(colour = "white", size = 18), axis.ticks = element_line(colour = "white"), plot.title = element_text(size = 30), plot.subtitle = element_text(size = 24), axis.title = element_text(size = 22), legend.title = element_text(size=22), legend.text = element_text(size=18))
+#  )
 
 
 
@@ -128,7 +135,7 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 **Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
 ```{r cowplot, fig.width = 16, fig.height = 9}
-ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+anim_bar <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
   # a background
   draw_grob(canvas,
@@ -136,7 +143,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 9, width = 16,
             hjust = 0, vjust = 1) +
   # the main plot
-  draw_plot(main_plot,
+  draw_plot(main_plot + gganimate::transition_time(year) + gganimate::shadow_mark() + gganimate::enter_grow() + gganimate::enter_fade(),
             x = 0.01,
             y = 0.2,
             height = 0.7,
@@ -150,16 +157,6 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              hjust = 1,
              vjust = 0,
              color = font_color)+
-  # # Title
-  # draw_label("Title",
-  #            x = 0.04,
-  #            y = 0.285,
-  #            hjust = 0,
-  #            vjust = 1,
-  #            lineheight = 0.75,
-  #            fontfamily = font_legend,
-  #            color = font_color,
-  #            size = 55) +
   # Add logo
   draw_image(usgs_logo, 
              x = 0.04,
@@ -167,6 +164,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              width = 0.1, 
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)
+
+# animation
+gganimate::animate(anim_bar, fps = 20)
 
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
