@@ -30,9 +30,8 @@ Define libraries here.
 library(tidyverse) # includes ggplot
 library(sbtools) # for pulling sciencebase data
 library(readr) # for reading csv 
-library(janitor) # cleaning dataframe column names
-library(lubridate)
-library(geofacet)
+library(janitor) # for cleaning dataframe column names
+library(geofacet) # for the facet map of the U.S. 
 library(grid) # plot layout
 
 # These are used for the layout of the viz
@@ -49,7 +48,7 @@ Save any files that you are using directly in the `in` folder. Then read them in
 This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
 
 ```{r load}
-# Load forest change across CONUS 1985-2020 
+# Load forest area across CONUS 1985-2020 
 #sbtools::authenticate_sb()
 
 file_in_path_continuous <- "in/summary_forest_area_by_year.csv"
@@ -86,11 +85,9 @@ my_grid_zscore_dropWI <- my_us_grid_dropWI |>
   ungroup() |> 
   mutate(area_change = case_when(z_score > 0 ~ "POSITIVE",
                                         z_score < 0 ~ "NEGATIVE"))
-# get state grid minus Alaska, Hawaii for main plt
-my_us_grid<- us_state_grid1[c(-2, -11), ]
-# drop alaska & hawaii - no data 
+
 # join state (minus AK, HI) grid data with annual forest data, filter states to plot with geofacet, and calculate zscore from 35 yr mean for each state
-my_grid_zscore_conus <- my_us_grid |> 
+my_grid_zscore_conus <- us_state_grid1 |> 
   filter(!code %in% c("AK", "HI")) |> 
   left_join(annual_forest_area_raw, by = "name") |> 
   filter(name %in% state_names) |> 
@@ -113,7 +110,7 @@ font_legend <- 'PT Sans'
 font_add_google(font_legend)
 showtext_opts(dpi = 300, regular.wt = 300, bold.wt = 800)
 showtext_auto(enable = TRUE)
-  
+
 postive_col = "#083d21"
 negative_col = "#CC5500"
 
@@ -130,7 +127,6 @@ negative_col = "#CC5500"
                linewidth = 0.5) +
     geom_point(data = my_grid_zscore_dropWI |> filter(area_change %in% c("NEGATIVE")),
              color= negative_col, size=0.5) + 
-  #scale_y_continuous(limits = c(-3, 3), breaks = c(-3, 0 , 1, 2, 3)) +
   scale_x_continuous(limits = c(1985, 2020), breaks = seq(1985, 2020, by = 10)) + 
   facet_geo(~ code, grid = my_us_grid_dropWI) +
   labs(x = NULL, y= NULL) +
