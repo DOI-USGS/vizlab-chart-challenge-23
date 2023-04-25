@@ -150,12 +150,17 @@ create_ice_lolliplot <- function(tbl) {
     # scale_color_gradient2(mid = "#386CB1", high = "#60dced", low = "#ffb3fd",
     #                       limits = c(-100, 100),
     #                       guide = guide_colorbar(ticks = FALSE))+
-    labs(title = "", x = "", y = "", color = "Percent Change") +
+    labs(title = "", x = "", y = "", color = "Percent \nDifference") +
+    
     scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
     scale_y_continuous(limits = c(-100, 100), n.breaks = 5) +
+    # guides(fill = guide_legend(keywidth = 50)) +
     theme_minimal() +
     theme(axis.text.y = element_text(size = 14)) +
-    theme(legend.position = "top")
+    theme(legend.position = "top",
+          legend.key.height = unit(0.1, "in"),
+          legend.key.width = unit(2, "in"),
+          legend.text = element_text(size = 14))
   
   # conditionally remove x-axis labels for lakes that aren't superior+
   # if(tbl$lk[1] == "Superior") { # tall
