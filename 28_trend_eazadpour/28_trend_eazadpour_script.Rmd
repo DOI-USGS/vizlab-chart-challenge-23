@@ -33,6 +33,8 @@ library(readr) # for reading csv
 library(janitor) # for cleaning dataframe column names
 library(geofacet) # for the facet map of the U.S. 
 library(grid) # plot layout
+library(png) # for adding oak tree bckground img
+library(here) # for easy assessing oak tree background img
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
