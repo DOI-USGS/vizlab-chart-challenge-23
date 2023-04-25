@@ -2,12 +2,6 @@
 # Functions for Chart Challenge Pipeline Viz
 ######################
 
-
-# source ------------------------------------------------------------------
-
-source(config.R)
-
-
 # processing functions ----------------------------------------------------
 
 
@@ -20,7 +14,7 @@ source(config.R)
 #' @param 
 #' @example 
 
-time_series_plot(data, date_range){
+time_series_plot <- function(data, date_range){
   
   data 
   
@@ -33,7 +27,7 @@ time_series_plot(data, date_range){
 #' @param 
 #' @example 
 
-basin_map(data_sf){
+basin_map <- function(data_sf){
   
   data_sf
  

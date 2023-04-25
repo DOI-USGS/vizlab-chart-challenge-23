@@ -11,14 +11,6 @@ source('prep/3_LT_streamflow_data_processing.R')
 map_bbox <- st_bbox(Lake_Tahoe_huc8)
 
 
-# Quick Mapview -----------------------------------------------------------
-
-## VIZ
-mapview(LT_flines_3, color = 'darkblue')+
-  mapview(LT_lakes, col.regions = 'darkblue')+
-  mapview(active_nwis_sites_lake_tahoe, col.regions = 'red')+
-  mapview(Lake_Tahoe_huc8, col.regions = NA, color = 'black', alpha.regions = 0)
-
 # Map ---------------------------------------------------------------------
 
 LT_map <- ggplot()+
@@ -67,3 +59,28 @@ lapply(active_sites_2023,
        }
 )
 
+
+### TEMP
+
+site <- "103366092"
+
+## temp - like above: 
+LT_dv_data_w_MA |> 
+  mutate(year = as.factor(year)) |> 
+  filter(day_of_week == 'Mon',
+         site_no == site) |>
+  ggplot(aes(x = Date, y = MA))+
+  geom_line(aes(color = site_no))+
+  theme_classic()+
+  labs(title = sprintf('Site Number: %s', site))
+
+## temp - split by year
+LT_dv_data_w_MA |> 
+  mutate(year = as.factor(year)) |> 
+  filter(year %in% c(2010,2015,2020,2022,2023),
+         day_of_week == 'Mon',
+         site_no == site) |>
+  ggplot(aes(x = month_day, y = MA))+
+  geom_line(aes(color = as.factor(year)))+
+  theme_classic()+
+  labs(title = sprintf('Site Number: %s', site))
