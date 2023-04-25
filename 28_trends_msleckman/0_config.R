@@ -13,11 +13,18 @@ library(mapview)
 library(stringr)
 library(dplyr)
 library(spData)
+library(ggplot2)
+library(lubridate)
 
 # options -----------------------------------------------------------------
 
 options(tidyverse.quiet = TRUE, timeout = 500)
 mapviewOptions(fgb = FALSE)
+
+
+# source ------------------------------------------------------------------
+
+source('src/funs.R')
 
 # links -------------------------------------------------------------------
 

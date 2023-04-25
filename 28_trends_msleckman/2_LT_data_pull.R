@@ -2,11 +2,9 @@
 # Geospatial data for Lake Tahoe Basin
 #######################################
 
-
-
 # source ------------------------------------------------------------------
 
-source('nhdPlus_data_fetch.R')
+source('1_nhdPlus_data_fetch.R')
 
 # NHDPLUS Tools data - Lake Tahoe subset ----------------------------------
 
@@ -20,8 +18,6 @@ LT_lakes <- st_join(lakes_in_CA_hucs , Lake_Tahoe_huc8) |> filter(!is.na(HUC8))
 LT_flines <- get_nhdplus(AOI = Lake_Tahoe_huc8,
                          realization = 'flowline',
                          streamorder = 1)
-
-
 
 
 # NWIS Gages --------------------------------------------------------------
@@ -39,6 +35,20 @@ active_nwis_sites_lake_tahoe <- get_nwis(AOI = Lake_Tahoe_huc8,
 
 # Pull all NWIS data for active sites
 
+readNWISstat(siteNumbers=active_sites_2023, parameterCd="00060", 
+             statReportType="annual", statType="mean") |> group_by(site_no,year_nu) |>
+  summarize(n()) |> arrange(year_nu) |> View()
 
 
+dailyDataAvailable <- whatNWISdata(
+  siteNumber = active_sites_2023,
+  service = "dv",
+  statCd = "00003"
+)
+
+LT_dv_data <- readNWISdv(siteNumbers = active_sites_2023,
+           parameterCd = '00060') |> 
+  renameNWISColumns()
+
+# readNWISdata(site_no = active_sites_2023, service = 'iv')
 
