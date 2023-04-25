@@ -149,14 +149,14 @@ create_ice_barplot <- function(tbl) {
 #' @param tbl A tibble containing ice cover data for a single lake.
 #'
 create_ice_lolliplot <- function(tbl) {
-
+ 
   ts <- 
+    ggplot(data = tbl, aes(wy, ice_rpd)) + 
     geom_linerange(aes(ymin = 0, ymax = ice_rpd, color = ice_rpd))+
     geom_point(aes(color = ice_rpd))+
-
-    scale_color_gradient2(mid = "#cdf1ff", high = "#042d4b", low = "#710193",
-                          limits = c(-100, 100),
-                          guide = guide_colorbar(ticks = FALSE)) +
+    scale_color_steps2(mid = "#cdf1ff", high = "#042d4b", low = "#710193",
+                          limits = c(-100, 100), n.breaks = 9, 
+                          show.limits = TRUE) + #, guide = guide_colorbar(ticks = FALSE)) +
     labs(title = "", x = "", y = "", color = "Percent\nChange") +
     
     scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
