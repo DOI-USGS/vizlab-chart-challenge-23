@@ -1,3 +1,7 @@
+#############################
+# Config items for Workflow
+############################
+
 # libraries ---------------------------------------------------------------
 
 library(nhdplusTools)
@@ -10,14 +14,10 @@ library(stringr)
 library(dplyr)
 library(spData)
 
-
 # options -----------------------------------------------------------------
 
 options(tidyverse.quiet = TRUE, timeout = 500)
 mapviewOptions(fgb = FALSE)
-
-
-
 
 # links -------------------------------------------------------------------
 
