@@ -28,6 +28,8 @@
 *.html
 documents/
 documents/*
+*.pdf
+*.pptx
 
 # Spatial
 *.cpg
