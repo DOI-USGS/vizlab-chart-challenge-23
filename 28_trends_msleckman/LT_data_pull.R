@@ -1,0 +1,31 @@
+source('nhdPlus_data_fetch.R')
+
+# Tahoe subsetting --------------------------------------------------------
+# HUC
+Lake_Tahoe_huc6 <- filter(huc6_CA, Name == 'Truckee') 
+Lake_Tahoe_huc8 <- filter(huc8_CA, Name == 'Lake Tahoe')
+
+# water features
+LT_lakes <- st_join(lakes_in_CA_hucs , Lake_Tahoe_huc8) |> filter(!is.na(HUC8))
+LT_flines <- get_nhdplus(AOI = Lake_Tahoe_huc8, realization = 'flowline',
+                           streamorder = 1)
+
+# sites
+# id active sites
+prev90days <- Sys.Date() - 90
+## ID active sites from last 90 days (dv)
+active_sites_data <- readNWISdata(huc = Lake_Tahoe_huc8$HUC8, service="iv",parameterCd="00060", startDate=prev90days)
+
+active_sites <- active_sites_data$site_no |> unique()
+
+active_nwis_sites_lake_tahoe <- get_nwis(AOI = Lake_Tahoe_huc8, t_srs = NULL, buffer = 0) |> filter(site_no %in% active_sites)
+
+## VIZ
+mapview(LT_flines_3, color = 'darkblue')+
+mapview(LT_lakes, col.regions = 'darkblue')+
+  mapview(active_nwis_sites_lake_tahoe, col.regions = 'red')+
+  mapview(Lake_Tahoe_huc8, col.regions = NA, color = 'black', alpha.regions = 0)
+
+
+
+
