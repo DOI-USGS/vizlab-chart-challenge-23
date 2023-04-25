@@ -213,7 +213,7 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 **Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
 ```{r cowplot, fig.width = 16, fig.height = 9}
-ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
   # a background
   draw_grob(canvas,
@@ -281,6 +281,16 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              width = 0.1,
              hjust = 0, vjust = 0,
              halign = 0, valign = 0)
+
+# add oak tree png 
+im <- png::readPNG(here("28_trend_eazadpour/in/oak-tree.png"))
+im2 <- matrix(rgb(im[,,1],im[,,2],im[,,3], im[,,4] * 0.05), nrow=dim(im)[1]) ## can adjust 0.05 alpha 
+
+final_plt <- custom_plt +
+    annotation_custom(rasterGrob(im2, 
+                               width = unit(1,"npc"), 
+                               height = unit(1,"npc")), 
+                    0.6, 1.21, -Inf, 1.5) 
 
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
