@@ -4,7 +4,7 @@
 
 # source ------------------------------------------------------------------
 
-source('1_nhdPlus_data_fetch.R')
+source('prep/1_nhdPlus_data_fetch.R')
 
 # NHDPLUS Tools data - Lake Tahoe subset ----------------------------------
 

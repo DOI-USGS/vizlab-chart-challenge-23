@@ -1,18 +1,17 @@
 ##############
-# Viz
+# Main Viz Script
 ##############
-
 
 # source ------------------------------------------------------------------
 
-source('3_LT_streamflow_data_processing.R')
+source('prep/3_LT_streamflow_data_processing.R')
 
 # Viz Variables -----------------------------------------------------------
 
 map_bbox <- st_bbox(Lake_Tahoe_huc8)
 
 
-# Quick Mapview -----------------------------------------------------------------
+# Quick Mapview -----------------------------------------------------------
 
 ## VIZ
 mapview(LT_flines_3, color = 'darkblue')+
@@ -33,7 +32,7 @@ LT_map <- ggplot()+
           color = '#006200',
           size = 1.3, alpha = 0.9)+
   geom_sf_text(data = active_nwis_sites_lake_tahoe, color = 'black',
-               aes(label = site_no), size =3, nudge_x = 0.01) +
+               aes(label = site_no), size =3, nudge_x = 0.05) +
   coord_sf(ylim = c(map_bbox$ymin, map_bbox$ymax),
            xlim = c(map_bbox$xmin, map_bbox$xmax))+
   theme_classic()+
@@ -48,5 +47,23 @@ LT_map <- ggplot()+
         axis.text = element_blank(),
         axis.ticks = element_blank()
         )
-  
+
+ggsave('out/LT_map_gauges.png', width = 9, height = 9, dpi = 300)
+
+# Plot --------------------------------------------------------------------
+
+## quick plot (filtered only to monday to make plot less busy - still need to work on this      
+
+lapply(active_sites_2023,
+       function(x){
+         LT_dv_data_w_MA |> 
+           filter(day_of_week == 'Mon',
+                  site_no == x) |>
+           ggplot(aes(x = Date, y = MA))+
+           geom_line(aes(color = site_no))+
+           theme_classic()+
+           labs(title = sprintf('Site Number: %s', x))
+         ggsave(sprintf('out/ts_%s.png',x), width = 9, height = 9, dpi = 300)
+       }
+)
 

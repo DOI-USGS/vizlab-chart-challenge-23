@@ -15,6 +15,7 @@ library(dplyr)
 library(spData)
 library(ggplot2)
 library(lubridate)
+library(glue)
 
 # options -----------------------------------------------------------------
 
@@ -24,7 +25,7 @@ mapviewOptions(fgb = FALSE)
 
 # source ------------------------------------------------------------------
 
-source('src/funs.R')
+source('../src/funs.R')
 
 # links -------------------------------------------------------------------
 

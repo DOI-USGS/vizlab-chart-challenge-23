@@ -4,13 +4,13 @@
 
 # source ------------------------------------------------------------------
 
-source('2_LT_data_pull.R')
+source('prep/2_LT_data_pull.R')
 
 # Processing --------------------------------------------------------------
 
 # Dates
-LT_dv_data_process <- LT_dv_data |>
-  mutate(year = as.factor(year(Date)),
+LT_dv_data_dates <- LT_dv_data |>
+  mutate(year = year(Date),
          month = month(Date, label = T),
          day = day(Date),
          day_of_week = lubridate::wday(Date, label = T),
@@ -19,12 +19,8 @@ LT_dv_data_process <- LT_dv_data |>
   # placing month day at end
   select(!month_day,month_day)
 
-# Aggregate 
-# ? 
+# calc Moving average Values
+LT_dv_data_w_MA <- LT_dv_data_dates |>
+  ## calc MA with zoo::rollmean() . Check what k (2nd param) is for 
+  mutate(MA = rollmean(Flow, 2, na.pad = T, align = 'right'))
 
-# Viz
-LT_dv_data_process |> filter(year %in% c(2021,2022,2023)) |>
-  ggplot(aes(x = month_day, y = Flow))+
-  geom_line(aes(color = year))+
-  theme_classic()
-  
