@@ -59,27 +59,27 @@ fish_data_uncertainty <- select(fish_data, -c("RCP_26", "RCP_45", "RCP_60", "RCP
 fish_data <- select(fish_data, -c("RCP_26_SE", "RCP_45_SE", "RCP_60_SE", "RCP_85_SE"))
 
 # prep origin dates 
-fish_data_origin_dates <- gather(fish_data_origin_dates, condition, origin_date, RCP_26:RCP_85)
+fish_data_origin_dates <- pivot_longer(fish_data_origin_dates, RCP_26:RCP_85, values_to = "origin_date", names_to = "condition")
 fish_data_origin_dates$origin_date <- as.Date(fish_data_origin_dates$origin_date, format = "%m/%d/%Y")
 
 # add in origin dates
-fish_data_long <- gather(fish_data, condition, value, RCP_26:RCP_85)
+fish_data_long <- pivot_longer(fish_data, RCP_26:RCP_85, values_to = "value", names_to = "condition")
 fish_data_long <- full_join(fish_data_long, fish_data_origin_dates, by = c("species", "variable", "condition"))
 fish_data_long$end_date <- fish_data_long$origin_date + fish_data_long$value
 
 # prep uncertainty in dates to be brought in later
-fish_data_uncertainty_long <- gather(fish_data_uncertainty, condition, confidence_interval, RCP_26_SE:RCP_85_SE)
+fish_data_uncertainty_long <- pivot_longer(fish_data_uncertainty, RCP_26_SE:RCP_85_SE, names_to = "condition", values_to = "standard_error")
 fish_data_uncertainty_long$condition <- substr(fish_data_uncertainty_long$condition, 1, 6)
 
 # make into wide format 
 fish_data_long <- fish_data_long |> 
   select(-c(origin_date, value))
-fish_data_wide <- spread(fish_data_long, variable, end_date)
+fish_data_wide <- pivot_wider(fish_data_long, names_from = "variable", values_from = "end_date")
 names(fish_data_wide)[names(fish_data_wide)=="Onset"] <- "onset"
 names(fish_data_wide)[names(fish_data_wide)=="Cessation"] <- "cessation"
 
 # bring in uncertainty that was prepped before
-fish_data_uncertainty_wide <- spread(fish_data_uncertainty_long, variable, confidence_interval)
+fish_data_uncertainty_wide <- pivot_wider(fish_data_uncertainty_long, names_from = "variable", values_from = "standard_error")
 names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Onset"] <- "onset_se"
 names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Cessation"] <- "cessation_se"
 
@@ -106,7 +106,7 @@ fish_data_ts <- fish_data_ts |>
   select(-c("duration", "start_date_julianday", "end_date_julianday", "start_date", "end_date"))
 
 # make long format
-fish_data_ts_long <- gather(fish_data_ts, spawning, value, Onset:Cessation)
+fish_data_ts_long <- pivot_longer(fish_data_ts, Onset:Cessation, names_to = "spawning", values_to = "value")
 fish_data_ts_long$spawning <- factor(fish_data_ts_long$spawning, levels = c("Onset", "Cessation"))
 ```
 
@@ -210,7 +210,7 @@ fish_data_ts_summarized <- fish_data_ts_long |>
   summarize(mean_value = mean(value), 
             se_value = sd(value)/sqrt(length(value))) # calculate standard error
   
-fish_data_summarized <- full_join(fish_data_long, fish_data_ts_summarized, by = join_by(species == species, period == period, variable == spawning, condition == condition)) |>
+fish_data_summarized <- full_join(fish_data_long, fish_data_ts_summarized, by = c('species' = 'species', 'period' = 'period', 'variable' = 'spawning', 'condition' = 'condition')) |>
   mutate(date_diff = end_date - mean_value)
 
 # It's not the mean value of the data, it's slightly off!
@@ -229,6 +229,15 @@ fish_data_summarized_summarized$`mean(mean_value)`[2] - fish_data_summarized_sum
 
 ## Produce annual viz (final plot)
 ```{r plotting_annual}
+# make the yearly data wide so onset and cessation columns are side by side
+fish_data_ts_wide <- pivot_wider(fish_data_ts_long, names_from = "spawning", values_from = "value")
+
+# filter by RCP
+fish_data_ts_plot <- fish_data_ts_wide |>
+  filter(condition == "RCP_85") |>
+  filter(year != 1950) |>
+  mutate(year = as.integer(year))
+
 # this business is for plot legend
 df_as <- fish_data_ts_plot[fish_data_ts_plot$species=="American Shad", ]
 df_sb <- fish_data_ts_plot[fish_data_ts_plot$species=="Striped Bass", ]
