@@ -23,6 +23,7 @@ LT_flines <- get_nhdplus(AOI = Lake_Tahoe_huc8,
 
 
 
+
 # NWIS Gages --------------------------------------------------------------
 
 # ID Active NWIS Sites in LT Basin
@@ -37,14 +38,6 @@ active_nwis_sites_lake_tahoe <- get_nwis(AOI = Lake_Tahoe_huc8,
                                          t_srs = NULL, buffer = 0) |> filter(site_no %in% active_sites_2023)
 
 # Pull all NWIS data for active sites
-
-
-
-## VIZ
-mapview(LT_flines_3, color = 'darkblue')+
-mapview(LT_lakes, col.regions = 'darkblue')+
-  mapview(active_nwis_sites_lake_tahoe, col.regions = 'red')+
-  mapview(Lake_Tahoe_huc8, col.regions = NA, color = 'black', alpha.regions = 0)
 
 
 
