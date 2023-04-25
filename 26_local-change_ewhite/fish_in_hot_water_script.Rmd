@@ -99,9 +99,6 @@ fish_data_ts$Onset <- as.Date(fish_data_ts$start_date_julianday, origin = as.Dat
 fish_data_ts$Cessation <- as.Date(fish_data_ts$end_date_julianday, origin = as.Date("2015-01-01"))-1
 
 # get rid of duration and extra dates
-fish_data_ranked <- fish_data_ts |>      # use this to calculate probabilities
-  select(-c("duration", "start_date", "end_date"))
-
 fish_data_ts <- fish_data_ts |>
   select(-c("duration", "start_date_julianday", "end_date_julianday", "start_date", "end_date"))
 
@@ -153,7 +150,7 @@ theme_usgs <- function(legend.position = "right"){
 
 ## Produce plots
 ```{r plotting_simple, include = FALSE}
-# First, a dot chart for my own sanity
+# first, a dot chart to see what the data basically looks like
 ggplot(data = fish_data_long, aes(x = end_date, y = variable)) +
   geom_point(aes(col = condition)) + 
   facet_wrap(~species) +
@@ -161,17 +158,17 @@ ggplot(data = fish_data_long, aes(x = end_date, y = variable)) +
 ```
 
 ```{r plotting_main}
-# Main base plot, trying out blurring edges
+# main base plot
 library(ggnewscale)
 ggplot() +
-  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "grey") +
-  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "grey") + # for standard error end bits
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "grey") + # main hisotrical bar
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "grey") + # bar with standard error end bits
   new_scale_colour() +
-  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "#815aa5") +
-  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "#815aa5") + # for standard error end bits
-  scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
-  scale_y_continuous(limits = c(0, 13)) +
-  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "#815aa5") + # main future bar
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "#815aa5") + # bar standard error end bits
+  scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") + # make xlabels pretty
+  scale_y_continuous(limits = c(0, 13)) +  # add in some room in the y axis for the fish
+  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # comment this out to make the plot work in Cartesian coordinates first and then polarize
   facet_wrap(~species) +
   labs(x = "",
        y = "",
@@ -193,38 +190,13 @@ ggsave("out/26_local-change_ewhite_base.png", width = 16, height = 9, units = "i
 ```
 
 ```{r plotting_paper_figure, include = FALSE}
-# recreating figure in paper for sanity
+# recreating figure in paper to make sure I haven't accidentally messed up the data
 ggplot(data = fish_data_ts_long[fish_data_ts_long$year > 1950, ], aes(x = year, y = value)) +
   geom_point(aes(shape = species, col = species)) +
   facet_wrap(~condition + spawning, ncol = 2, scales = "free") +
   labs(x="", y="Predicted Date of Spawning") +
   theme_usgs()
 # it matches! Hooray
-```
-
-## Tests and Checks
-```{r checking_original_data_with_extra_data}
-# is the mean what is reported for onset and cessation deviations in the linear modeling? 
-fish_data_ts_summarized <- fish_data_ts_long |>
-  group_by(species, condition, period, spawning) |>
-  summarize(mean_value = mean(value), 
-            se_value = sd(value)/sqrt(length(value))) # calculate standard error
-  
-fish_data_summarized <- full_join(fish_data_long, fish_data_ts_summarized, by = c('species' = 'species', 'period' = 'period', 'variable' = 'spawning', 'condition' = 'condition')) |>
-  mutate(date_diff = end_date - mean_value)
-
-# It's not the mean value of the data, it's slightly off!
-fish_data_summarized_summarized <- fish_data_summarized |>
-  group_by(period, variable) |>
-  summarize(mean(mean_value))
-
-# cessation 
-fish_data_summarized_summarized$`mean(mean_value)`[1] - fish_data_summarized_summarized$`mean(mean_value)`[3]
-
-# onset
-fish_data_summarized_summarized$`mean(mean_value)`[2] - fish_data_summarized_summarized$`mean(mean_value)`[4]
-
-# never mind, we aren't going to recreate the author's analysis, going to take the paper values as they are
 ```
 
 ## Produce annual viz (final plot)
@@ -235,14 +207,14 @@ fish_data_ts_wide <- pivot_wider(fish_data_ts_long, names_from = "spawning", val
 # filter by RCP
 fish_data_ts_plot <- fish_data_ts_wide |>
   filter(condition == "RCP_85") |>
-  filter(year != 1950) |>
-  mutate(year = as.integer(year))
+  filter(year != 1950) |> # the data for this year was off so I filtered it out
+  mutate(year = as.integer(year)) 
 
-# this business is for plot legend
+# this business is for plot legend breaks and labels (they were messing up because the legend is a date)
 df_as <- fish_data_ts_plot[fish_data_ts_plot$species=="American Shad", ]
 df_sb <- fish_data_ts_plot[fish_data_ts_plot$species=="Striped Bass", ]
 legend_date_breaks_as <- diff(range(df_as$Onset)) * 0:4 / 4 + min(df_as$Onset)
-legend_date_labels_as <- format(legend_date_breaks_as, "%W")
+legend_date_labels_as <- format(legend_date_breaks_as, "%W") # this "%W" format is week of the year (0-53)
 legend_date_breaks_sb <- diff(range(df_sb$Onset)) * 0:4 / 4 + min(df_sb$Onset)
 legend_date_labels_sb <- format(legend_date_breaks_sb, "%W")
 
@@ -281,6 +253,9 @@ ggsave("out/26_local-change_ewhite_base2.png", width = 16, height = 9, units = "
 
 1. The American Shad and the Striped Bass are migratory species needing both freshwater and marine habitats to complete their life cycle. This makes them particularly vulnerable to human activities. The Hudson River Shad has declined in stock so much that all its fisheries were closed in 2010. The Striped Bass, while declining in relative abundance, still remains the most important game fish in the Hudson River.
 
+2. Under projected climate change scenarios, the American Shad and Striped Bass of the Hudson River Estuary are predicted to spawn 15 days earlier on average. 
+
+3. Under RCP 8.5 (“business-as-usual”),  the American Shad and Striped Bass of the Hudson River Estuary are projected to start and stop spawning 20 and 26 days earlier on average respectively.
 
 ### Data source(s)
 
@@ -293,11 +268,11 @@ DOI: https://doi.org/10.1002/mcf2.10076
 
 ### Process 
 
-1) produced `out/25_local-change_ewhite_base.png` with ggplot
+1. Produced base plots called `out/25_local-change_ewhite_base.png` and `out/25_local-change_ewhite_base2.png` with ggplot.
 
-2) made markups in PowerPoint 
+2. Made markups in PowerPoint. 
 
-3) final plot is called `out/25_local-change_ewhite_final.png`
+3. Saved final plot as picture and called them `out/25_local-change_ewhite_final.png` and `out/25_local-change_ewhite_final2.png`.
 
 
 
