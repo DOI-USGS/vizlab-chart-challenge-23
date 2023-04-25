@@ -15,17 +15,23 @@ p3_targets <- list(
 
   tar_target(
     p3_max_ice_ts_point,
-    annual_lake_plots(ice_tibble = p2_ice_data, style = "pointplot", homes_order = FALSE)
+    annual_lake_plots(ice_tibble = p2_ice_data, 
+                      style = "pointplot", 
+                      homes_order = FALSE)
   ),
 
   tar_target(
     p3_max_ice_ts_bar,
-    annual_lake_plots(ice_tibble = p2_ice_data, style = "barplot", homes_order = FALSE)
+    annual_lake_plots(ice_tibble = p2_ice_data, 
+                      style = "barplot", 
+                      homes_order = FALSE)
   ),
 
   tar_target(
     p3_max_ice_ts_lolli,
-    annual_lake_plots(ice_tibble = p2_ice_data, style = "lolliplot", homes_order = FALSE)
+    annual_lake_plots(ice_tibble = p2_ice_data, 
+                      style = "lolliplot", 
+                      homes_order = FALSE)
   ),
   
   # extract one legend before combining plots
@@ -69,6 +75,7 @@ p3_targets <- list(
     p3_great_lakes_ice_point_png,
     create_final_plot(
       ls_gl_plots = p3_ls_combo_plots_point,
+      legend = NULL,
       ttl = "Trends in Maximum Percent Ice Cover in the Great Lakes (1973-2023)",
       out_path = "out/Great_Lakes_Ice_Cover_pt_wide.png"
     )
@@ -78,6 +85,7 @@ p3_targets <- list(
     p3_great_lakes_ice_bar_png,
     create_final_plot(
       ls_gl_plots = p3_ls_combo_plots_bar,
+      legend = NULL,
       ttl = "Maximum Percent Ice Cover in the Great Lakes: Difference from 50-year Mean (1973-2023)",
       out_path = "out/Great_Lakes_Ice_Cover_bar_wide.png"
     )

@@ -48,7 +48,6 @@ create_combo_plots <- function(maps, timeseries, out_path_pattern = NULL) {
 #' @returns A ggplot object that combines x_map and y_ts plots.
 #' 
 format_and_combine_plots <- function(x_map, y_ts) {
-  # browser()
 
   # make plot
   ts_margins <- y_ts + 
