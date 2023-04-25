@@ -29,6 +29,8 @@
 documents/
 documents/*
 scratch.Rmd
+*.pdf
+*.pptx
 
 # Spatial
 *.cpg
