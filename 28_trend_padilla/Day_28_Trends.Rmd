@@ -99,7 +99,7 @@ out <-
             y = 0.11,
             height = 0.85) +
   # explainer text
-  draw_label("Julie Padilla, USGS\nData from NOAA Great Lakes Environmental Research Lab (GLERL)\nU.S. Geological Survey",
+  draw_label("Julie Padilla, USGS\nData from NOAA Great Lakes Environmental Research Lab\nU.S. Geological Survey",
              fontfamily = font_legend,
              fontface = 'italic',
              x = 0.96,

@@ -7,7 +7,8 @@ tar_option_set(packages = c(
   # "patchwork",
   "sf",
   "purrr",
-  "cowplot"
+  "cowplot",
+  "scico"
   ))
 
 # Phase target makefiles

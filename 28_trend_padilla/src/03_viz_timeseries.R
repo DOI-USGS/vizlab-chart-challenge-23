@@ -139,18 +139,19 @@ create_ice_barplot <- function(tbl) {
 
 create_ice_lolliplot <- function(tbl) {
 
+  # browser()
   ts <- 
     ggplot(data = tbl, aes(wy, ice_rpd)) + 
     # geom_linerange(aes(ymin = 0, ymax = ice_rpd), color = "#142D45", show.legend = FALSE)+
     # geom_point(color = "#142D45", show.legend = FALSE)+
     geom_linerange(aes(ymin = 0, ymax = ice_rpd, color = ice_rpd))+
     geom_point(aes(color = ice_rpd))+
-    scale_color_steps2(mid = "#386CB1", high = "#60dced", low = "#ffb3fd",
-                       limits = c(-100, 100), n.breaks = 9, show.limits = TRUE) +
-    # scale_color_gradient2(mid = "#386CB1", high = "#60dced", low = "#ffb3fd",
-    #                       limits = c(-100, 100),
-    #                       guide = guide_colorbar(ticks = FALSE))+
-    labs(title = "", x = "", y = "", color = "Percent\nDifference\nfrom Mean") +
+    # scale_color_scico(palette = "bam", #mid = "#386CB1", high = "#60dced", low = "#ffb3fd",
+    #                    limits = c(-100, 100), n.breaks = 9, show.limits = TRUE) +
+    scale_color_gradient2(mid = "#cdf1ff", high = "#042d4b", low = "#710193", # mid = "#386CB1", high = "#60dced", low = "#ffb3fd",
+                          limits = c(-100, 100),
+                          guide = guide_colorbar(ticks = FALSE)) +
+    labs(title = "", x = "", y = "", color = "Percent\nChange") +
     
     scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
     scale_y_continuous(limits = c(-100, 100), n.breaks = 5) +
