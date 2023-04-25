@@ -54,7 +54,7 @@ check_for_expected_downloads <- function(out_path, expected_files,
   
   files_in_outpath <- list.files(out_path, full.names = TRUE)
   check <- expected_files[expected_files %in% files_in_outpath]
-  # browser()
+  
   if(check_for_files){
     msg <- sprintf("Expected %s files and found %s matching files in %s", 
                     as.numeric(length(expected_files)),

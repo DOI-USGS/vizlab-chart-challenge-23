@@ -8,7 +8,7 @@
 #' @returns A list of plots, with one plot for each lake
 #' 
 create_combo_plots <- function(maps, timeseries, out_path_pattern = NULL) {
-  # browser()
+  
   # make sure objects match by lake
   stopifnot(names(maps) == names(timeseries))
   
@@ -84,18 +84,13 @@ format_and_combine_plots <- function(x_map, y_ts) {
 #' @returns A final plot grid with the specified title and a combination of all ggplot objects in the ls_gl_plots list.
 #' 
 create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) {
-  # browser()
+  
   lake_nms <- names(ls_gl_plots)
   
   for(i in seq_along(ls_gl_plots)) {
     assign(paste0("plot", lake_nms[[i]]), ls_gl_plots[[i]])
   }
-  # browser()
-  # extract legend
-  # margin order - trbl
-  
-  # legend <- get_legend(plotBasin + theme(legend.box.margin = unit(c(0, 0, 0, 0), "in")))
-  
+
   out_plot <- 
     plot_grid(plotBasin, plotSuperior,
                         plotMichigan, plotHuron,
@@ -103,7 +98,7 @@ create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) 
                         align = "v",
                         # ncol = 1) # tall
                         ncol = 2) #wide
-  # browser()
+  
   # now add the title
   title <- ggdraw() + 
     draw_label(
@@ -114,7 +109,7 @@ create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) 
 
   if(is.null(legend)) {
     
-    out_plot_w_ttl <- plot_grid(
+    out_plot_w_labs <- plot_grid(
       title, out_plot,
       ncol = 1,
       rel_heights = c(0.1, 1)
@@ -122,7 +117,7 @@ create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) 
     
   } else {
     
-    out_plot_w_ttl <- plot_grid(
+    out_plot_w_labs <- plot_grid(
       title, legend, out_plot,
       ncol = 1,
       rel_heights = c(0.1, 0.1, 1)
@@ -133,7 +128,7 @@ create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) 
   if(!is.null(out_path)) {
     
     ggsave(filename = out_path, 
-           plot = out_plot_w_ttl, 
+           plot = out_plot_w_labs, 
            # height = 12, width = 6, units = "in", # tall
            height = 9, width = 16, units = "in", # wide
            dpi = 300, bg = "white")
@@ -144,7 +139,7 @@ create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) 
   } else {
     
     message("returning object...")
-    return(out_plot_w_ttl)
+    return(out_plot_w_labs)
     
   }
   
