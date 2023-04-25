@@ -1,0 +1,403 @@
+---
+title: "28 trends"
+author: "Margaux Sleckman"
+date: "2023-03-10"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+library(lubridate)
+library(glue)
+
+library(sf)
+library(mapdata)
+library(maps)
+library(spData)
+
+library(nhdplusTools)
+library(dataRetrieval)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+library(mapview) # for interactive map viz
+
+```
+
+```{r options}
+
+options(tidyverse.quiet = TRUE, timeout = 500)
+mapviewOptions(fgb = FALSE)
+
+dir.create('in/R/nhdPlusTools', showWarnings = F)
+
+```
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+```{r load}
+
+source('src/funs.R')
+
+```
+
+#### 1. Fetching nhdplus spatial data w/ nhdplustools
+
+```{r 1_generic_nhdPlus_data_fetch}
+
+# state boundaries --------------------------------------------------------
+
+CA_sf <- us_states |> filter(NAME == 'California')
+West_sf <- us_states |> filter(NAME %in% c('California','Oregon',
+                                           'Nevada','Utah',
+                                           'Arizona',
+                                           'Idaho','Washington'))
+
+# AOI for NHD data extraction ---------------------------------------------
+
+## grab huc 8s with nhdplus tools
+CA_huc8 <- nhdplusTools::get_huc8(AOI = CA_sf)
+
+## define all huc4 to allow data download
+CA_huc4 <- CA_huc8$huc8 |> substr(1,4) |> unique()
+
+# NHD Data Download (conditional Run only if not downloaded yet) ----------------------------------
+
+if(is.null(list.files('in/R/nhdPlusTools'))){
+  
+  print(paste('Downloading NHD data for the following CA HUC4s',CA_huc4))
+
+  download_nhdplushr('in/', CA_huc4)
+}
+
+huc_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_HU_CA_data.gpkg'
+wtbdy_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_CA_wtrbdy_data.gpkg'
+
+if(is.null(list.files('in/R/nhdPlusTools', full.names = T, pattern = '_data.gpkg'))){
+  # Store HUCs shps into geopackage
+  print(paste('... Storing HUCs shps into a local geopackage here:', huc_gpkg_path))
+  nhdplusTools::get_nhdplushr(hr_dir = 'in/R/nhdPlusTools/',
+                              out_gpkg = huc_gpkg_path,
+                              layer = c('WBDHU6','WBDHU8', 'WBDHU10'))
+
+  # Store Waterbodies shps into geopackage
+  print(paste('... Storing Waterbody shps into a local geopackage here:', wtbdy_gpkg_path))
+  nhdplusTools::get_nhdplushr(hr_dir = 'in/R/nhdPlusTools/',
+                              out_gpkg = 'in/R/nhdplustools_CA_wtrbdy_data.gpkg',
+                              layer = 'NHDWaterbody')
+
+  # # Store Waterbodies shps into geopackage
+  # # This one takes A-WHILE so defaulted to using nhdplustools::get_flines()
+  # nhdplusTools::get_nhdplushr(hr_dir = 'in/R/nhdPlusTools/',
+  #                            out_gpkg = 'in/R/nhdplustools_CA_flines_data.gpkg',
+  #                            layer = 'NHDFlowline')
+
+  }
+  
+## Display Layers
+print(st_layers(huc_gpkg_path))
+print(st_layers(wtbdy_gpkg_path))
+
+# Load nhdPlus features for AOI ----------------------------------------------------------------
+## HUCS
+huc10_CA <- st_read(huc_gpkg_path, layer = 'WBDHU10')
+huc8_CA <- st_read(huc_gpkg_path, layer = 'WBDHU8') 
+huc6_CA <- st_read(huc_gpkg_path, layer = 'WBDHU6')
+
+## Waterbodies
+lakes_CA <- st_read(wtbdy_gpkg_path, layer = 'NHDWaterbody') |> 
+  st_make_valid()
+
+lakes_in_CA_hucs <- st_join(lakes_CA, huc6_CA) |>
+  ## filtering out NA HUC6 because this ensures that we only have Lakes within the CA Huc6 boundaries
+  filter(!is.na(HUC6),
+  ## rm-ing NA AreaSqKM
+  !is.na(AreaSqKM.x))
+
+```
+
+#### 2. Fetch geospatial data for Lake Tahoe Basin
+
+```{r 2_LT_data_pull}
+
+# NHDPLUS Tools data - Lake Tahoe subset ----------------------------------
+
+# HUC
+Lake_Tahoe_huc6 <- filter(huc6_CA, Name == 'Truckee') 
+Lake_Tahoe_huc8 <- filter(huc8_CA, Name == 'Lake Tahoe')
+
+# Water features
+LT_lakes <- st_join(lakes_in_CA_hucs , Lake_Tahoe_huc8) |> filter(!is.na(HUC8))
+
+LT_flines <- get_nhdplus(AOI = Lake_Tahoe_huc8,
+                         realization = 'flowline',
+                         streamorder = 1)
+
+# NWIS Gages --------------------------------------------------------------
+
+# ID Active NWIS Sites in LT Basin
+
+## ID active sites from last 90 days (dv)
+prev90days <- Sys.Date() - 90
+active_sites_data_2023 <- readNWISdata(huc = Lake_Tahoe_huc8$HUC8,
+                                       service="iv",parameterCd="00060",
+                                       startDate=prev90days)
+
+## Vector of currently active sites
+active_sites_2023 <- active_sites_data_2023$site_no |> unique()
+
+active_nwis_sites_lake_tahoe <- get_nwis(AOI = Lake_Tahoe_huc8, t_srs = NULL, buffer = 0) |>
+  filter(site_no %in% active_sites_2023)
+
+# Pull all NWIS data for active sites
+
+view_data_summary <- readNWISstat(siteNumbers = active_sites_2023,
+                                  parameterCd="00060",
+                                  statReportType="annual",
+                                  statType="mean") |>
+  group_by(site_no,year_nu) |>
+  summarize(n()) |>
+  arrange(year_nu)
+
+dailyDataAvailable <- whatNWISdata(
+  siteNumber = active_sites_2023,
+  service = "dv",
+  statCd = "00003"
+)
+
+LT_dv_data <- readNWISdv(siteNumbers = active_sites_2023,
+           parameterCd = '00060') |> 
+  renameNWISColumns()
+
+# readNWISdata(site_no = active_sites_2023, service = 'iv')
+
+```
+
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+### 3. Process Gauge Data for plots
+```{r data_processing}
+
+# Dates --------------------------------------------------------------
+
+LT_dv_data_dates <- LT_dv_data |>
+  mutate(year = year(Date),
+         month = month(Date, label = T),
+         day = day(Date),
+         day_of_week = lubridate::wday(Date, label = T),
+         ## grabing month_day only, as I hope this can be the X axis - however this is not considered Date format. 
+         month_day = format(Date,"%m-%d")
+         ) |> 
+  # placing month day at end
+  select(!month_day,month_day)
+
+# Moving Avg --------------------------------------------------------------
+
+# Calc Moving average Values
+LT_dv_data_w_MA <- LT_dv_data_dates |>
+  ## calc MA with zoo::rollmean() . Check what k (2nd param) is for 
+  mutate(MA = rollmean(Flow, 2, na.pad = T, align = 'right'))
+
+```
+
+```{r }
+
+# Quick Mapview -----------------------------------------------------------
+
+## VIZ
+mapview(LT_flines_3, color = 'darkblue')+
+  mapview(LT_lakes, col.regions = 'darkblue')+
+  mapview(active_nwis_sites_lake_tahoe, col.regions = 'red')+
+  mapview(Lake_Tahoe_huc8, col.regions = NA, color = 'black', alpha.regions = 0)
+
+
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting_vars}
+# Load some custom fonts and set some custom settings
+font_legend <- "Pirata One"
+sysfonts::font_add_google("Pirata One")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "#0A1927"
+font_color = "#ffffff"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+
+
+```
+
+```{r }
+
+# Viz Variables -----------------------------------------------------------
+
+map_bbox <- st_bbox(Lake_Tahoe_huc8)
+
+```
+
+```{r }
+
+
+# Main plot
+(main_map <- ggplot()+
+   geom_sf(data = West_sf, fill = 'white', color = 'grey', alpha = 0.1, size = 0.5)+
+   geom_sf(data = LT_lakes, fill = '#3792cb', color = '#3792cb', alpha = 0.8)+
+   geom_sf_text(data = West_sf, color = 'grey', aes(label = NAME),
+                size =2, fontface = 'italic', nudge_x = 0.1) +
+   geom_sf(data = Lake_Tahoe_huc8, fill = 'transparent', color = 'firebrick', size = 0.8, linetype = 'dotted')+
+   geom_sf(data = LT_flines_3, color = '#3792cb', size  = 0.5, alpha = 0.6)+
+   geom_sf(data = active_nwis_sites_lake_tahoe,
+           aes(geometry = geometry),
+           color = '#006200',
+           size = 1.3, alpha = 0.9)+
+   geom_sf_text(data = active_nwis_sites_lake_tahoe, color = 'black',
+                aes(label = site_no), size =3, nudge_x = 0.05) +
+   coord_sf(ylim = c(map_bbox$ymin, map_bbox$ymax),
+            xlim = c(map_bbox$xmin, map_bbox$xmax))+
+   theme_classic()+
+   theme(plot.title = element_text(size = 10, face= 'bold'),
+         legend.text = element_text (size = 10),
+         legend.title = element_text (size = 12),
+         axis.title.x = element_blank(),
+         axis.line = element_blank(),
+         panel.background = element_rect(color= 'black'),
+         axis.title.y = element_blank(),
+         legend.position = 'bottom',
+         axis.text = element_blank(),
+         axis.ticks = element_blank()
+         )
+
+# ggsave('out/LT_map_gauges.png', width = 9, height = 9, dpi = 300)
+
+ 
+ 
+ 
+ 
+ 
+ 
+ )
+
+
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = 0.01,
+            y = 0.01,
+            height = 1) +
+  # explainer text
+  draw_label("Explainer text",
+             fontfamily = supporting_font,
+             x = 0.96,   
+             y = 0.05,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+  # Title
+  draw_label("Title",
+             x = 0.04,
+             y = 0.285,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = font_legend,
+             color = font_color,
+             size = 55) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = 0.04,
+             y = 0.05,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230428_trends_msleckman.png", 
+       width = 16, height = 9, dpi = 300)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Key takeaways here
+
+### Data source(s)
+
+Data sources here.
+
