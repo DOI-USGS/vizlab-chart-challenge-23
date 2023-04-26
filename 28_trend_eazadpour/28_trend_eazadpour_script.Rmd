@@ -126,6 +126,20 @@ negative_col = "#CC5500"
 background_color = "#ffffff"
 font_color =  "#000000"
 
+# Add arrow lines for forest diff that exceeds our -5km to 5km range 
+arrow_fxn <- function(data, state, x, y ,y_end, curve, color){
+      geom_segment(data = data |> filter(name %in% state),
+                  aes(x = x,
+                  xend = x, 
+                  y = y,
+                  yend = y_end),
+               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "last"),
+               angle = 90,
+               curvature = curve,
+               color = color,
+               arrow.fill = color) 
+}
+
 (main_plot <- ggplot(my_grid_dropWI, aes(x = year, y = forest_diff)) +
   # Make positive change darker green 
   geom_segment(data = my_grid_dropWI |> filter(area_change %in% c("POSITIVE")), 
@@ -143,82 +157,17 @@ font_color =  "#000000"
     scale_x_discrete(limits = c(1985, 2020), labels = c("1985", "2020")) +
   # add down/up arrows to show areas that exceed the -5k and +5k range
         # figure out way to iterate these - manually adding them for now
-  # Add positive arrow for 1995 positive difference in TX
-       geom_segment(data = my_us_grid_dropWI |> filter(name %in% c("Texas")),
-                  aes(x = 1995,
-                  xend = 1995,
-                  yend = 0, y = 5000),
-               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "first"),
-               angle = 90,
-               curvature = 1.5,
-               color = postive_col,
-               arrow.fill = postive_col) +
+  # add positive arrow for 1995 positive difference in TX
+    arrow_fxn(my_us_grid_dropWI, c("Texas"), 1995, 0, 5000, 1.5, postive_col) +
     # add negative arrows for 2011-2014 TX
-    geom_segment(data = my_us_grid_dropWI |> filter(name %in% c("Texas")),
-                  aes(x = 2011,
-                  xend = 2011,
-                  yend = 0, y = -5000),
-               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "first"),
-               angle = 90,
-               curvature = -1.5,
-               color = negative_col,
-               arrow.fill = negative_col) +
-    geom_segment(data = my_us_grid_dropWI |> filter(name %in% c("Texas")),
-                  aes(x = 2012,
-                  xend = 2012,
-                  yend = 0, y = -5000),
-               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "first"),
-               angle = 90,
-               curvature = -1.5,
-               color = negative_col,
-               arrow.fill = negative_col) +
-    geom_segment(data = my_us_grid_dropWI |> filter(name %in% c("Texas")),
-                  aes(x = 2013,
-                  xend = 2013,
-                  yend = 0, y = -5000),
-               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "first"),
-               angle = 90,
-               curvature = -1.5,
-               color = negative_col,
-               arrow.fill = negative_col) +
-    geom_segment(data = my_us_grid_dropWI |> filter(name %in% c("Texas")),
-                  aes(x = 2014,
-                  xend = 2014,
-                  yend = 0, y = -5000),
-               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "first"),
-               angle = 90,
-               curvature = -1.5,
-               color = negative_col,
-               arrow.fill = negative_col) +
-     # add negative arrows for 2018-2020 CA
-        geom_segment(data = my_us_grid_dropWI |> filter(name %in% c("California")),
-                  aes(x = 2018,
-                  xend = 2018,
-                  yend = 0, y = -5000),
-               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "first"),
-               angle = 90,
-               curvature = -1.5,
-               color = negative_col,
-               arrow.fill = negative_col) + 
-        geom_segment(data = my_us_grid_dropWI |> filter(name %in% c("California")),
-                  aes(x = 2019,
-                  xend = 2019,
-                  yend = 0, y = -5000),
-               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "first"),
-               angle = 90,
-               curvature = -1.5,
-               color = negative_col,
-               arrow.fill = negative_col) +
-        geom_segment(data = my_us_grid_dropWI |> filter(name %in% c("California")),
-                  aes(x = 2020,
-                  xend = 2020,
-                  yend = 0, y = -5000),
-               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "first"),
-               angle = 90,
-               curvature = -1.5,
-               color = negative_col,
-               arrow.fill = negative_col) +
-    # facet by states, and orient facets spatially across CONUS
+    arrow_fxn(my_us_grid_dropWI, c("Texas"), 2011, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, c("Texas"), 2012, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, c("Texas"), 2013, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, c("Texas"), 2014, 0, -5000, -1.5, negative_col) +
+  # add negative arrows for 2018-2020 CA
+    arrow_fxn(my_us_grid_dropWI, c("California"), 2018, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, c("California"), 2019, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, c("California"), 2020, 0, -5000, -1.5, negative_col) +
   facet_geo(~ code, grid = my_us_grid_dropWI) +
   labs(x = NULL, y= NULL) +
     # set some themeing 
@@ -394,7 +343,7 @@ final_plt <- custom_plt +
                                width = unit(1,"npc"), 
                                height = unit(1,"npc")), 
                     0.6, 1.21, -Inf, 1.5) +
-      annotation_custom(rasterGrob(fir_opacity, 
+      annotation_custom(rasterGrob(pine_opacity, 
                                width = unit(1,"npc"), 
                                height = unit(1,"npc")), 
                     -0.18, 0.28, 0, 1.5)
