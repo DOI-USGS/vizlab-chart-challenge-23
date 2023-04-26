@@ -219,6 +219,9 @@ legend_date_breaks_sb <- diff(range(df_sb$Onset)) * 0:4 / 4 + min(df_sb$Onset)
 legend_date_labels_sb <- format(legend_date_breaks_sb, "%W")
 
 ggplot() +
+  geom_hline(yintercept = 1950, linetype = "dashed", color = "grey50", linewidth = 0.5) +
+  geom_hline(yintercept = 2012, linetype = "dashed", color = "grey50", linewidth = 0.5) +
+  geom_hline(yintercept = 2099, linetype = "dashed", color = "grey50", linewidth = 0.5) + 
   geom_segment(data = df_as, aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 0.5) +
   scale_color_scico(palette = "tokyo", guide = guide_colorbar(order = 1), labels = legend_date_labels_as, breaks = as.numeric(legend_date_breaks_as)) +
   new_scale_colour() +
