@@ -8,16 +8,16 @@ Your prompt: Trend
 
 Date for your prompt in April: 04/28/2023
 
-Image: 
+Image:
 
 ![20230428_trend_eazadpour](/uploads/9467f21e2fa4e59f08424b7c10060a18/20230410_pop-culture_eazadpour.png)
 
 Your key takeaways (1-2 sentences each):
 
-Forest area is declining across the U.S., however states such as Kansas, Nebraska, Iowa, and North Dakota have seen an increase in forest area in recent years. 
+Forest area is generally declining across the U.S. Notably, many states in the West & Southwest U.S. such as California, Arizona and New Mexico have seen decreases in forest area in recent years when compared to the state's 35 year mean. Additionally, Texas saw decreases in forest area from 2011-2014 compared to the states 35 year mean.
 
 Your data sources:
 
-Sleeter, B.M., and Selmants, P.C., 2022, Frequency of forest change across the conterminous United States from 1985-2020: U.S. Geological Survey data release, https://doi.org/10.5066/P9PRH8DQ. 
+Sleeter, B.M., and Selmants, P.C., 2022, Frequency of forest change across the conterminous United States from 1985-2020: U.S. Geological Survey data release, <https://doi.org/10.5066/P9PRH8DQ>.
 
 Key programs and/or packages used: `library(geofacet)`
