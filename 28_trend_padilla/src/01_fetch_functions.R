@@ -67,4 +67,23 @@ check_for_expected_downloads <- function(out_path, expected_files,
 }
 
 
+download_sb_spatial <-function(sb_id, file_pattern = "hydro_p_Lake%s", 
+                               out_path = "data/out/gis",
+                               lakes = c("Superior", "Michigan", "Huron", "Erie", "Ontario"),
+                               file_suffixes = c("cpg", "dbf", "prj", "sbn", "sbx", "shp", "shx")) {
+  
+  # create the folder if it does not exist
+  if (!dir.exists(out_path)) {dir.create(out_path)}
+  
+  files_to_download <- sprintf(file_pattern, outer(lakes, file_suffixes, "paste", sep = "."))
+  files_out <- file.path(out_path, files_to_download)
+  
+  out <- item_file_download(
+    sb_id,
+    names = files_to_download,
+    destinations = files_out
+  )
+  
+  return(out)
+}
 

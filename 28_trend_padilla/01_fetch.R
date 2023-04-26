@@ -38,10 +38,15 @@ p1_targets <- list(
   # Download GIS
   
   tar_target(
-    # https://www.sciencebase.gov/catalog/item/530f8a0ee4b0e7e46bd300dd
-    # solution https://github.com/USGS-R/drb-gw-hw-model-prep/blob/df453df14a2e71702f59c946d37db777b88406e6/1_fetch/src/download_file.R#L40-L81
+    # cannot directly download the zip files in SB because they are unzipped
     p1_gl_gis,
-    list.files("data/in/", full.names = TRUE),
+    download_sb_spatial(
+      sb_id = "530f8a0ee4b0e7e46bd300dd", 
+      file_pattern = "hydro_p_Lake%s", 
+      out_path = "data/out/gis",
+      lakes = c("Superior", "Michigan", "Huron", "Erie", "Ontario"),
+      file_suffixes = c("cpg", "dbf", "prj", "sbn", "sbx", "shp", "shx")
+      ),
     format = "file"
   )
 )

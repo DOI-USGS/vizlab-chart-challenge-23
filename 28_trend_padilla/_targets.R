@@ -6,6 +6,7 @@ tar_option_set(packages = c(
   "dataRetrieval", 
   # "patchwork",
   "sf",
+  "sbtools",
   "purrr",
   "cowplot",
   "scico"

@@ -8,7 +8,7 @@ p3_targets <- list(
   # channels and Lake St. Clair
   tar_target(
     p3_great_lakes_maps,
-    create_great_lakes_maps(in_zips = p1_gl_gis, homes_order = FALSE)
+    create_great_lakes_maps(in_files = p1_gl_gis, homes_order = FALSE)
   ),
   
   # make ice plots -----------------------

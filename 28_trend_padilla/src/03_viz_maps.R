@@ -9,8 +9,8 @@
 #'
 #' @returns A simple spatial object representing the outline of the lakes.
 #' 
-make_simple_lake_sf <- function(esri_files) {
-  map_out <- st_read(esri_files[grepl(".shp", esri_files)]) |> 
+make_simple_lake_sf <- function(shp_files) {
+  map_out <- st_read(shp_files) |> 
     st_union() |> 
     st_as_sf()
   
@@ -21,27 +21,21 @@ make_simple_lake_sf <- function(esri_files) {
 #'
 #' Function that creates clean maps of the Great Lakes using shapefiles of each lake's basin.
 #'
-#' @param in_zips A character vector of paths to zip files containing shapefiles of each lake's basin.
+#' @param in_files A character vector of paths to spatial files for each lake's basin.
 #' @param homes_order A logical value indicating whether to return the maps in a specific order. Default is TRUE.
 #'
 #' @return A list of ggplot2 objects, each object representing a clean map of a Great Lake and the Basin.
 #'
-create_great_lakes_maps <- function(in_zips, homes_order = TRUE) {
-  
-  # extract all files
-  unzip_dir <- tempdir()
-  ls_files_from_zip <- in_zips |> map(unzip, exdir = unzip_dir)
-  on.exit(unlink(unzip_dir, recursive = TRUE))
-  
+create_great_lakes_maps <- function(in_files, homes_order = TRUE) {
+
   # extract lake names
-  all_files <- ls_files_from_zip |> unlist() 
-  index_shp_files <- all_files |> str_detect("\\.shp")
-  lake_names <- basename(all_files[index_shp_files]) |> 
-    str_extract("(?<=_Lake)[[:alpha:]]+")
-  
+  # index_shp_files <- in_files |> str_detect("\\.shp")
+  in_shp_files <- in_files[grepl(".shp", in_files)]
+  lake_names <- basename(in_shp_files) |> str_extract("(?<=_Lake)[[:alpha:]]+")
+
   # create simple lake sf objects and add a column for lake name
   sf_lakes <- map2(
-    ls_files_from_zip,
+    in_shp_files,
     lake_names,
     function(x,y) {
       out <- make_simple_lake_sf(x)
