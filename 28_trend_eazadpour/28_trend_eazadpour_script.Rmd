@@ -195,20 +195,20 @@ arrow_fxn <- function(data, state, x, y ,y_end, curve, color){
 
 (legend_plot <- ggplot(my_grid_conus |> filter(name == 'Wisconsin'), aes(x = year, y = forest_diff)) +
     # Make positive change darker green 
-    geom_segment(data = my_grid_conus |> filter(area_change == "POSITIVE" & 
-                                                  name == 'Wisconsin'),
-                 aes(x=year, xend=year, y=0, yend=forest_diff), color= postive_col,
-                 linewidth = 0.5) +
-    geom_point(data = my_grid_conus |> filter(area_change == "POSITIVE" & 
+    geom_segment(data = my_grid_conus |> filter(area_change == "POSITIVE",
                                                 name == 'Wisconsin'),
+                 aes(x=year, xend=year, y=0, yend=forest_diff),
+                 color= postive_col, linewidth = 0.5) +
+    geom_point(data = my_grid_conus |> filter(area_change == "POSITIVE",
+                                              name == 'Wisconsin'),
                color = postive_col, size = 0.5) +
     # Make negative change burnt orange 
-    geom_segment(data = my_grid_conus |> filter(area_change == "NEGATIVE" &
-                                                  name == 'Wisconsin'),
+    geom_segment(data = my_grid_conus |> filter(area_change == "NEGATIVE",
+                                                name == 'Wisconsin'),
                  aes(x = year, xend = year, y = 0, yend = forest_diff), color = negative_col,
                  linewidth = 0.5) +
-    geom_point(data = my_grid_conus |> filter(area_change == "NEGATIVE" &
-                                                name == 'Wisconsin'),
+    geom_point(data = my_grid_conus |> filter(area_change == "NEGATIVE",
+                                              name == 'Wisconsin'),
                color = negative_col, size = 0.5) +
     # facet wrap by state - WI
     facet_wrap(~code) +
