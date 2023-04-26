@@ -1,5 +1,5 @@
 ---
-title: "28 trends"
+title: "28 Trends - How much Water is entering Lake Tahoe?"
 author: "Margaux Sleckman"
 date: "2023-03-10"
 output: html_document
@@ -200,9 +200,8 @@ mapview(LT_flines, color = 'darkblue')+
 
 map_bbox <- st_bbox(Lake_Tahoe_huc8)
 
-
 # Main Map
-(main_map <- ggplot()+
+lt_map <- ggplot()+
    geom_sf(data = West_sf, fill = 'white', color = 'grey', alpha = 0.1, size = 0.5)+
    geom_sf(data = LT_lakes, fill = '#3792cb', color = '#3792cb', alpha = 0.8)+
    geom_sf_text(data = West_sf, color = 'grey', aes(label = NAME),
@@ -214,25 +213,14 @@ map_bbox <- st_bbox(Lake_Tahoe_huc8)
            color = '#006200',
            size = 1.3, alpha = 0.9)+
    geom_sf_text(data = active_nwis_sites_lake_tahoe, color = 'black',
-                aes(label = site_no), size =3, nudge_x = 0.05) +
+                aes(label = site_no), size =3, nudge_x = 0.05)+
    coord_sf(ylim = c(map_bbox$ymin, map_bbox$ymax),
             xlim = c(map_bbox$xmin, map_bbox$xmax))+
-   theme_classic()+
-   theme(plot.title = element_text(size = 10, face= 'bold'),
-         legend.text = element_text (size = 10),
-         legend.title = element_text (size = 12),
-         axis.title.x = element_blank(),
-         axis.line = element_blank(),
-         panel.background = element_rect(color= 'black'),
-         axis.title.y = element_blank(),
-         legend.position = 'bottom',
-         axis.text = element_blank(),
-         axis.ticks = element_blank())
-)
- 
-## saving locally
-ggsave(plot = main_map,'out/LT_map_gauges.png', width = 9, height = 9, dpi = 300)
+   theme_classic()
 
+## using generic save_map function to generate final map
+lt_map_for_viz <- save_map(lt_map, out_file = 'out/LT_map_gauges.png')
+ 
 ```
 
 
@@ -243,6 +231,7 @@ ggsave(plot = main_map,'out/LT_map_gauges.png', width = 9, height = 9, dpi = 300
 
 # Pull all NWIS data for active sites
 
+## check the site history
 view_data_summary <- readNWISstat(siteNumbers = active_sites_2023,
                                   parameterCd="00060",
                                   statReportType="annual",
@@ -251,16 +240,18 @@ view_data_summary <- readNWISstat(siteNumbers = active_sites_2023,
   summarize(n()) |>
   arrange(year_nu)
 
+# What sort of data is avail at sites
 dailyDataAvailable <- whatNWISdata(
   siteNumber = active_sites_2023,
-  service = "dv",
-  statCd = "00003"
-)
+  service = 'dv') |>
+  select(site_no, station_nm, data_type_cd, parm_cd, begin_date, end_date)
 
+## Get Data with readNWISdv 
 LT_dv_data <- readNWISdv(siteNumbers = active_sites_2023,
            parameterCd = '00060') |> 
   renameNWISColumns()
 
+## IV data ? 
 # readNWISdata(site_no = active_sites_2023, service = 'iv')
 
 ```
@@ -268,70 +259,52 @@ LT_dv_data <- readNWISdv(siteNumbers = active_sites_2023,
 ### 2. Process flow data
 ```{r flow_data_processing}
 
-
 # Dates --------------------------------------------------------------
 
 LT_dv_data_dates <- LT_dv_data |>
+  ## keeping year numeric to enable filter
   mutate(year = year(Date),
          month = month(Date, label = T),
          day = day(Date),
          day_of_week = lubridate::wday(Date, label = T),
          ## grabing month_day only, as I hope this can be the X axis - however this is not considered Date format. 
-         month_day = format(Date,"%m-%d")
-         ) |> 
-  # placing month day at end
-  select(!month_day,month_day)
+         month_day = format(Date,"%m-%d"),
+         fake_year = as.Date(paste0('2020-',month_day))
+         )
 
 # Moving Avg --------------------------------------------------------------
 
-# Calc Moving average Values
+# Calc Moving average Values into a new column
 LT_dv_data_w_MA <- LT_dv_data_dates |>
   ## calc MA with zoo::rollmean() . Check what k (2nd param) is for 
   mutate(MA = rollmean(Flow, 2, na.pad = T, align = 'right'))
+
+# Focus on Spring flow ----------------------------------------------------
+
+LT_dv_data_viz <- LT_dv_data_w_MA |> 
+  ## all sites have data up until april 15 (one does have data passed that)
+#  filter(Date < 2023-04-15) |> 
+  filter(month %in% c('Mar','Apr','May'),
+#         year %in% c(2020,2021,2022,2023),
+        day_of_week %in% c('Mon','Wed','Fri')
+         ) |> group_by(site_no)
 
 ```
 
 ### 3. Lineplot
 ```{r flow_data_line_plot}
 
-site <- "103366092"
-
-## temp - like above: 
-LT_dv_data_w_MA |> 
-  mutate(year = as.factor(year)) |> 
-  filter(day_of_week == 'Mon',
-         site_no == site) |>
-  ggplot(aes(x = Date, y = MA))+
-  geom_line(aes(color = site_no))+
-  theme_classic()+
-  labs(title = sprintf('Site Number: %s', site))
-
-## temp - split by year
-LT_dv_data_w_MA |> 
-  mutate(year = as.factor(year)) |> 
-  filter(year %in% c(2010,2015,2020,2022,2023),
-         day_of_week == 'Mon',
-         site_no == site) |>
-  ggplot(aes(x = month_day, y = MA))+
-  geom_line(aes(color = as.factor(year)))+
-  theme_classic()+
-  labs(title = sprintf('Site Number: %s', site))
+line_plot_lst <- LT_dv_data_viz |>
+  group_map( ~time_series_plot(data = .x,
+                               x_var = 'fake_year',
+                               y_var = 'MA',
+                               date_range =  c('1975-01-01', '2023-04-15'),
+                               top_year_num = 4, out_folder = 'out'),
+             keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.
 
 
-## quick outputing of simple full histoical plot of streamflow (filtered only to Monday to make plot less busy time series - still need to work on on smoothing)  
-
-lapply(active_sites_2023,
-       function(x){
-         LT_dv_data_w_MA |> 
-           filter(day_of_week == 'Mon',
-                  site_no == x) |>
-           ggplot(aes(x = Date, y = MA))+
-           geom_line(aes(color = site_no))+
-           theme_classic()+
-           labs(title = sprintf('Site Number: %s', x))
-         ggsave(sprintf('out/ts_%s.png',x), width = 9, height = 9, dpi = 300)
-       }
-)
+cowplot::plot_grid(plotlist = line_plot_lst[1:5])
+cowplot::plot_grid(plotlist = line_plot_lst[6:10])
 
 ```
 
@@ -381,7 +354,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 9, width = 16,
             hjust = 0, vjust = 1) +
   # the main plot
-  draw_plot(main_map,
+  draw_plot(line_plot,
             x = 0.01,
             y = 0.01,
             height = 1) +
