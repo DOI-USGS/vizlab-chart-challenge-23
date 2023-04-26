@@ -338,6 +338,51 @@ usgs_logo <- magick::image_read("../usgs_logo_white.png")
 
 ```
 
+Arrange line plots 
+
+```{r cowplotting_line_plots}
+
+Ymargin <- 0.04
+Xmargin <- 0.04
+Xbase <- 1-Xmargin # from right
+Ybase <- Ymargin*2 # from bottom
+Yjitter <- (0.40 - 2*Ymargin)/2
+Xjitter <- (1 - 2*Xmargin)/5 # total jitter
+Xwidth <- 0.15
+
+draw_line_plots <- map(1:length(line_plot_lst),
+                       function(x){
+                         print(paste0('line plot #',x))
+                         if(x %in% seq(1,5)){
+                             X_position <- Xmargin + Xjitter  # 0.224
+                             } else {
+                               X_position <- Xbase
+                          } # 0.96
+                         if(x %in% c(1,6)){
+                           Y_position <- Ybase + (4*Yjitter) # 0.72
+                         } else if(x %in% c(2,7)){
+                           Y_position <- Ybase + (3*Yjitter)  # 0.56
+                         } else if(x %in% c(3,8)){
+                           Y_position <- Ybase + (2*Yjitter)  # 0.4
+                         } else if(x %in% c(4,9)){
+                           Y_position <- Ybase + (1*Yjitter) # 0.24
+                           } else {
+                             Y_position <- Ybase
+                          }
+                       print(paste0('X_position = ', X_position))
+                       print(paste0('Y_position = ', Y_position))
+
+                       draw_plot(line_plot_lst[[x]],
+                                 x = X_position,
+                                 y = Y_position,
+                                 hjust = 1,
+                                 height = Yjitter,
+                                 width = Xjitter) 
+
+})
+
+
+```
 
 ## 
 
@@ -347,6 +392,7 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 
 ```{r cowplot, fig.width = 16, fig.height = 9}
 
+
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
   # a background
@@ -355,16 +401,18 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 9, width = 16,
             hjust = 0, vjust = 1) +
   # the main plot
+  draw_line_plots +
   draw_plot(lt_map_for_viz,
             x = 0.01,
             y = 0.01,
-            height = 1) +
+            height = 1,
+            width = 1, scale = 0.8) +
   # explainer text
   draw_label("Explainer text",
              fontfamily = supporting_font,
              x = 0.96,   
              y = 0.05,
-             size = 14,
+             size = 12,
              hjust = 1,
              vjust = 0,
              color = font_color)+
