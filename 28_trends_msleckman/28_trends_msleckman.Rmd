@@ -56,6 +56,8 @@ library(mapview) # for interactive map viz
 options(tidyverse.quiet = TRUE, timeout = 500)
 mapviewOptions(fgb = FALSE)
 
+## Creating local folders for add
+dir.create('in/R', showWarnings = F)
 dir.create('in/R/nhdPlusTools', showWarnings = F)
 
 ```
