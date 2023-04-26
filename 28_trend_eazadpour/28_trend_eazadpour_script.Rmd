@@ -64,6 +64,15 @@ if(!file.exists(file_in_path_continuous)){ # if files don't exist, download
 annual_forest_area_raw <- readr::read_csv(file_in_path_continuous) |> 
   janitor::clean_names() |> 
   rename(name = state)
+
+  # calculate forest average for each state and get difference from average over time 
+  forest_avg <- annual_forest_area_raw |> 
+    group_by(name) |> 
+    summarize(state_area_avg = mean(area))
+  
+  forest_avg_join <- left_join(annual_forest_area_raw, forest_avg) |> group_by(name)
+  forest_avg_diff <- forest_avg_join |> 
+    mutate(forest_diff = (area - state_area_avg) / state_area_avg * 100)
 ```
 
 ## Get data ready for plotting
@@ -72,32 +81,32 @@ This next section is for doing any pre-processing steps, data joins, etc, to get
 
 ```{r processing}
 # get all unique states to then filter us grid by 
-state_names <- unique(annual_forest_area_raw$name)
+state_names <- unique(forest_avg_diff$name)
 
 # get state grid minus Alaska, Hawaii, Wisonsin for legend plt
 my_us_grid_dropWI <- us_state_grid1[c(-2, -11 , -49), ]
 
 # join state (minus WI, AK, WI) grid data with annual forest data, filter states to plot with geofacet, and calculate zscore from 35 yr mean for each state
-my_grid_zscore_dropWI <- my_us_grid_dropWI |> 
+my_grid_dropWI <- my_us_grid_dropWI |> 
   filter(!code %in% c("AK", "HI", "WI")) |> 
-  left_join(annual_forest_area_raw, by = "name") |> 
+  left_join(forest_avg_diff, by = "name") |> 
   filter(name %in% state_names) |> 
-  group_by(code) |>  
-  mutate(z_score = as.numeric(scale(area))) |> 
-  ungroup() |> 
-  mutate(area_change = case_when(z_score > 0 ~ "POSITIVE",
-                                        z_score < 0 ~ "NEGATIVE"))
+  # group_by(code) |>  
+  # mutate(z_score = as.numeric(scale(area))) |> 
+  # ungroup() |> 
+  mutate(area_change = case_when(forest_diff > 0 ~ "POSITIVE",
+                                        forest_diff < 0 ~ "NEGATIVE"))
 
 # join state (minus AK, HI) grid data with annual forest data, filter states to plot with geofacet, and calculate zscore from 35 yr mean for each state
-my_grid_zscore_conus <- us_state_grid1 |> 
+my_grid_conus <- us_state_grid1 |> 
   filter(!code %in% c("AK", "HI")) |> 
-  left_join(annual_forest_area_raw, by = "name") |> 
+  left_join(forest_avg_diff, by = "name") |> 
   filter(name %in% state_names) |> 
-  group_by(code) |>  
-  mutate(z_score = as.numeric(scale(area))) |> 
-  ungroup() |> 
-  mutate(area_change = case_when(z_score > 0 ~ "POSITIVE",
-                                        z_score < 0 ~ "NEGATIVE"))
+  # group_by(code) |>  
+  # mutate(z_score = as.numeric(scale(area))) |> 
+  # ungroup() |> 
+  mutate(area_change = case_when(forest_diff > 0 ~ "POSITIVE",
+                                        forest_diff < 0 ~ "NEGATIVE"))
 ```
 
 ## Set up main plot
@@ -116,20 +125,21 @@ showtext_auto(enable = TRUE)
 postive_col = "#083d21"
 negative_col = "#CC5500"
 
-(main_plot <- ggplot(my_grid_zscore_dropWI, aes(x = year, y = z_score)) +
+(main_plot <- ggplot(my_grid_dropWI, aes(x = year, y = forest_diff)) +
   # Make positive zscores darker green 
-  geom_segment(data = my_grid_zscore_dropWI |> filter(area_change %in% c("POSITIVE")), 
-                 aes(x=year, xend=year, y=0, yend=z_score), color= postive_col,
+  geom_segment(data = my_grid_dropWI |> filter(area_change %in% c("POSITIVE")), 
+                 aes(x=year, xend=year, y=0, yend=forest_diff), color= postive_col,
                linewidth = 0.5) +
-    geom_point(data = my_grid_zscore_dropWI |> filter(area_change %in% c("POSITIVE")),
+    geom_point(data = my_grid_dropWI |> filter(area_change %in% c("POSITIVE")),
              color=postive_col, size=0.5) + 
     # Make negative zscores burnt orange 
-    geom_segment(data = my_grid_zscore_dropWI |> filter(area_change %in% c("NEGATIVE")), 
-                 aes(x=year, xend=year, y=0, yend=z_score), color= negative_col,
+    geom_segment(data = my_grid_dropWI |> filter(area_change %in% c("NEGATIVE")), 
+                 aes(x=year, xend=year, y=0, yend=forest_diff), color= negative_col,
                linewidth = 0.5) +
-    geom_point(data = my_grid_zscore_dropWI |> filter(area_change %in% c("NEGATIVE")),
+    geom_point(data = my_grid_dropWI |> filter(area_change %in% c("NEGATIVE")),
              color= negative_col, size=0.5) + 
-  scale_x_continuous(limits = c(1985, 2020), breaks = seq(1985, 2020, by = 10)) + 
+        scale_y_continuous(limits = c(-20, 20), breaks = c(-20,0,20), labels = paste(c("-20%", "0%", "20%"))) +
+    scale_x_discrete(limits = c(1985, 2020), labels = c("1985", "2020")) +
   facet_geo(~ code, grid = my_us_grid_dropWI) +
   labs(x = NULL, y= NULL) +
     theme_classic(base_size = 12) + 
@@ -148,40 +158,40 @@ negative_col = "#CC5500"
           panel.border = element_blank(),
           plot.background = element_rect(fill = 'white', color = NA),
           panel.background = element_blank(),
-          panel.spacing.x = unit(4, "pt"),
+          panel.spacing.x = unit(8, "pt"),
           panel.spacing.y = unit(7, "pt"),
-          plot.margin = margin(50, 10, 10, 10, "pt"),
+          plot.margin = margin(50, 40, 10, 40, "pt"),
           legend.background = element_rect(fill = 'white', color = NA))
 )
 
 
-(legend_plot <- ggplot(my_grid_zscore_conus |> filter(name %in% c('Wisconsin')), aes(x = year, y = z_score)) +
+(legend_plot <- ggplot(my_grid_conus |> filter(name %in% c('Wisconsin')), aes(x = year, y = forest_diff)) +
   # Make positive zscores darker green 
-  geom_segment(data = my_grid_zscore_conus |> filter(area_change %in% c("POSITIVE") & 
+  geom_segment(data = my_grid_conus |> filter(area_change %in% c("POSITIVE") & 
                                                 name %in% c('Wisconsin') ), 
-                 aes(x=year, xend=year, y=0, yend=z_score), color= postive_col,
+                 aes(x=year, xend=year, y=0, yend=forest_diff), color= postive_col,
                linewidth = 0.5) +
-    geom_point(data = my_grid_zscore_conus |> filter(area_change %in% c("POSITIVE") & 
+    geom_point(data = my_grid_conus |> filter(area_change %in% c("POSITIVE") & 
                                                 name %in% c('Wisconsin')),
              color= postive_col, size=0.5) + 
     # Make negative zscores burnt orange 
-    geom_segment(data = my_grid_zscore_conus |> filter(area_change %in% c("NEGATIVE") &
+    geom_segment(data = my_grid_conus |> filter(area_change %in% c("NEGATIVE") &
                                                   name %in% c('Wisconsin')), 
-                 aes(x=year, xend=year, y=0, yend=z_score), color= negative_col,
+                 aes(x=year, xend=year, y=0, yend=forest_diff), color= negative_col,
                linewidth = 0.5) +
-    geom_point(data = my_grid_zscore_conus |> filter(area_change %in% c("NEGATIVE") &
+    geom_point(data = my_grid_conus |> filter(area_change %in% c("NEGATIVE") &
                                                 name %in% c('Wisconsin')),
              color= negative_col, size=0.5) +
   facet_wrap(~code) +
-  scale_y_continuous(limits = c(-3, 3), breaks = c(-3, 0, 3)) +
-  scale_x_discrete(limits = c(1985, 2020), labels = c("1985", "2020")) +
-  labs(x = NULL, y = "Z-Score") +
+    scale_y_continuous(limits = c(-20, 20), breaks = c(-20,0,20), labels = paste(c("-20%", "0%", "20%"))) +
+    scale_x_discrete(limits = c(1985, 2020), labels = c("1985", "2020")) +
+  labs(x = NULL, y = NULL) +
   theme_minimal() +
   theme(panel.grid.minor.y = element_blank(),
         panel.grid.minor.x = element_blank(),
         panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_blank(),
-        text = element_text(family = font_legend, size = 10),
+        text = element_text(family = font_legend, size = 10, color = "black"),
         strip.text = element_text(size = 12,
                                   margin = margin(b = -2),
                                   vjust = 1, hjust = 0.365,
@@ -189,7 +199,8 @@ negative_col = "#CC5500"
                                   color = "black"),
         axis.text = element_text(size = 12), 
         panel.background = element_rect(fill = 'white', color = "white")
-        )) 
+        )
+  ) 
 
 # Define colors
 background_color = "#ffffff"
@@ -215,6 +226,11 @@ Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twit
 **Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
 
 ```{r cowplot, fig.width = 16, fig.height = 9}
+title_font <- 'Varela Round'
+font_add_google(title_font)
+showtext_opts(dpi = 300, regular.wt = 400, bold.wt = 1000)
+showtext_auto(enable = TRUE)
+
 custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
   # a background
@@ -228,7 +244,7 @@ custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items
             y = 0.01,
             height = 1) +
   # # Wisconsin legend plot
-  draw_plot(legend_plot, .4450, .81, .115, .15) +
+  draw_plot(legend_plot, .445, .83, .115, .15) +
   # explainer text
   draw_label("Elmera Azadpour, USGS\nData: doi.org/10.5066/P9PRH8DQ",
              fontfamily = font_legend,
@@ -241,39 +257,43 @@ custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items
   #  Title
   # uggh! fix expression pasting issue 
   draw_label(expression(paste("Forest area"~(km^2))),
-             x = 0.04,
-             y = 0.99,
-             hjust = 0,
-             vjust = 1,
-             lineheight = 0.75,
-             fontfamily = font_legend,
-             color = font_color,
-             size = 26) +
-    draw_label("difference",
-             x = 0.215,
+             x = 0.035,
              y = 0.98,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
-             fontfamily = font_legend,
+             fontfamily = title_font,
+             fontface = "bold",
              color = font_color,
              size = 26) +
-      draw_label("from 35 year mean (1985-2020)",
-             x = 0.04,
-             y = 0.93,
+    draw_label("difference from",
+             x = 0.228,
+             y = 0.97,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
-             fontfamily = font_legend,
+             fontfamily = title_font,
+             fontface = "bold",
              color = font_color,
              size = 26) +
-        draw_label("across CONUS",
-             x = 0.04,
-             y = 0.88,
+      draw_label("35-year mean (1985-2020) across",
+             x = 0.035,
+             y = 0.92,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
-             fontfamily = font_legend,
+             fontfamily = title_font,
+             fontface = "bold",
+             color = font_color,
+             size = 26) +
+        draw_label("CONUS",
+             x = 0.035,
+             y = 0.87,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = title_font,
+             fontface = "bold",
              color = font_color,
              size = 26) +
   # Add logo
@@ -284,15 +304,25 @@ custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items
              hjust = 0, vjust = 0,
              halign = 0, valign = 0)
 
-# add oak tree png 
-im <- png::readPNG(here("28_trend_eazadpour/in/oak-tree.png"))
-im2 <- matrix(rgb(im[,,1],im[,,2],im[,,3], im[,,4] * 0.05), nrow=dim(im)[1]) ## can adjust 0.05 alpha 
+# add oak tree - eastern U.S.
+oak <- png::readPNG(here("28_trend_eazadpour/in/oak-tree.png"))
+oak_opacity <- matrix(rgb(oak[,,1],oak[,,2],oak[,,3], oak[,,4] * 0.05), nrow=dim(oak)[1]) ## can adjust 0.05 alpha 
+
+# add pine tree - western U.S.
+pine <- png::readPNG(here("28_trend_eazadpour/in/pine-tree.png"))
+pine_opacity <- matrix(rgb(pine[,,1],pine[,,2], pine[,,3], pine[,,4] * 0.05), nrow=dim(pine)[1]) ## can adjust 0.05 alpha 
 
 final_plt <- custom_plt +
-    annotation_custom(rasterGrob(im2, 
+    annotation_custom(rasterGrob(oak_opacity, 
                                width = unit(1,"npc"), 
                                height = unit(1,"npc")), 
-                    0.6, 1.21, -Inf, 1.5) 
+                    0.6, 1.21, -Inf, 1.5) +
+      annotation_custom(rasterGrob(fir_opacity, 
+                               width = unit(1,"npc"), 
+                               height = unit(1,"npc")), 
+                    -0.18, 0.28, 0, 1.5)
+  
+  
 
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
@@ -307,7 +337,7 @@ ggsave(filename = "out/20230428_trend_eazadpour.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 1) Forest area is declining across the U.S., however states such as Kansas, Nebraska, Iowa, and North Dakota have seen an increase in forest area in recent years. 
+2) North Dakota saw an increase of ~18% forest area in 2020 compared to the state's 35 year mean
 
 ### Data source(s)
 Sleeter, B.M., and Selmants, P.C., 2022, Frequency of forest change across the conterminous United States from 1985-2020: U.S. Geological Survey data release, https://doi.org/10.5066/P9PRH8DQ.
-
