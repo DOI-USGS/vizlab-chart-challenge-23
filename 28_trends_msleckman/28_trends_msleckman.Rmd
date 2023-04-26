@@ -226,13 +226,10 @@ map_bbox <- st_bbox(Lake_Tahoe_huc8)
          legend.position = 'bottom',
          axis.text = element_blank(),
          axis.ticks = element_blank())
-
- # ggsave('out/LT_map_gauges.png', width = 9, height = 9, dpi = 300)
-  
 )
-        
  
- main_map
+## saving locally
+ggsave(plot = main_map,'out/LT_map_gauges.png', width = 9, height = 9, dpi = 300)
 
 ```
 
@@ -319,7 +316,7 @@ LT_dv_data_w_MA |>
   labs(title = sprintf('Site Number: %s', site))
 
 
-## quick outputing of plot (filtered only to monday to make plot less busy - still need to work on this      
+## quick outputing of simple full histoical plot of streamflow (filtered only to Monday to make plot less busy time series - still need to work on on smoothing)  
 
 lapply(active_sites_2023,
        function(x){
@@ -366,7 +363,6 @@ usgs_logo <- magick::image_read("../usgs_logo_white.png")
 
 
 ```
-
 
 
 ## C. Produce final plot
