@@ -1,0 +1,282 @@
+---
+title: 'Fish In Hot Water: Made for Chart Challenge'
+author: "Ellie White"
+date: "2023-04-03"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Set up
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) 
+library(readr) 
+library(scales)
+library(gganimate)
+library(scico)
+library(gifski)
+```
+
+## Load files
+Copy-pasted data from paper to a csv. Paper is here: https://afspubs.onlinelibrary.wiley.com/doi/full/10.1002/mcf2.10076
+
+```{r load}
+fish_data <- read_csv("in/fish_data.csv")
+```
+
+This extra data came from the author in personal communications 04/03/2023
+
+I modified the spreadsheet to be more R friendly
+
+It's a time series record spanning 1950-2099 of fish spawning onset and cessation dates (modeled values)
+
+```{r load_extra_data}
+fish_data_ts <- read_csv("in/fish_data_from_nack.csv")
+
+# pulled the 1951 values as origin dates and saved to this file for easy reference
+# note that the year date is set to 2015 to be consistent with the rest of the reference dates but the year in the date doesn't matter; we care about month and day. 
+fish_data_ts[fish_data_ts$year == 1951, ]
+fish_data_origin_dates <- read_csv("in/fish_data_origin_dates.csv")
+```
+
+## Get data ready for plotting
+```{r processing}
+# change to factors 
+fish_data <- fish_data |>
+  mutate(species = factor(species, levels = c("American Shad", "Striped Bass")), 
+         variable = factor(variable, levels = c("Onset", "Cessation", "Duration")),
+         period = factor(period, levels = c("Historical", "Future")))
+
+# take out duration and confidence intervals
+fish_data <- fish_data[fish_data$variable %in% c("Onset", "Cessation"), ]
+fish_data_uncertainty <- select(fish_data, -c("RCP_26", "RCP_45", "RCP_60", "RCP_85")) # save this to bring back in later
+fish_data <- select(fish_data, -c("RCP_26_SE", "RCP_45_SE", "RCP_60_SE", "RCP_85_SE"))
+
+# prep origin dates 
+fish_data_origin_dates <- pivot_longer(fish_data_origin_dates, RCP_26:RCP_85, values_to = "origin_date", names_to = "condition")
+fish_data_origin_dates$origin_date <- as.Date(fish_data_origin_dates$origin_date, format = "%m/%d/%Y")
+
+# add in origin dates
+fish_data_long <- pivot_longer(fish_data, RCP_26:RCP_85, values_to = "value", names_to = "condition")
+fish_data_long <- full_join(fish_data_long, fish_data_origin_dates, by = c("species", "variable", "condition"))
+fish_data_long$end_date <- fish_data_long$origin_date + fish_data_long$value
+
+# prep uncertainty in dates to be brought in later
+fish_data_uncertainty_long <- pivot_longer(fish_data_uncertainty, RCP_26_SE:RCP_85_SE, names_to = "condition", values_to = "standard_error")
+fish_data_uncertainty_long$condition <- substr(fish_data_uncertainty_long$condition, 1, 6)
+
+# make into wide format 
+fish_data_long <- fish_data_long |> 
+  select(-c(origin_date, value))
+fish_data_wide <- pivot_wider(fish_data_long, names_from = "variable", values_from = "end_date")
+names(fish_data_wide)[names(fish_data_wide)=="Onset"] <- "onset"
+names(fish_data_wide)[names(fish_data_wide)=="Cessation"] <- "cessation"
+
+# bring in uncertainty that was prepped before
+fish_data_uncertainty_wide <- pivot_wider(fish_data_uncertainty_long, names_from = "variable", values_from = "standard_error")
+names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Onset"] <- "onset_se"
+names(fish_data_uncertainty_wide)[names(fish_data_uncertainty_wide)=="Cessation"] <- "cessation_se"
+
+fish_data_wide <- full_join(fish_data_wide, fish_data_uncertainty_wide, by = c("species", "period", "condition"))
+```
+
+```{r processing_extra_data, include = FALSE}
+# change to factors
+fish_data_ts <- fish_data_ts|>
+  mutate(species = factor(species, levels = c("American Shad", "Striped Bass")),
+         condition = factor(condition, levels = c("RCP_26", "RCP_45", "RCP_60", "RCP_85", labels = c("RCP 2.6", "RCP 4.5", "RCP 6.0", "RCP 8.5"))),
+         period = factor(ifelse(year <= 2012, "Historical", "Future")),
+         )
+
+# fix date column, the minus one is to match the numbers Nack gave in his spreadsheet.
+fish_data_ts$Onset <- as.Date(fish_data_ts$start_date_julianday, origin = as.Date("2015-01-01"))-1
+fish_data_ts$Cessation <- as.Date(fish_data_ts$end_date_julianday, origin = as.Date("2015-01-01"))-1
+
+# get rid of duration and extra dates
+fish_data_ts <- fish_data_ts |>
+  select(-c("duration", "start_date_julianday", "end_date_julianday", "start_date", "end_date"))
+
+# make long format
+fish_data_ts_long <- pivot_longer(fish_data_ts, Onset:Cessation, names_to = "spawning", values_to = "value")
+fish_data_ts_long$spawning <- factor(fish_data_ts_long$spawning, levels = c("Onset", "Cessation"))
+```
+
+Now to add extra things for plotting purposes only:
+```{r plotting_add_extra_info}
+# add in y location for segment plot
+y_location <- tibble(condition = c("RCP_26", "RCP_45", "RCP_60", "RCP_85"),
+                     y = rep(c(1:4)*2 + 5))
+fish_data_wide <- full_join(fish_data_wide, y_location, by = c("condition"))
+
+# offset the y locations and mess with spacing for historical vs. future so they slightly overlap but don't overlap across the RCPs
+fish_data_wide <- fish_data_wide |>
+  mutate(y_offset = ifelse(period == "Historical", y - 0.5, y))
+```
+
+## Set up main plot
+Theme:
+```{r plotting_setup}
+theme_usgs <- function(legend.position = "right"){
+  theme(
+    plot.title = element_text(vjust = 3, size = 14, face = "bold", family="sans"),
+    plot.subtitle = element_text(vjust = 3, size = 12,family="sans"),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    legend.background = element_blank(),
+    legend.justification=c(0, 0),
+    legend.position = legend.position,
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 10),
+    axis.title.x = element_text(size = 10, family="sans"),
+    axis.title.y = element_text(vjust = 1, angle = 90, size = 9, family="sans"),
+    axis.text.x = element_text(size = 10, vjust = -0.25, colour = "black", 
+                               family="sans", margin=margin(10,5,20,5,"pt")),
+    axis.text.y = element_text(size = 10, hjust = 1, colour = "black", 
+                               family="sans", margin=margin(5,10,10,5,"pt")),
+    axis.ticks = element_line(colour = "black", linewidth = 0.1),
+    axis.ticks.length = unit(-0.25 , "cm")
+  )
+}
+```
+
+## Produce plots
+```{r plotting_simple, include = FALSE}
+# first, a dot chart to see what the data basically looks like
+ggplot(data = fish_data_long, aes(x = end_date, y = variable)) +
+  geom_point(aes(col = condition)) + 
+  facet_wrap(~species) +
+  theme_usgs()
+```
+
+```{r plotting_main}
+# main base plot
+library(ggnewscale)
+ggplot() +
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "grey") + # main hisotrical bar
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Historical", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "grey") + # bar with standard error end bits
+  new_scale_colour() +
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset, xend = cessation, y = y_offset, yend = y_offset), alpha = 0.7, linewidth = 8 , show.legend = FALSE, col = "#815aa5") + # main future bar
+  geom_segment(data = fish_data_wide[fish_data_wide$period == "Future", ], aes(x = onset-onset_se, xend = cessation + cessation_se, y = y_offset, yend = y_offset), alpha = 0.25, linewidth = 8 , show.legend = FALSE, col = "#815aa5") + # bar standard error end bits
+  scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") + # make xlabels pretty
+  scale_y_continuous(limits = c(0, 13)) +  # add in some room in the y axis for the fish
+  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # comment this out to make the plot work in Cartesian coordinates first and then polarize
+  facet_wrap(~species) +
+  labs(x = "",
+       y = "",
+       title = "FISH IN HOT WATER",
+       subtitle = "Under projected climate change scenarios, the American Shad and Striped Bass of the Hudson River Estuary are predicted to spawn 15 days earlier on average."
+       # caption = "Data Source: Nack, C. et. al. (2019). https://doi.org/10.1002/mcf2.10076
+       # Plot made by Ellie White, ewhite@usgs.gov 04/02/2023"
+       ) +
+  theme_bw()+
+  theme(plot.title = element_text(vjust = 3, size = 14, face = "bold", family="sans"),
+        plot.subtitle = element_text(vjust = 3, size = 12,family="sans"),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.border = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank())
+
+ggsave("out/26_local-change_ewhite_base.png", width = 16, height = 9, units = "in", dpi = 1200)
+```
+
+```{r plotting_paper_figure, include = FALSE}
+# recreating figure in paper to make sure I haven't accidentally messed up the data
+ggplot(data = fish_data_ts_long[fish_data_ts_long$year > 1950, ], aes(x = year, y = value)) +
+  geom_point(aes(shape = species, col = species)) +
+  facet_wrap(~condition + spawning, ncol = 2, scales = "free") +
+  labs(x="", y="Predicted Date of Spawning") +
+  theme_usgs()
+# it matches! Hooray
+```
+
+## Produce annual viz (final plot)
+```{r plotting_annual}
+# make the yearly data wide so onset and cessation columns are side by side
+fish_data_ts_wide <- pivot_wider(fish_data_ts_long, names_from = "spawning", values_from = "value")
+
+# filter by RCP
+fish_data_ts_plot <- fish_data_ts_wide |>
+  filter(condition == "RCP_85") |>
+  filter(year != 1950) |> # the data for this year was off so I filtered it out
+  mutate(year = as.integer(year)) 
+
+# this business is for plot legend breaks and labels (they were messing up because the legend is a date)
+df_as <- fish_data_ts_plot[fish_data_ts_plot$species=="American Shad", ]
+df_sb <- fish_data_ts_plot[fish_data_ts_plot$species=="Striped Bass", ]
+legend_date_breaks_as <- diff(range(df_as$Onset)) * 0:4 / 4 + min(df_as$Onset)
+legend_date_labels_as <- format(legend_date_breaks_as, "%W") # this "%W" format is week of the year (0-53)
+legend_date_breaks_sb <- diff(range(df_sb$Onset)) * 0:4 / 4 + min(df_sb$Onset)
+legend_date_labels_sb <- format(legend_date_breaks_sb, "%W")
+
+ggplot() +
+  geom_hline(yintercept = 1950, linetype = "dashed", color = "grey50", linewidth = 0.5) +
+  geom_hline(yintercept = 2012, linetype = "dashed", color = "grey50", linewidth = 0.5) +
+  geom_hline(yintercept = 2099, linetype = "dashed", color = "grey50", linewidth = 0.5) + 
+  geom_segment(data = df_as, aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 0.5) +
+  scale_color_scico(palette = "tokyo", guide = guide_colorbar(order = 1), labels = legend_date_labels_as, breaks = as.numeric(legend_date_breaks_as)) +
+  new_scale_colour() +
+  geom_segment(data = df_sb, aes(x = Onset, xend = Cessation, y = year, yend = year, col = Onset), linewidth = 0.5) +
+  scale_color_scico(palette = "tokyo", guide = guide_colorbar(order = 2), labels = legend_date_labels_sb, breaks = as.numeric(legend_date_breaks_sb)) +
+  scale_x_date(limits = c(as.Date("2015-01-01"), as.Date("2015-12-31")), date_breaks = "1 month", date_minor_breaks = "1 week", date_labels = "%B") +
+  scale_y_continuous(limits = c(1900, 2120)) +
+  coord_polar(theta = "x", direction = 1, start = -1.57*1.5) + # start is in radians, 90 Deg is Jan
+  facet_wrap(~species) +
+  labs(x = "",
+       y = "",
+       title = "FISH IN HOT WATER",
+       subtitle = "RCP 8.5: Business-as-Usual."
+       ) +
+  theme_bw()+
+  theme(plot.title = element_text(vjust = 3, size = 14, face = "bold", family="sans"),
+        plot.subtitle = element_text(vjust = 3, size = 12,family="sans"),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.border = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(), 
+        legend.position = "bottom", 
+        legend.title = element_blank()
+        )
+ggsave("out/26_local-change_ewhite_base2.png", width = 16, height = 9, units = "in", dpi = 1200)
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. The American Shad and the Striped Bass are migratory species needing both freshwater and marine habitats to complete their life cycle. This makes them particularly vulnerable to human activities. The Hudson River Shad has declined in stock so much that all its fisheries were closed in 2010. The Striped Bass, while declining in relative abundance, still remains the most important game fish in the Hudson River.
+
+2. Under projected climate change scenarios, the American Shad and Striped Bass of the Hudson River Estuary are predicted to spawn 15 days earlier on average. 
+
+3. Under RCP 8.5 (“business-as-usual”),  the American Shad and Striped Bass of the Hudson River Estuary are projected to start and stop spawning 20 and 26 days earlier on average respectively.
+
+### Data source(s)
+
+Paper is here: https://afspubs.onlinelibrary.wiley.com/doi/full/10.1002/mcf2.10076
+
+Citation: Nack, C. C., Swaney, D. P., & Limburg, K. E. (2019). Historical and projected changes in spawning Phenologies of American Shad and Striped bass in the 
+Hudson River Estuary. Marine and Coastal Fisheries, 11(3), 271-284.
+
+DOI: https://doi.org/10.1002/mcf2.10076
+
+### Process 
+
+1. Produced base plots called `out/25_local-change_ewhite_base.png` and `out/25_local-change_ewhite_base2.png` with ggplot.
+
+2. Made markups in PowerPoint. 
+
+3. Saved final plot as picture and called them `out/25_local-change_ewhite_final.png` and `out/25_local-change_ewhite_final2.png`.
+
+
+
+

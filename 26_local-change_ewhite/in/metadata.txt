@@ -1,0 +1,13 @@
+Paper is at: https://afspubs.onlinelibrary.wiley.com/doi/full/10.1002/mcf2.10076
+Accessed: 04/01/2023
+Citation: Nack, C. C., Swaney, D. P., & Limburg, K. E. (2019). Historical and projected changes in spawning Phenologies of American Shad and Striped bass in the Hudson River Estuary. Marine and Coastal Fisheries, 11(3), 271-284.
+doi: https://doi.org/10.1002/mcf2.10076
+
+`fish_data.csv` is the data gathered from the tables in the paper. RCP_XX column contains the change in date for that scenario and XX_SE is the standard error for that change in date. These are modeled values.  
+
+`fish_data_from_nack.csv` is a R friendly version of `Nack_RCP_Model_Results.xlsx`, which contains the data behind the results in the final plot of the paper. The latter was obtained from personal communications with the author. I wanted to use this data to plot a probability from 0 to 1 of dates predicted for onset and cessetion of spawning, but the message wasn't coming through. I used this data to make a gif and a static plot instead. I also used this dataset to get start date and end date (1951 values), which I called origin_dates as opposed to climate changed dates. 
+
+`fish_data_origin_dates.csv` is the 1951 values where the month and day are preserved and the year is modified to 2015 because that is the base year the Author picked for dates. 
+
+
+

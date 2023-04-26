@@ -92,6 +92,7 @@ plot_points <- function(pooled_data, out_folder){
     # scale_color_manual(values = c("#FDBF6F", "#A6CEE3", "#B15928", "#FB9A99", "#33A02C", "#6A3D9A"),
     #                    labels = str_pad(sort(unique(pooled_data$region_name)), 12, "right")) +  # need to sort labels here
     geom_image(aes(image = images, size = I(size_scaled/50)), by = "height", asp = 3.5, image_fun = transparent) +
+    geom_label(aes(end+1, duration+1,label = duration)) +
     # facet_wrap(~region_num) +
     labs(x = "", # "TIMELINE (0-2017 CE)"
          y = "DURATION (YR)",
