@@ -8,7 +8,9 @@ Date for your prompt in April: 04/25/2023
 
 Image: 
 
-![Fish in Hot Water!](out/26_local-change_ewhite_final.png)
+![20230426a_local-change_ewhite](/uploads/0944d1885df9dbe2ea7d7bf2d5f6a7e2/20230426a_local-change_ewhite.png)
+
+![20230426b_local-change_ewhite](/uploads/56a5134afe9df04e7a45c17384e9ea58/20230426b_local-change_ewhite.png)
 
 Your key takeaways (1-2 sentences each):
 
