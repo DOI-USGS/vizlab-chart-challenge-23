@@ -5,18 +5,6 @@ date: "2023-03-10"
 output: html_document
 ---
 
-## Instructions for using this template
-
-> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
-
-1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
-2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
-3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
-4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
-5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
-
-This website has great information on how to use RMarkdown: https://yihui.org/knitr/
-
 ## SET UP
 
 ```{r setup, include=FALSE}
@@ -62,11 +50,6 @@ dir.create('in/R/nhdPlusTools', showWarnings = F)
 
 ```
 
-
-
-Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
-
-This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
 
 ## A. Workflow for Map 
 ### 1. Fetching nhdplus spatial data w/ nhdplustools
@@ -155,7 +138,8 @@ Lake_Tahoe_huc6 <- filter(huc6_CA, Name == 'Truckee')
 Lake_Tahoe_huc8 <- filter(huc8_CA, Name == 'Lake Tahoe')
 
 # Water features
-LT_lakes <- st_join(lakes_in_CA_hucs , Lake_Tahoe_huc8) |> filter(!is.na(HUC8))
+LT_lakes <- st_join(lakes_in_CA_hucs , Lake_Tahoe_huc8) |>
+  filter(!is.na(HUC8))
 
 LT_flines <- get_nhdplus(AOI = Lake_Tahoe_huc8,
                          realization = 'flowline',
@@ -168,16 +152,20 @@ LT_flines <- get_nhdplus(AOI = Lake_Tahoe_huc8,
 ## ID active sites from last 90 days (dv)
 prev90days <- Sys.Date() - 90
 active_sites_data_2023 <- readNWISdata(huc = Lake_Tahoe_huc8$HUC8,
-                                       service="iv",parameterCd="00060",
-                                       startDate=prev90days)
+                                       service = "iv",
+                                       parameterCd = "00060",
+                                       startDate = prev90days)
 
 ## Vector of currently active sites
-active_sites_2023 <- active_sites_data_2023$site_no |> unique()
+active_sites_2023 <- unique(active_sites_data_2023$site_no)
 
-active_nwis_sites_lake_tahoe <- get_nwis(AOI = Lake_Tahoe_huc8, t_srs = NULL, buffer = 0) |>
+active_nwis_sites_lake_tahoe <- get_nwis(AOI = Lake_Tahoe_huc8,
+                                         t_srs = NULL,
+                                         buffer = 0) |>
   filter(site_no %in% active_sites_2023)
 
 ```
+
 #### Obs. LT spatial data in mapview
 
 ```{r looking_at_spatial_data_w_mapview}
@@ -291,7 +279,7 @@ LT_dv_data_viz <- LT_dv_data_w_MA |>
 
 ```
 
-### 3. Lineplot
+### 3. Generate Lineplots
 ```{r flow_data_line_plot}
 
 line_plot_lst <- LT_dv_data_viz |>
@@ -303,17 +291,26 @@ line_plot_lst <- LT_dv_data_viz |>
              keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.
 
 
-cowplot::plot_grid(plotlist = line_plot_lst[1:5])
-cowplot::plot_grid(plotlist = line_plot_lst[6:10])
+line_plot_grid_1 <- cowplot::plot_grid(plotlist = line_plot_lst[1:5])
+line_plot_grid_2 <-cowplot::plot_grid(plotlist = line_plot_lst[6:10])
 
+ggsave(plot = line_plot_grid_1, filename = 'out/line_plot_grid_1.png', width = 9, height = 9, dpi = 300)
+ggsave(plot = line_plot_grid_2, filename = 'out/line_plot_grid_2.png', width = 9, height = 9, dpi = 300)
+
+lt_map_for_viz
 ```
 
+**PLOTS are: **
+
+1. lt_map_for_viz
+2. line_plot_lst
 
 This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
 
 > Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
 
 ```{r plotting_vars}
+
 # Load some custom fonts and set some custom settings
 font_legend <- "Pirata One"
 sysfonts::font_add_google("Pirata One")
