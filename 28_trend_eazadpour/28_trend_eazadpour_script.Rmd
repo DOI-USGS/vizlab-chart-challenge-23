@@ -34,7 +34,6 @@ library(janitor) # for cleaning dataframe column names
 library(geofacet) # for the facet map of the U.S. 
 library(grid) # plot layout
 library(png) # for adding oak tree bckground img
-library(here) # for easy assessing oak tree background img
 
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
@@ -60,23 +59,6 @@ if(!file.exists(file_in_path_continuous)){ # if files don't exist, download
                               destinations =  "in/summary_forest_area_by_year.csv",
                               overwrite_file = F)
 }
-
-annual_forest_area_raw <- readr::read_csv(file_in_path_continuous) |> 
-  janitor::clean_names() |> 
-  rename(name = state)
-
-  # calculate forest average for each state and get difference from average over time 
-  forest_avg <- annual_forest_area_raw |> 
-    group_by(name) |> 
-    summarize(state_area_avg = mean(area))
-  
-  forest_avg_join <- left_join(annual_forest_area_raw, forest_avg) |> group_by(name)
-  forest_avg_diff <- forest_avg_join |> 
-    mutate(forest_diff = area - state_area_avg)
-  
-  # Peak at states who fall on the tails of forest area difference from 35 yr mean
-  tails_forest_area <- forest_avg_diff |>
-   filter(forest_diff <= -5000 | forest_diff >= 5000)
 ```
 
 ## Get data ready for plotting
@@ -84,6 +66,25 @@ annual_forest_area_raw <- readr::read_csv(file_in_path_continuous) |>
 This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
 
 ```{r processing}
+# clean raw data 
+annual_forest_area_raw <- readr::read_csv(file_in_path_continuous) |>
+  janitor::clean_names() |>
+  rename(name = state)
+
+# calculate forest average for each state and get difference from average over time 
+forest_avg <- annual_forest_area_raw |> 
+  group_by(name) |> 
+  summarize(state_area_avg = mean(area))
+
+forest_avg_join <- left_join(annual_forest_area_raw, forest_avg) |> group_by(name)
+
+forest_avg_diff <- forest_avg_join |> 
+  mutate(forest_diff = area - state_area_avg)
+
+# Peak at states who fall on the tails of forest area difference from 35 yr mean
+tails_forest_area <- forest_avg_diff |>
+  filter(forest_diff <= -5000 | forest_diff >= 5000)
+
 # get all unique states to then filter us grid by 
 state_names <- unique(forest_avg_diff$name)
 
@@ -96,7 +97,7 @@ my_grid_dropWI <- my_us_grid_dropWI |>
   left_join(forest_avg_diff, by = "name") |> 
   filter(name %in% state_names) |> 
   mutate(area_change = case_when(forest_diff > 0 ~ "POSITIVE",
-                                        forest_diff < 0 ~ "NEGATIVE"))
+                                 forest_diff < 0 ~ "NEGATIVE"))
 
 # join state (minus AK, HI) grid data with annual forest data, filter states to plot with geofacet, and calculate area change from 35 yr mean for each state
 my_grid_conus <- us_state_grid1 |> 
@@ -104,7 +105,7 @@ my_grid_conus <- us_state_grid1 |>
   left_join(forest_avg_diff, by = "name") |> 
   filter(name %in% state_names) |> 
   mutate(area_change = case_when(forest_diff > 0 ~ "POSITIVE",
-                                        forest_diff < 0 ~ "NEGATIVE"))
+                                 forest_diff < 0 ~ "NEGATIVE"))
 ```
 
 ## Set up main plot
@@ -128,11 +129,11 @@ font_color =  "#000000"
 
 # Add arrow lines for forest diff that exceeds our -5km to 5km range 
 arrow_fxn <- function(data, state, x, y ,y_end, curve, color){
-      geom_segment(data = data |> filter(name %in% state),
-                  aes(x = x,
-                  xend = x, 
-                  y = y,
-                  yend = y_end),
+  geom_segment(data = data |> filter(name == state),
+               aes(x = x,
+                   xend = x, 
+                   y = y,
+                   yend = y_end),
                arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "last"),
                angle = 90,
                curvature = curve,
@@ -141,35 +142,34 @@ arrow_fxn <- function(data, state, x, y ,y_end, curve, color){
 }
 
 (main_plot <- ggplot(my_grid_dropWI, aes(x = year, y = forest_diff)) +
-  # Make positive change darker green 
-  geom_segment(data = my_grid_dropWI |> filter(area_change %in% c("POSITIVE")), 
-                 aes(x=year, xend=year, y=0, yend=forest_diff), color= postive_col,
-               linewidth = 0.5) +
-    geom_point(data = my_grid_dropWI |> filter(area_change %in% c("POSITIVE")),
-             color=postive_col, size=0.5) + 
+    # Make positive change darker green 
+    geom_segment(data = my_grid_dropWI |> filter(area_change == "POSITIVE"), 
+                 aes(x = year, xend = year, y = 0, yend = forest_diff), color = postive_col,
+                 linewidth = 0.5) +
+    geom_point(data = my_grid_dropWI |> filter(area_change == "POSITIVE"),
+               color = postive_col, size = 0.5) +
     # Make negative change burnt orange 
-    geom_segment(data = my_grid_dropWI |> filter(area_change %in% c("NEGATIVE")), 
-                 aes(x=year, xend=year, y=0, yend=forest_diff), color= negative_col,
-               linewidth = 0.5) +
-    geom_point(data = my_grid_dropWI |> filter(area_change %in% c("NEGATIVE")),
-             color= negative_col, size=0.5) + 
-        scale_y_continuous(limits = c(-5000, 5000), breaks = c(-5000,0,5000), labels = paste(c("-5000", "0 km", "5000"))) +
+    geom_segment(data = my_grid_dropWI |> filter(area_change == "NEGATIVE"), 
+                 aes(x = year, xend = year, y = 0, yend = forest_diff), color = negative_col,
+                 linewidth = 0.5) +
+    geom_point(data = my_grid_dropWI |> filter(area_change == "NEGATIVE"),
+               color = negative_col, size = 0.5) + 
+    scale_y_continuous(limits = c(-5000, 5000), breaks = c(-5000,0,5000), labels = paste(c("-5000", "0 km", "5000"))) +
     scale_x_discrete(limits = c(1985, 2020), labels = c("1985", "2020")) +
-  # add down/up arrows to show areas that exceed the -5k and +5k range
-        # figure out way to iterate these - manually adding them for now
-  # add positive arrow for 1995 positive difference in TX
-    arrow_fxn(my_us_grid_dropWI, c("Texas"), 1995, 0, 5000, 1.5, postive_col) +
+    # add down/up arrows to show areas that exceed the -5k and +5k range
+    # add positive arrow for 1995 positive difference in TX
+    arrow_fxn(my_us_grid_dropWI, "Texas", 1995, 0, 5000, 1.5, postive_col) +
     # add negative arrows for 2011-2014 TX
-    arrow_fxn(my_us_grid_dropWI, c("Texas"), 2011, 0, -5000, -1.5, negative_col) +
-    arrow_fxn(my_us_grid_dropWI, c("Texas"), 2012, 0, -5000, -1.5, negative_col) +
-    arrow_fxn(my_us_grid_dropWI, c("Texas"), 2013, 0, -5000, -1.5, negative_col) +
-    arrow_fxn(my_us_grid_dropWI, c("Texas"), 2014, 0, -5000, -1.5, negative_col) +
-  # add negative arrows for 2018-2020 CA
-    arrow_fxn(my_us_grid_dropWI, c("California"), 2018, 0, -5000, -1.5, negative_col) +
-    arrow_fxn(my_us_grid_dropWI, c("California"), 2019, 0, -5000, -1.5, negative_col) +
-    arrow_fxn(my_us_grid_dropWI, c("California"), 2020, 0, -5000, -1.5, negative_col) +
-  facet_geo(~ code, grid = my_us_grid_dropWI) +
-  labs(x = NULL, y= NULL) +
+    arrow_fxn(my_us_grid_dropWI, "Texas", 2011, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "Texas", 2012, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "Texas", 2013, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "Texas", 2014, 0, -5000, -1.5, negative_col) +
+    # add negative arrows for 2018-2020 CA
+    arrow_fxn(my_us_grid_dropWI, "California", 2018, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "California", 2019, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "California", 2020, 0, -5000, -1.5, negative_col) +
+    facet_geo(~ code, grid = my_us_grid_dropWI) +
+    labs(x = NULL, y= NULL) +
     # set some themeing 
     theme_classic(base_size = 12) + 
     theme(strip.background = element_blank(),
@@ -193,41 +193,41 @@ arrow_fxn <- function(data, state, x, y ,y_end, curve, color){
 )
 
 
-(legend_plot <- ggplot(my_grid_conus |> filter(name %in% c('Wisconsin')), aes(x = year, y = forest_diff)) +
-  # Make positive change darker green 
-  geom_segment(data = my_grid_conus |> filter(area_change %in% c("POSITIVE") & 
-                                                name %in% c('Wisconsin') ), 
+(legend_plot <- ggplot(my_grid_conus |> filter(name == 'Wisconsin'), aes(x = year, y = forest_diff)) +
+    # Make positive change darker green 
+    geom_segment(data = my_grid_conus |> filter(area_change == "POSITIVE" & 
+                                                  name == 'Wisconsin'),
                  aes(x=year, xend=year, y=0, yend=forest_diff), color= postive_col,
-               linewidth = 0.5) +
-    geom_point(data = my_grid_conus |> filter(area_change %in% c("POSITIVE") & 
-                                                name %in% c('Wisconsin')),
-             color= postive_col, size=0.5) + 
+                 linewidth = 0.5) +
+    geom_point(data = my_grid_conus |> filter(area_change == "POSITIVE" & 
+                                                name == 'Wisconsin'),
+               color = postive_col, size = 0.5) +
     # Make negative change burnt orange 
-    geom_segment(data = my_grid_conus |> filter(area_change %in% c("NEGATIVE") &
-                                                  name %in% c('Wisconsin')), 
-                 aes(x=year, xend=year, y=0, yend=forest_diff), color= negative_col,
-               linewidth = 0.5) +
-    geom_point(data = my_grid_conus |> filter(area_change %in% c("NEGATIVE") &
-                                                name %in% c('Wisconsin')),
-             color= negative_col, size=0.5) +
+    geom_segment(data = my_grid_conus |> filter(area_change == "NEGATIVE" &
+                                                  name == 'Wisconsin'),
+                 aes(x = year, xend = year, y = 0, yend = forest_diff), color = negative_col,
+                 linewidth = 0.5) +
+    geom_point(data = my_grid_conus |> filter(area_change == "NEGATIVE" &
+                                                name == 'Wisconsin'),
+               color = negative_col, size = 0.5) +
     # facet wrap by state - WI
-  facet_wrap(~code) +
-    scale_y_continuous(limits = c(-5000, 5000), breaks = c(-5000,0,5000), labels = c("-5000", expression(paste("0"~km^2)), "5000")) +
+    facet_wrap(~code) +
+    scale_y_continuous(limits = c(-5000, 5000), breaks = c(-5000,0,5000), labels = c("-5000 ", expression(paste("0"~km^2)), "5000 ")) +
     scale_x_discrete(limits = c(1985, 2020), labels = c("1985", "2020")) +
-  labs(x = NULL, y = NULL) +
+    labs(x = NULL, y = NULL) +
     # set seome theming 
-  theme_minimal() +
-  theme(panel.grid.minor.y = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        panel.grid.major.y = element_blank(),
-        panel.grid.major.x = element_blank(),
-        text = element_text(size = 10, color = font_color),
-        strip.text = element_text(size = 12,
-                                  margin = margin(b = -2),
-                                  vjust = 1, hjust = 0.365,
-                                  color = font_color),
-        axis.text = element_text(size = 12, color = font_color), 
-        panel.background = element_rect(fill = 'white', color = "white")
+    theme_minimal() +
+    theme(panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_blank(),
+          panel.grid.major.x = element_blank(),
+          text = element_text(size = 10, color = font_color),
+          strip.text = element_text(size = 12,
+                                    margin = margin(b = -2),
+                                    vjust = 1, hjust = 0.365,
+                                    color = font_color),
+          axis.text = element_text(size = 12, color = font_color), 
+          panel.background = element_rect(fill = 'white', color = "white")
         )
   ) 
 
@@ -257,7 +257,7 @@ showtext_opts(dpi = 300, regular.wt = 400, bold.wt = 1000)
 showtext_auto(enable = TRUE)
 
 custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
-       xlim = c(0,1)) +
+                     xlim = c(0,1)) +
   # a background
   draw_grob(canvas,
             x = 0, y = 1,
@@ -269,8 +269,7 @@ custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items
             y = -0.05,
             height = 1) +
   # Wisconsin legend plot
-  # the km2 expression in the legend was causing issues with draw_plot so I've dropped font_family in legend_plot
-   draw_plot(legend_plot, .442, .76, .115, .15) +
+  draw_plot(legend_plot, .442, .76, .115, .15) +
   # explainer text
   draw_label("Elmera Azadpour, USGS\nData: doi.org/10.5066/P9PRH8DQ",
              fontfamily = font_legend,
@@ -281,38 +280,28 @@ custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items
              vjust = 0,
              color = font_color) +
   #  Title
-  draw_label(expression(paste("Forest area"~(km^2))),
+    draw_label("Change in Forest Area",
              x = 0.035,
-             y = 0.98,
+             y = 0.94,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
              fontfamily = title_font,
              fontface = "bold",
              color = font_color,
-             size = 34) +
-    draw_label("difference",
-             x = 0.288,
-             y = 0.97,
+             size = 36) +
+      draw_label("compared to 35-year mean",
+             x = 0.04,
+             y = 0.88,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
              fontfamily = title_font,
              fontface = "bold",
              color = font_color,
-             size = 34) +
-      draw_label("from 35-year mean",
-             x = 0.035,
-             y = 0.90,
-             hjust = 0,
-             vjust = 1,
-             lineheight = 0.75,
-             fontfamily = title_font,
-             fontface = "bold",
-             color = font_color,
-             size = 34) +
-        draw_label("(1985-2020) across CONUS",
-             x = 0.035,
+             size = 26) +
+        draw_label("(1985-2020)",
+             x = 0.04,
              y = 0.83,
              hjust = 0,
              vjust = 1,
@@ -320,7 +309,7 @@ custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items
              fontfamily = title_font,
              fontface = "bold",
              color = font_color,
-             size = 34) +
+             size = 26) +
   # Add logo
   draw_image(usgs_logo,
              x = 0.04,
@@ -331,23 +320,23 @@ custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items
   
 
 # add oak tree - eastern U.S.
-oak <- png::readPNG(here("28_trend_eazadpour/in/oak-tree.png"))
-oak_opacity <- matrix(rgb(oak[,,1],oak[,,2],oak[,,3], oak[,,4] * 0.05), nrow=dim(oak)[1]) ## can adjust 0.05 alpha 
+oak <- png::readPNG("in/oak-tree.png")
+oak_opacity <- matrix(rgb(oak[,,1],oak[,,2],oak[,,3], oak[,,4] * 0.05), nrow = dim(oak)[1]) ## can adjust 0.05 alpha 
 
 # add pine tree - western U.S.
-pine <- png::readPNG(here("28_trend_eazadpour/in/pine-tree.png"))
-pine_opacity <- matrix(rgb(pine[,,1],pine[,,2], pine[,,3], pine[,,4] * 0.05), nrow=dim(pine)[1]) ## can adjust 0.05 alpha 
+pine <- png::readPNG("in/pine-tree.png")
+pine_opacity <- matrix(rgb(pine[,,1],pine[,,2], pine[,,3], pine[,,4] * 0.05), nrow = dim(pine)[1]) ## can adjust 0.05 alpha 
 
-final_plt <- custom_plt +
-    annotation_custom(rasterGrob(oak_opacity, 
-                               width = unit(1,"npc"), 
-                               height = unit(1,"npc")), 
-                    0.6, 1.21, -Inf, 1.5) +
-      annotation_custom(rasterGrob(pine_opacity, 
-                               width = unit(1,"npc"), 
-                               height = unit(1,"npc")), 
-                    -0.18, 0.28, 0, 1.5)
-
+(final_plt <- custom_plt +
+    annotation_custom(rasterGrob(oak_opacity,
+                                 width = unit(1,"npc"),
+                                 height = unit(1,"npc")),
+                      0.6, 1.21, -Inf, 1.5) +
+    annotation_custom(rasterGrob(pine_opacity,
+                                 width = unit(1,"npc"), 
+                                 height = unit(1,"npc")),
+                      -0.18, 0.28, 0, 1.5)
+)
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
