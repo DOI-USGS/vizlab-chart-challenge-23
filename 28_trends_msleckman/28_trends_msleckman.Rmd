@@ -26,6 +26,7 @@ library(sf)
 library(mapdata)
 library(maps)
 library(spData)
+library(ggspatial)
 
 library(nhdplusTools)
 library(dataRetrieval)
@@ -305,6 +306,7 @@ lt_map_for_viz
 1. lt_map_for_viz
 2. line_plot_lst
 
+## CODE CHUNKS BELOW ARE UNTOUCHED FROM TEMPLATE
 This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
 
 > Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
@@ -337,6 +339,8 @@ usgs_logo <- magick::image_read("../usgs_logo_white.png")
 ```
 
 
+## 
+
 ## C. Produce final plot
 
 Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
@@ -351,7 +355,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 9, width = 16,
             hjust = 0, vjust = 1) +
   # the main plot
-  draw_plot(line_plot,
+  draw_plot(lt_map_for_viz,
             x = 0.01,
             y = 0.01,
             height = 1) +
@@ -394,9 +398,17 @@ ggsave(filename = "out/20230428_trends_msleckman.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
+2023 is a record snowpack year for the Lake Tahoe basin, and with that, a record snowmelt year.
+This viz is meant to highlight how the 2023 streamflow into the Lake Tahoe compares, thus far, to the top flow years. 
+
 1. Key takeaways here
+tbd
 
 ### Data source(s)
 
-Data sources here.
+NHDPlus High Resolution - geospatial dataset capturing water basins and flow of water across the Nation's landscapes. https://www.usgs.gov/national-hydrography/nhdplus-high-resolution
+
+USGS National Water Information System - water data collected at water gauges.
+https://waterdata.usgs.gov/nwis/rt
+
 
