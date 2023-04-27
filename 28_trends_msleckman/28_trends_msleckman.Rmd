@@ -209,15 +209,8 @@ lt_map <- ggplot()+
            fill = colours_vector[4], 
            color = colours_vector[4],
            alpha = 0.8)+
-  ## labels of states (actua)
-   # geom_sf_text(data = West_sf,
-   #              color = 'grey',
-   #              aes(label = NAME),
-   #              size =2, 
-   #              fontface = 'italic',
-   #              nudge_x = 0.1) +
   ## huc8 boundary of basin
-     geom_sf(data = Lake_Tahoe_huc8,
+   geom_sf(data = Lake_Tahoe_huc8,
            fill = 'transparent',
            color = 'firebrick',
            size = 0.8,
@@ -229,13 +222,15 @@ lt_map <- ggplot()+
            alpha = 0.7)+
   ## nwis st stations around LT
    geom_sf(data = active_nwis_sites_lake_tahoe,
-           aes(geometry = geometry),
-           color = '#3D8361',
-           size = 3)+
+           color = 'darkolivegreen2',
+           fill = '#3D8361',
+           size = 2, 
+           shape = 21)+
   ## station labels
-  geom_text_repel(data = active_nwis_sites_lake_tahoe,
+   geom_text_repel(data = active_nwis_sites_lake_tahoe,
                   color = 'black',
-                aes(label = site_no, geometry = geometry),
+                aes(label = site_no,
+                    geometry = geometry),
                 stat = "sf_coordinates",
     min.segment.length = 1,
     size =3,
@@ -243,7 +238,8 @@ lt_map <- ggplot()+
     point.padding = 1e-04)+
    coord_sf(
      ylim = c(map_bbox$ymin, map_bbox$ymax),
-     xlim = c(map_bbox$xmin, map_bbox$xmax))+
+     xlim = c(map_bbox$xmin, map_bbox$xmax)
+     )+
    theme_classic()+
   ## adding state labels at top of map
   annotate('text', x = -120.10, y = 39.34, label = c('California'),
@@ -251,6 +247,7 @@ lt_map <- ggplot()+
   annotate('text', x = -119.95, y = 39.34, label = c('Nevada'),
            hjust = 'left', size = 3, fontface = 'italic', colour = 'grey')
 
+lt_map
 ## using generic save_map function to generate final map (in 'src/funs.R')
 lt_map_for_viz <- final_map_formatting(lt_map,
                                    out_file = 'out/LT_map_gauges.png')
