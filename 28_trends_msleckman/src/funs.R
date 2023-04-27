@@ -62,6 +62,7 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
   # top_year_num = 5
   # site <- LT_dv_data$site_no[1]
   # color_palette = RColorBrewer::brewer.pal(9, 'BuGn')
+  # title = sprintf('Site Number: %s', site)
   # ##
   
   ## Determine highest annual mean flow years for the given site (excluding 2023, which we want to include in any case)
@@ -79,12 +80,15 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
   
   ## Generate plot
   plot  <- data %>% 
-    filter(year %in% c(top_years,'2023'),
-           Date > date_range[1] & Date < date_range[2]) |> 
+    filter(
+      # year %in% c(top_years,'2023'),
+      Date > date_range[1] & Date < date_range[2]
+      ) |> 
     ggplot()+
     geom_line(aes(x = .data[[x_var]],
                   y = .data[[y_var]],
                   colour =  as.factor(year)))+
+    # gghighlight(year %in% c(top_years, 2023))+
     theme_classic()+
     ## make labels on x axis just month
     scale_x_date(date_labels = '%b')+
@@ -95,8 +99,10 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
     xlab(label = 'Time')+
     ylab(label = 'Flow (cfs)')+
     scale_color_manual(values = color_palette)
-  plot
-    ggsave(file.path(out_folder, sprintf('ts_%s.png', site)), width = 9, height = 9, dpi = 300)
+  
+  # plot 
+   
+  ggsave(file.path(out_folder, sprintf('ts_%s.png', site)), width = 9, height = 9, dpi = 300)
   
     return(plot)
   
