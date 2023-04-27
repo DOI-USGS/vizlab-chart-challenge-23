@@ -191,9 +191,16 @@ mapview(LT_flines, color = 'darkblue')+
 
 map_bbox <- st_bbox(Lake_Tahoe_huc8)
 # extract colors form image
-colors <- get_colors(img='in/R/lake-tahoe-1591339_1280.jpeg')
+colors_lt1 <- get_colors(img='in/R/lake-tahoe-1591339_1280.jpeg')
+colors_lt2 <- get_colors(img='in/R/Lake-Tahoe-in-summer.png')
+colors_lt3 <- get_colors(img='in/R/lake_tahoe_w_boat..jpg')
 # create palette, default palette size is 10
-colours_vector <- make_palette(colors)
+lt_colours_vector_1 <- make_palette(colors_lt1)
+lt_colours_vector_2 <- make_palette(colors_lt2)
+lt_colours_vector_3 <- make_palette(colors_lt3)
+
+all_colors <- c(lt_colours_vector_1, lt_colours_vector_2, lt_colours_vector_3)
+show_col(all_colors)
 
 # Main map -----------------------------------------------------------
 
@@ -205,9 +212,10 @@ lt_map <- ggplot()+
            alpha = 0.1,
            size = 0.5)+
   ## lakes (incl. all lakes in basin)
-   geom_sf(data = LT_lakes,
-           fill = colours_vector[4], 
-           color = colours_vector[4],
+   geom_sf(data = LT_lakes |>
+             filter(GNIS_Name == "Lake Tahoe"),
+           fill = all_colors[7], 
+           color = all_colors[7],  ## probably easier to write out huc but currently dont have R studio updated to show colors
            alpha = 0.8)+
   ## huc8 boundary of basin
    geom_sf(data = Lake_Tahoe_huc8,
@@ -217,13 +225,13 @@ lt_map <- ggplot()+
            linetype = 'dotted')+
   ## Basin flowlines
    geom_sf(data = LT_flines,
-           color = colours_vector[4],
+           color = all_colors[7],
            size  = 0.5,
            alpha = 0.7)+
   ## nwis st stations around LT
    geom_sf(data = active_nwis_sites_lake_tahoe,
-           color = 'darkolivegreen2',
-           fill = '#3D8361',
+           color = all_colors[19],
+           fill = all_colors[30],
            size = 2, 
            shape = 21)+
   ## station labels
@@ -472,10 +480,7 @@ draw_line_plots <- purrr::map(1:length(line_plot_lst), function(x){
 
 ## C. Produce final plot
 
-Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
-
 ```{r cowplot, fig.width = 16, fig.height = 9, warning=FALSE, message=FALSE}
-
 
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
@@ -529,8 +534,8 @@ ggsave(filename = "out/20230428_trends_msleckman.png",
 ## Supporting information
 
 ### Key takeaways of this viz (1-2 sentences each)
-
-2023 is a record snowpack year for the Lake Tahoe basin, and with that, a record snowmelt year.
+[draft]
+2023 is a record snowpack year for the Lake Tahoe basin, and with that, a record snow melt year.
 This viz is meant to highlight how the 2023 streamflow into the Lake Tahoe compares, thus far, to the top flow years. 
 
 1. Key takeaways here
