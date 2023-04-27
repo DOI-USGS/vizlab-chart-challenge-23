@@ -5,33 +5,25 @@ p1_targets <- list(
   # Download historic ice
   tar_target(
     p1_noaa_glicd_ice,
-    sprintf(
-      "data/out/noaa_glicd_ice_cover_%s.txt", c("Erie", "Huron", 
-                                                "Michigan", "Ontario", "Superior", "Basin")
+    fetch_ice_data(
+      pattern_fill = c("Erie" = "eri", "Huron" = "hur",
+                       "Michigan" = "mic", "Ontario" = "ont",
+                       "Superior" = "sup", "Basin" = "bas"),
+      download_pattern = "https://www.glerl.noaa.gov/data/ice/glicd/daily/%s.txt",
+      outpath_pattern = "data/out/noaa_glicd_ice_cover_%s.txt",
+      use_vector_names = TRUE
     ),
-    # website is broken!
-    # fetch_ice_data(
-    #   pattern_fill = c("Erie" = "eri", "Huron" = "hur", 
-    #                    "Michigan" = "mic", "Ontario" = "ont", 
-    #                    "Superior" = "sup", "Basin" = "bas"),
-    #   download_pattern = "https://www.glerl.noaa.gov/data/ice/glicd/daily/%s.txt",
-    #   outpath_pattern = "data/out/noaa_glicd_ice_cover_%s.txt",
-    #   use_vector_names = TRUE
-    # ),
     format = "file"
   ),
   
   # Download 2023 ice
   tar_target(
-    p1_noaa_coastwatch_ice,
-    "data/out/noaa_coastwatch_g2022_2023_ice.txt",
-    # website is broken!
-    # fetch_ice_data(
-    #   pattern_fill = c("g2022_2023_ice"),
-    #   download_pattern = "https://coastwatch.glerl.noaa.gov/statistic/ice/dat/%s.dat",
-    #   outpath_pattern = "data/out/noaa_coastwatch_%s.txt",
-    #   use_vector_names = FALSE
-    # ),
+    fetch_ice_data(
+      pattern_fill = c("g2022_2023_ice"),
+      download_pattern = "https://coastwatch.glerl.noaa.gov/statistic/ice/dat/%s.dat",
+      outpath_pattern = "data/out/noaa_coastwatch_%s.txt",
+      use_vector_names = FALSE
+    ),
     format = "file"
   ),
   
