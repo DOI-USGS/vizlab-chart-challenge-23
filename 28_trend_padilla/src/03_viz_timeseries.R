@@ -10,7 +10,6 @@
 #' to their location on the Great Lakes HOMES scale (TRUE) or in alphabetical order (FALSE). Default is TRUE.
 #' 
 annual_lake_plots <- function(ice_tibble, style = c("point", "bar", "lolli"), homes_order = TRUE) {
-  # browser()
   # calculate data.frame for max ice and yday by water year
   df_max_ice_yday <- ice_tibble |> 
     group_by(lake, wy) |> 
@@ -91,8 +90,7 @@ create_ice_pointplot <- function(tbl) {
     theme_minimal() +
     theme(axis.text.y = element_text(size = 14))
   
-  # conditionally remove x-axis labels for lakes that aren't superior+
-  # if(tbl$lk[1] == "Superior") { # tall
+  # conditionally remove x-axis labels for lakes that aren't Erie or Ontario+
   if(tbl$lk[1] == "Erie" | tbl$lk[1] == "Ontario") { # wide
     ts <- ts + 
       theme(axis.text.x = element_text(size = 14, angle = 0, hjust = 0.5, vjust = 0.5))
@@ -125,8 +123,7 @@ create_ice_barplot <- function(tbl) {
     theme_minimal() +
     theme(axis.text.y = element_text(size = 14))
   
-  # conditionally remove x-axis labels for lakes that aren't superior+
-  # if(tbl$lk[1] == "Superior") { # tall
+  # conditionally remove x-axis labels for lakes that aren't Erie or Ontario+
   if(tbl$lk[1] == "Erie" | tbl$lk[1] == "Ontario") { # wide
     ts <- ts + 
       theme(axis.text.x = element_text(size = 14, angle = 0, hjust = 0.5, vjust = 0.5))
@@ -156,7 +153,7 @@ create_ice_lolliplot <- function(tbl) {
     geom_point(aes(color = ice_rpd))+
     scale_color_steps2(mid = "#cdf1ff", high = "#042d4b", low = "#710193",
                           limits = c(-100, 100), n.breaks = 9, 
-                          show.limits = TRUE) + #, guide = guide_colorbar(ticks = FALSE)) +
+                          show.limits = TRUE) +
     labs(title = "", x = "", y = "", color = "Percent\nChange") +
     
     scale_x_continuous(breaks = seq(from = 1975, to = 2020, by = 5)) +
@@ -171,8 +168,7 @@ create_ice_lolliplot <- function(tbl) {
           legend.text = element_text(size = 14),
           legend.box.margin = margin(0, 0, 0, 0.1, "in"))
   
-  # conditionally remove x-axis labels for lakes that aren't superior+
-  # if(tbl$lk[1] == "Superior") { # tall
+  # conditionally remove x-axis labels for lakes that aren't Erie or Ontario
   if(tbl$lk[1] == "Erie" | tbl$lk[1] == "Ontario") { # wide
     ts <- ts + 
       theme(axis.text.x = element_text(size = 14, angle = 0, hjust = 0.5, vjust = 0.5))

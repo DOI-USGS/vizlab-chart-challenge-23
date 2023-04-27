@@ -4,7 +4,7 @@
 #' from ESRI shapefiles. The resulting object can be used for visualizing the lakes
 #' or as a spatial join target.
 #'
-#' @param esri_files A character vector of file paths pointing to ESRI shapefiles
+#' @param shp_files A character vector of file paths pointing to ESRI shapefiles
 #' representing the lakes. Only files ending in ".shp" will be processed.
 #'
 #' @returns A simple spatial object representing the outline of the lakes.
@@ -29,7 +29,6 @@ make_simple_lake_sf <- function(shp_files) {
 create_great_lakes_maps <- function(in_files, homes_order = TRUE) {
 
   # extract lake names
-  # index_shp_files <- in_files |> str_detect("\\.shp")
   in_shp_files <- in_files[grepl(".shp", in_files)]
   lake_names <- basename(in_shp_files) |> str_extract("(?<=_Lake)[[:alpha:]]+")
 
@@ -93,9 +92,6 @@ plot_clean_map <- function(map_sf, square_bbox = TRUE) {
     ggthemes::theme_map() +
     theme(strip.background = element_rect(colour = NA, fill = NA),
           strip.text = element_text(size = 20)) 
-  # +
-  #   # this is here to diagnose the problems with patchwork
-  #   theme(plot.background = element_rect(color = "deepskyblue3", linewidth = 3))
   
   if(square_bbox) {
     orig_bbox <- st_bbox(map_sf) |> st_as_sfc()

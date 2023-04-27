@@ -50,7 +50,6 @@ parse_glicd_ice <- function(in_file) {
 #' @returns A tibble
 #' 
 parse_coastwatch_ice <- function(in_file) {
-  # browser()
   # read row names
   data_names <- read_table(in_file, n_max = 1, skip = 5, col_names = FALSE) |> 
     t() |> 
