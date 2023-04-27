@@ -8,11 +8,9 @@ Your prompt: World Bank Data
 
 Date for your prompt in April: 30
 
-Image: ![](out/20230430_worldbank_jhariharan.gif)
+Image: 
 
-Share the link in this document with the format `![](out/20230000_prompt-example_name.png)`:
-
-![](out/20230430_worldbank_jhariharan.gif)
+![20230430_worldbank_jhariharan](/uploads/a3aaf937175bc34db70f481278f55d95/20230430_worldbank_jhariharan.gif)
 
 Your key takeaways (1-2 sentences each):
 
