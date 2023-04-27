@@ -13,7 +13,7 @@
 #' @param 
 #' @example 
 
-save_map <- function(map,out_file){
+final_map_formatting <- function(map,out_file){
   
   cleaned_map <- map +
     theme(plot.title = element_text(size = 10, face= 'bold'),
@@ -21,9 +21,11 @@ save_map <- function(map,out_file){
           legend.title = element_text (size = 12),
           axis.title.x = element_blank(),
           axis.line = element_blank(),
-          panel.background = element_rect(color= 'black'),
+          panel.background = element_rect(),
           axis.title.y = element_blank(),
-          legend.position = 'bottom')+
+          legend.position = 'bottom', 
+          axis.ticks = element_blank(),
+          axis.text = element_blank())+
     ggspatial::annotation_north_arrow(location = "br", which_north = "true",  
                                       pad_x = unit(0.0, "in"), pad_y = unit(0.4, "in"), 
                                       style = north_arrow_fancy_orienteering(fill = 'black')) + 
@@ -46,11 +48,21 @@ save_map <- function(map,out_file){
 #' @param out_folder path of folder in which the plots will be saved. 
 #' @example time_series_plot(data = streamflow_df, y_var = 'flow', date_range =  c('1975-01-01', '2023-04-15'), top_year_num = 4, out_folder = 'Viz/out')
 
-time_series_plot <- function(data, x_var, y_var, date_range, top_year_num = 5, out_folder = 'out'){
+time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_year_num = 5, out_folder = 'out'){
   
   ## extract site number
   site <- unique(data$site_no)
   print(site)
+  
+  # ## TEMP
+  # data <- LT_dv_data_viz |> filter(site_no == LT_dv_data$site_no[1])
+  # x_var = 'fake_year'
+  # y_var = 'MA'
+  # date_range =  c('1975-01-01', '2023-04-15')
+  # top_year_num = 5
+  # site <- LT_dv_data$site_no[1]
+  # color_palette = RColorBrewer::brewer.pal(9, 'BuGn')
+  # ##
   
   ## Determine highest annual mean flow years for the site (excluding 2023, which we want to include in any case)
   top_years_df <- data |> 
@@ -72,16 +84,16 @@ time_series_plot <- function(data, x_var, y_var, date_range, top_year_num = 5, o
     ggplot()+
     geom_line(aes(x = .data[[x_var]],
                   y = .data[[y_var]],
-                  colour = as.factor(year))
-              )+
+                  colour =  as.factor(year)))+
     theme_classic()+
     scale_x_date(date_labels = '%b')+
     labs(title = sprintf('Site Number: %s', site),
          colour = "Top Flow Years"
          )+
     xlab(label = 'Time')+
-    ylab(label = 'Flow (cfs)')
-  
+    ylab(label = 'Flow (cfs)')+
+    scale_color_manual(values = color_palette)
+  plot
     ggsave(file.path(out_folder, sprintf('ts_%s.png', site)), width = 9, height = 9, dpi = 300)
   
     return(plot)
