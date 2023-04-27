@@ -311,8 +311,9 @@ LT_dv_data_dates <- LT_dv_data |>
 LT_dv_data_w_MA <- LT_dv_data_dates |>
   ## calc MA with zoo::rollmean() . Check what k (2nd param) is for 
   mutate(MA = rollmean(x = Flow, 
-                       k = 6,
-                       na.pad = T, align = 'right'))
+                       k = 5,
+                       na.pad = T,
+                       align = 'center'))
 
 # Focus on Spring flow ----------------------------------------------------
 
@@ -327,12 +328,18 @@ LT_dv_data_viz <- LT_dv_data_w_MA |>
 
 ### Temp code to run plit quickly and ###
 # # ## Generate plot
-# LT_dv_data_viz |>
-#   # filter(year %in% c(2018,2019,2020, 2021, 2022, 2023)) |>
-#   ggplot()+
-#   geom_line(aes(x = fake_date, y = MA, color = as.factor(year)))+
-#   gghighlight(max(MA), max_highlight = 3L)+ 
-#   facet_wrap(vars(site_no), scales = 'free')
+LT_dv_data_viz |>
+  filter(
+  year %in% c(2018, 2019,2020),
+  # year %in% c(2018,2019,2020, 2021, 2022, 2023),
+  site_no == site) |>
+  ggplot()+
+  geom_line(aes(x = fake_date, y = Flow, color = as.factor(year)))+
+  geom_smooth()
+  geom_line(aes(x = fake_date, y = MA, color = as.factor(year)), linetype = 'dotted')+
+  theme_minimal()+
+  gghighlight(max(MA), max_highlight = 3L)+
+  facet_wrap(vars(site_no), scales = 'free')
 
 ```
 
