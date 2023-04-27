@@ -43,12 +43,14 @@ annual_lake_plots <- function(ice_tibble, style = c("point", "bar", "lolli"), ho
       group_map(~ create_ice_barplot(.x)) |> 
       setNames(attributes(df_max_ice_yday)$groups[[1]])
     
-  } else {
+  } else if(style == "bar") {
     
     ls_ice_ts <- df_max_ice_yday |> 
       group_map(~ create_ice_lolliplot(.x)) |> 
       setNames(attributes(df_max_ice_yday)$groups[[1]])
     
+  } else {
+    message("Invalid plot style specified")
   }
   
   # re-org data

@@ -16,21 +16,21 @@ p3_targets <- list(
   tar_target(
     p3_max_ice_ts_point,
     annual_lake_plots(ice_tibble = p2_ice_data, 
-                      style = "pointplot", 
+                      style = "point", 
                       homes_order = FALSE)
   ),
 
   tar_target(
     p3_max_ice_ts_bar,
     annual_lake_plots(ice_tibble = p2_ice_data, 
-                      style = "barplot", 
+                      style = "bar", 
                       homes_order = FALSE)
   ),
 
   tar_target(
     p3_max_ice_ts_lolli,
     annual_lake_plots(ice_tibble = p2_ice_data, 
-                      style = "lolliplot", 
+                      style = "lolli", 
                       homes_order = FALSE)
   ),
   
