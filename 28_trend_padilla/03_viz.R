@@ -64,7 +64,7 @@ p3_targets <- list(
     p3_ls_combo_plots_lolli,
     create_combo_plots(
       map = p3_great_lakes_maps,
-      timeseries = p3_max_ice_ts_bar,
+      timeseries = p3_max_ice_ts_lolli,
       out_path_pattern =  NULL #"out/lake_and_ice_ts_lolli_%s.png"
     )
   ),

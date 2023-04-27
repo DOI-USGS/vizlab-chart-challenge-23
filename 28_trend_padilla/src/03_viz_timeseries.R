@@ -10,6 +10,7 @@
 #' to their location on the Great Lakes HOMES scale (TRUE) or in alphabetical order (FALSE). Default is TRUE.
 #' 
 annual_lake_plots <- function(ice_tibble, style = c("point", "bar", "lolli"), homes_order = TRUE) {
+  
   # calculate data.frame for max ice and yday by water year
   df_max_ice_yday <- ice_tibble |> 
     group_by(lake, wy) |> 
@@ -43,7 +44,7 @@ annual_lake_plots <- function(ice_tibble, style = c("point", "bar", "lolli"), ho
       group_map(~ create_ice_barplot(.x)) |> 
       setNames(attributes(df_max_ice_yday)$groups[[1]])
     
-  } else if(style == "bar") {
+  } else if(style == "lolli") {
     
     ls_ice_ts <- df_max_ice_yday |> 
       group_map(~ create_ice_lolliplot(.x)) |> 
@@ -171,7 +172,7 @@ create_ice_lolliplot <- function(tbl) {
           legend.box.margin = margin(0, 0, 0, 0.1, "in"))
   
   # conditionally remove x-axis labels for lakes that aren't Erie or Ontario
-  if(tbl$lk[1] == "Erie" | tbl$lk[1] == "Ontario") { # wide
+  if(tbl$lk[1] == "Erie" | tbl$lk[1] == "Ontario") {
     ts <- ts + 
       theme(axis.text.x = element_text(size = 14, angle = 0, hjust = 0.5, vjust = 0.5))
   } else {

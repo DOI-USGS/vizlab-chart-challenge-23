@@ -100,8 +100,7 @@ create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) 
                         plotMichigan, plotHuron,
                         plotErie, plotOntario,
                         align = "v",
-                        # ncol = 1) # tall
-                        ncol = 2) #wide
+                        ncol = 2)
   
   # now add the title
   title <- ggdraw() + 
@@ -133,8 +132,7 @@ create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) 
     
     ggsave(filename = out_path, 
            plot = out_plot_w_labs, 
-           # height = 12, width = 6, units = "in", # tall
-           height = 9, width = 16, units = "in", # wide
+           height = 9, width = 16, units = "in",
            dpi = 300, bg = "white")
     
     message("returning file path...")
