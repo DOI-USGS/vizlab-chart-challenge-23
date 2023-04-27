@@ -93,7 +93,7 @@ p3_targets <- list(
   
   
   tar_target(
-    p3_great_lakes_ice_lolli_png,
+    p3_great_lakes_ice_lolli,
     create_final_plot(
       ls_gl_plots = p3_ls_combo_plots_lolli,
       legend = p3_shared_legend_lolli,

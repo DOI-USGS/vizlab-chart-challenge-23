@@ -19,7 +19,7 @@ fetch_ice_data <- function(pattern_fill, download_pattern,
   
   if(use_vector_names == TRUE & !(is.null(names(pattern_fill)))) {
     out_pattern_fill = names(pattern_fill)
-  } else {
+  } else if(use_vector_names == TRUE & is.null(names(pattern_fill))) {
     message("`use_vector_names == TRUE`, but `pattern_fill` is not a named vector")
   }
   
