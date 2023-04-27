@@ -119,7 +119,33 @@ canvas <- grid::rectGrob(
 usgs_logo <- magick::image_read("../usgs_logo_white.png") 
 
 # Main plot
-main_plot <- ggplot(df_tidy, aes(x = year, y = amount*.data[[vol]])) + geom_col(aes(fill = use)) + xlab("Year") + ylab("Volume of Freshwater Withdrawal, billions of cubic meters") + ggtitle("Annual Freshwater Withdrawals in the United States (1990-2019)", subtitle="World Bank World Development Indicators Data") + labs(fill="EXPLANATION") + theme(panel.background = element_blank(), plot.background = element_rect(fill = background_color), text = element_text(colour = "white", size=14), legend.background = element_blank(), axis.text = element_text(colour = "white", size = 18), axis.ticks = element_line(colour = "white"), plot.title = element_text(size = 30), plot.subtitle = element_text(size = 22), axis.title = element_text(size = 18), legend.title = element_text(size=22), legend.text = element_text(size=18), plot.caption=element_text(size=14, colour="white", hjust=1)) + scale_fill_manual(values = c("#ff71ce", "#01cdfe", "#05ffa1")) + labs(caption="World Bank World Development Indicators Data, The World Bank Group, 2023.\nData acquisition and plotting done in the R programming language using the WDI, ggplot2, and tidyverse packages.") + gganimate::transition_time(year) + gganimate::shadow_mark() + gganimate::enter_grow() + gganimate::enter_fade()
+main_plot <- ggplot(df_tidy, aes(x = year, y = amount*.data[[vol]])) + 
+  geom_col(aes(fill = use)) + 
+  xlab("") +
+  ylab("Volume of Freshwater Withdrawal, cubic kilometers") + 
+  ggtitle("Annual Freshwater Withdrawals in the United States (1990-2019)", subtitle="World Bank World Development Indicators Data") + 
+  labs(fill = "EXPLANATION") + 
+  theme(panel.background = element_blank(),
+        plot.background = element_rect(fill = background_color),
+        panel.grid.major = element_line(colour="#B8B8B8"),
+        text = element_text(colour = "white", size=14),
+        legend.background = element_blank(),
+        axis.text = element_text(colour = "#B8B8B8", size = 18),
+        axis.ticks = element_line(colour = "#B8B8B8"),
+        plot.title = element_text(size = 30, margin = margin(0, 0, 0.25, 0, unit = "cm"), face="bold"),
+        plot.subtitle = element_text(size = 22, margin = margin(0, 0, 0.5, 0, unit = "cm")),
+        axis.title.y = element_text(size = 18, colour = "white", margin = margin(0, 1, 0, 0, unit = "cm")),
+        legend.title = element_text(size=22),
+        legend.text = element_text(size=18),
+        legend.position = 'top',
+        plot.caption = element_text(size=14, colour="white", hjust=1),
+        plot.margin = margin(1, 1, 1, 1, unit = "cm")) +
+  scale_fill_manual(values = c("#ff71ce", "#01cdfe", "#00d182")) + 
+  labs(caption="World Bank World Development Indicators Data, The World Bank Group, 2023.\nData acquisition and plotting done in the R programming language using the WDI, ggplot2, and tidyverse packages.", margin = margin(1, 0, 0, 0, unit = "cm")) + 
+  gganimate::transition_time(year) + 
+  gganimate::shadow_mark() + 
+  gganimate::enter_grow() + 
+  gganimate::enter_fade()
 
 main_gif <- gganimate::animate(main_plot, height = 9, width = 16, units = "in", res = 100)
 
@@ -136,7 +162,7 @@ Here, use `magick` and `ggsave` to create the final viz for sharing out on Twitt
 ```{r}
 magick_gif <- magick::image_read('out/base.gif')
 
-gif_w_logo <- magick::image_composite(magick_gif, image_scale(usgs_logo, "150"), offset = "+10+840")
+gif_w_logo <- magick::image_composite(magick_gif, image_scale(usgs_logo, "150"), offset = "+10+810")
 
 magick::image_write(gif_w_logo, 'out/20230430_worldbank_jhariharan.gif')
 
