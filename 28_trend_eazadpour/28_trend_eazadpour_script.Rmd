@@ -1,0 +1,355 @@
+---
+title: "Chart Challenge 2023: April 28, Trend" 
+author: "Elmera Azadpour"
+date: "2023-04-21"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1.  Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "\`" marks) to explain your process to Vizlab reviewers
+2.  Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3.  You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function.
+4.  To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5.  When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: <https://yihui.org/knitr/>
+
+## Set up - lets load
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Define libraries here.
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(sbtools) # for pulling sciencebase data
+library(readr) # for reading csv 
+library(janitor) # for cleaning dataframe column names
+library(geofacet) # for the facet map of the U.S. 
+library(grid) # plot layout
+library(png) # for adding oak tree bckground img
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+```{r load}
+# Load forest area across CONUS 1985-2020 
+#sbtools::authenticate_sb()
+
+file_in_path_continuous <- "in/summary_forest_area_by_year.csv"
+if(!file.exists(file_in_path_continuous)){ # if files don't exist, download
+  sbtools::item_file_download(sb_id = "6287f350d34e4fef2ec3c2b2",
+                              names = "summary_forest_area_by_year.csv",
+                              destinations =  "in/summary_forest_area_by_year.csv",
+                              overwrite_file = F)
+}
+```
+
+## Get data ready for plotting
+
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+```{r processing}
+# clean raw data 
+annual_forest_area_raw <- readr::read_csv(file_in_path_continuous) |>
+  janitor::clean_names() |>
+  rename(name = state)
+
+# calculate forest average for each state and get difference from average over time 
+forest_avg <- annual_forest_area_raw |> 
+  group_by(name) |> 
+  summarize(state_area_avg = mean(area))
+
+forest_avg_join <- left_join(annual_forest_area_raw, forest_avg) |> group_by(name)
+
+forest_avg_diff <- forest_avg_join |> 
+  mutate(forest_diff = area - state_area_avg)
+
+# Peak at states who fall on the tails of forest area difference from 35 yr mean
+tails_forest_area <- forest_avg_diff |>
+  filter(forest_diff <= -5000 | forest_diff >= 5000)
+
+# get all unique states to then filter us grid by 
+state_names <- unique(forest_avg_diff$name)
+
+# get state grid minus Alaska, Hawaii, Wisonsin for legend plt
+my_us_grid_dropWI <- us_state_grid1[c(-2, -11 , -49), ]
+
+# join state (minus WI, AK, WI) grid data with annual forest data, filter states to plot with geofacet, and calculate area change from 35 yr mean for each state
+my_grid_dropWI <- my_us_grid_dropWI |> 
+  filter(!code %in% c("AK", "HI", "WI")) |> 
+  left_join(forest_avg_diff, by = "name") |> 
+  filter(name %in% state_names) |> 
+  mutate(area_change = case_when(forest_diff > 0 ~ "POSITIVE",
+                                 forest_diff < 0 ~ "NEGATIVE"))
+
+# join state (minus AK, HI) grid data with annual forest data, filter states to plot with geofacet, and calculate area change from 35 yr mean for each state
+my_grid_conus <- us_state_grid1 |> 
+  filter(!code %in% c("AK", "HI")) |> 
+  left_join(forest_avg_diff, by = "name") |> 
+  filter(name %in% state_names) |> 
+  mutate(area_change = case_when(forest_diff > 0 ~ "POSITIVE",
+                                 forest_diff < 0 ~ "NEGATIVE"))
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition.
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- 'Open Sans'
+font_add_google(font_legend)
+showtext_opts(dpi = 300, regular.wt = 300, bold.wt = 800)
+showtext_auto(enable = TRUE)
+
+# Define colors
+postive_col = "#083d21"
+negative_col = "#CC5500"
+background_color = "#ffffff"
+font_color =  "#000000"
+
+# Add arrow lines for forest diff that exceeds our -5km to 5km range 
+arrow_fxn <- function(data, state, x, y ,y_end, curve, color){
+  geom_segment(data = data |> filter(name == state),
+               aes(x = x,
+                   xend = x, 
+                   y = y,
+                   yend = y_end),
+               arrow = grid::arrow(length = unit(0.16, 'lines'), ends = "last"),
+               angle = 90,
+               curvature = curve,
+               color = color,
+               arrow.fill = color) 
+}
+
+(main_plot <- ggplot(my_grid_dropWI, aes(x = year, y = forest_diff)) +
+    # Make positive change darker green 
+    geom_segment(data = my_grid_dropWI |> filter(area_change == "POSITIVE"), 
+                 aes(x = year, xend = year, y = 0, yend = forest_diff), color = postive_col,
+                 linewidth = 0.5) +
+    geom_point(data = my_grid_dropWI |> filter(area_change == "POSITIVE"),
+               color = postive_col, size = 0.5) +
+    # Make negative change burnt orange 
+    geom_segment(data = my_grid_dropWI |> filter(area_change == "NEGATIVE"), 
+                 aes(x = year, xend = year, y = 0, yend = forest_diff), color = negative_col,
+                 linewidth = 0.5) +
+    geom_point(data = my_grid_dropWI |> filter(area_change == "NEGATIVE"),
+               color = negative_col, size = 0.5) + 
+    scale_y_continuous(limits = c(-5000, 5000), breaks = c(-5000,0,5000), labels = paste(c("-5000", "0 km", "5000"))) +
+    scale_x_discrete(limits = c(1985, 2020), labels = c("1985", "2020")) +
+    # add down/up arrows to show areas that exceed the -5k and +5k range
+    # add positive arrow for 1995 positive difference in TX
+    arrow_fxn(my_us_grid_dropWI, "Texas", 1995, 0, 5000, 1.5, postive_col) +
+    # add negative arrows for 2011-2014 TX
+    arrow_fxn(my_us_grid_dropWI, "Texas", 2011, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "Texas", 2012, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "Texas", 2013, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "Texas", 2014, 0, -5000, -1.5, negative_col) +
+    # add negative arrows for 2018-2020 CA
+    arrow_fxn(my_us_grid_dropWI, "California", 2018, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "California", 2019, 0, -5000, -1.5, negative_col) +
+    arrow_fxn(my_us_grid_dropWI, "California", 2020, 0, -5000, -1.5, negative_col) +
+    facet_geo(~ code, grid = my_us_grid_dropWI) +
+    labs(x = NULL, y= NULL) +
+    # set some themeing 
+    theme_classic(base_size = 12) + 
+    theme(strip.background = element_blank(),
+          strip.text = element_text(vjust = 1,
+                                    size = 12,
+                                    margin = margin(b = -2),
+                                    color = font_color),
+          strip.placement = "inside",
+          strip.background.x = element_blank(),
+          axis.line = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          panel.border = element_blank(),
+          plot.background = element_rect(fill = background_color, color = NA),
+          panel.background = element_blank(),
+          panel.spacing.x = unit(8, "pt"),
+          panel.spacing.y = unit(7, "pt"),
+          plot.margin = margin(70, 60, 70, 60, "pt"),
+          legend.background = element_rect(fill = background_color, color = NA)) 
+)
+
+
+(legend_plot <- ggplot(my_grid_conus |> filter(name == 'Wisconsin'), aes(x = year, y = forest_diff)) +
+    # Make positive change darker green 
+    geom_segment(data = my_grid_conus |> filter(area_change == "POSITIVE",
+                                                name == 'Wisconsin'),
+                 aes(x=year, xend=year, y=0, yend=forest_diff),
+                 color= postive_col, linewidth = 0.5) +
+    geom_point(data = my_grid_conus |> filter(area_change == "POSITIVE",
+                                              name == 'Wisconsin'),
+               color = postive_col, size = 0.5) +
+    # Make negative change burnt orange 
+    geom_segment(data = my_grid_conus |> filter(area_change == "NEGATIVE",
+                                                name == 'Wisconsin'),
+                 aes(x = year, xend = year, y = 0, yend = forest_diff), color = negative_col,
+                 linewidth = 0.5) +
+    geom_point(data = my_grid_conus |> filter(area_change == "NEGATIVE",
+                                              name == 'Wisconsin'),
+               color = negative_col, size = 0.5) +
+    # facet wrap by state - WI
+    facet_wrap(~code) +
+    scale_y_continuous(limits = c(-5000, 5000), breaks = c(-5000,0,5000), labels = c("-5000 ", expression(paste("0"~km^2)), "5000 ")) +
+    scale_x_discrete(limits = c(1985, 2020), labels = c("1985", "2020")) +
+    labs(x = NULL, y = NULL) +
+    # set seome theming 
+    theme_minimal() +
+    theme(panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_blank(),
+          panel.grid.major.x = element_blank(),
+          text = element_text(size = 10, color = font_color),
+          strip.text = element_text(size = 12,
+                                    margin = margin(b = -2),
+                                    vjust = 1, hjust = 0.365,
+                                    color = font_color),
+          axis.text = element_text(size = 12, color = font_color), 
+          panel.background = element_rect(fill = 'white', color = "white")
+        )
+  ) 
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0,
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color
+                  )
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png")
+
+```
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+title_font <- 'Varela Round'
+font_add_google(title_font)
+showtext_opts(dpi = 300, regular.wt = 400, bold.wt = 1000)
+showtext_auto(enable = TRUE)
+
+custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+                     xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 8, width = 8,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = 0.009,
+            y = -0.05,
+            height = 1) +
+  # Wisconsin legend plot
+  draw_plot(legend_plot, .442, .76, .115, .15) +
+  # explainer text
+  draw_label("Elmera Azadpour, USGS\nData: doi.org/10.5066/P9PRH8DQ",
+             fontfamily = font_legend,
+             x = 0.983,
+             y = 0.039,
+             size = 10,
+             hjust = 1,
+             vjust = 0,
+             color = font_color) +
+  #  Title
+    draw_label("Change in Forest Area",
+             x = 0.035,
+             y = 0.94,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = title_font,
+             fontface = "bold",
+             color = font_color,
+             size = 36) +
+      draw_label("compared to 35-year mean",
+             x = 0.04,
+             y = 0.88,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = title_font,
+             fontface = "bold",
+             color = font_color,
+             size = 26) +
+        draw_label("(1985-2020)",
+             x = 0.04,
+             y = 0.83,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = title_font,
+             fontface = "bold",
+             color = font_color,
+             size = 26) +
+  # Add logo
+  draw_image(usgs_logo,
+             x = 0.04,
+             y = 0.034,
+             width = 0.1,
+             hjust = 0, vjust = 0,
+             halign = 0, valign = 0) 
+  
+
+# add oak tree - eastern U.S.
+oak <- png::readPNG("in/oak-tree.png")
+oak_opacity <- matrix(rgb(oak[,,1],oak[,,2],oak[,,3], oak[,,4] * 0.05), nrow = dim(oak)[1]) ## can adjust 0.05 alpha 
+
+# add pine tree - western U.S.
+pine <- png::readPNG("in/pine-tree.png")
+pine_opacity <- matrix(rgb(pine[,,1],pine[,,2], pine[,,3], pine[,,4] * 0.05), nrow = dim(pine)[1]) ## can adjust 0.05 alpha 
+
+(final_plt <- custom_plt +
+    annotation_custom(rasterGrob(oak_opacity,
+                                 width = unit(1,"npc"),
+                                 height = unit(1,"npc")),
+                      0.6, 1.21, -Inf, 1.5) +
+    annotation_custom(rasterGrob(pine_opacity,
+                                 width = unit(1,"npc"), 
+                                 height = unit(1,"npc")),
+                      -0.18, 0.28, 0, 1.5)
+)
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230428_trend_eazadpour.png",
+       width = 16, height = 9, dpi = 300,
+       bg = "white")
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+1) Forest area is generally declining across the U.S. Notably, many states in the West & Southwest U.S. such as California, Arizona and New Mexico have seen decreases in forest area in recent years when compared to the state's 35 year mean. Additionally, Texas saw decreases in forest area from 2011-2014 compared to the states 35 year mean. 
+
+### Data source(s)
+Sleeter, B.M., and Selmants, P.C., 2022, Frequency of forest change across the conterminous United States from 1985-2020: U.S. Geological Survey data release, https://doi.org/10.5066/P9PRH8DQ.
