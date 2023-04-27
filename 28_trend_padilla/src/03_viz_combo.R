@@ -5,6 +5,8 @@
 #'
 #' @param maps A named list of spatial maps for each lake. Each element of the list should be an `sf` object
 #' @param timeseries A named list of time series data for each lake. Each element of the list should be a data frame with columns "Date" and "Value".
+#' @param out_path_pattern if not NULL, filepath template for exported plot.
+#' If NULL, plot object is returned
 #' @returns A list of plots, with one plot for each lake
 #' 
 create_combo_plots <- function(maps, timeseries, out_path_pattern = NULL) {
@@ -79,7 +81,9 @@ format_and_combine_plots <- function(x_map, y_ts) {
 #'
 #' @param ls_gl_plots A list of ggplot objects for each of the Great Lakes
 #' @param ttl The title to be displayed at the top of the plot
-#' @param out_path The file path for the output plot file
+#' @param legend legend to be placed alongside plots. Can be null.
+#' @param out_path The file path for the output plot file. If NULL
+#' the plot object is returned
 #'
 #' @returns A final plot grid with the specified title and a combination of all ggplot objects in the ls_gl_plots list.
 #' 
@@ -144,9 +148,4 @@ create_final_plot <- function(ls_gl_plots, ttl, legend = NULL, out_path = NULL) 
   }
   
 
-  ggsave(filename = out_path, 
-         plot = out_plot_w_ttl, 
-         # height = 12, width = 6, units = "in", # tall
-         height = 9, width = 16, units = "in", # wide
-         dpi = 300, bg = "white")
 }
