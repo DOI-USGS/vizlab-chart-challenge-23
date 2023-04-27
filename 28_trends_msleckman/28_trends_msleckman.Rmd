@@ -29,7 +29,7 @@ library(spData)
 library(ggspatial)
 library(ggrepel)
 library(colorfindr)
-
+library(gghighlight)
 library(nhdplusTools)
 library(dataRetrieval)
 
@@ -326,12 +326,13 @@ LT_dv_data_viz <- LT_dv_data_w_MA |>
   group_by(site_no)
 
 ### Temp code to run plit quickly and ###
-# ## Generate plot
+# # ## Generate plot
 # LT_dv_data_viz |>
-#   filter(year %in% c(2020, 2021, 2022, 2023)) |>
+#   # filter(year %in% c(2018,2019,2020, 2021, 2022, 2023)) |>
 #   ggplot()+
 #   geom_line(aes(x = fake_date, y = MA, color = as.factor(year)))+
-#   facet_wrap(~site_no, scale = 'free')
+#   gghighlight(max(MA), max_highlight = 3L)+ 
+#   facet_wrap(vars(site_no), scales = 'free')
 
 ```
 
