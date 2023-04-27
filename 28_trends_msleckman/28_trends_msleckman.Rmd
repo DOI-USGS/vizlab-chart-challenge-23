@@ -198,34 +198,41 @@ colours_vector <- make_palette(colors)
 # Main map -----------------------------------------------------------
 
 lt_map <- ggplot()+
+  ## State boundaries
    geom_sf(data = West_sf,
            fill = 'white',
            color = 'grey',
            alpha = 0.1,
            size = 0.5)+
+  ## lakes (incl. all lakes in basin)
    geom_sf(data = LT_lakes,
            fill = colours_vector[4], 
            color = colours_vector[4],
            alpha = 0.8)+
-   geom_sf_text(data = West_sf,
-                color = 'grey',
-                aes(label = NAME),
-                size =2, 
-                fontface = 'italic',
-                nudge_x = 0.1) +
-   geom_sf(data = Lake_Tahoe_huc8,
+  ## labels of states (actua)
+   # geom_sf_text(data = West_sf,
+   #              color = 'grey',
+   #              aes(label = NAME),
+   #              size =2, 
+   #              fontface = 'italic',
+   #              nudge_x = 0.1) +
+  ## huc8 boundary of basin
+     geom_sf(data = Lake_Tahoe_huc8,
            fill = 'transparent',
            color = 'firebrick',
            size = 0.8,
            linetype = 'dotted')+
+  ## Basin flowlines
    geom_sf(data = LT_flines,
            color = colours_vector[4],
            size  = 0.5,
            alpha = 0.7)+
+  ## nwis st stations around LT
    geom_sf(data = active_nwis_sites_lake_tahoe,
            aes(geometry = geometry),
            color = '#3D8361',
            size = 3)+
+  ## station labels
   geom_text_repel(data = active_nwis_sites_lake_tahoe,
                   color = 'black',
                 aes(label = site_no, geometry = geometry),
@@ -238,12 +245,13 @@ lt_map <- ggplot()+
      ylim = c(map_bbox$ymin, map_bbox$ymax),
      xlim = c(map_bbox$xmin, map_bbox$xmax))+
    theme_classic()+
+  ## adding state labels at top of map
   annotate('text', x = -120.10, y = 39.34, label = c('California'),
            hjust = 'left', size = 3, fontface = 'italic',  colour = 'grey')+
   annotate('text', x = -119.95, y = 39.34, label = c('Nevada'),
            hjust = 'left', size = 3, fontface = 'italic', colour = 'grey')
 
-## using generic save_map function to generate final map
+## using generic save_map function to generate final map (in 'src/funs.R')
 lt_map_for_viz <- final_map_formatting(lt_map,
                                    out_file = 'out/LT_map_gauges.png')
 
@@ -297,7 +305,7 @@ LT_dv_data_dates <- LT_dv_data |>
          day_of_week = lubridate::wday(Date, label = T),
          ## grabing month_day only, as I hope this can be the X axis - however this is not considered Date format. 
          month_day = format(Date,"%m-%d"),
-         fake_year = as.Date(paste0('2020-',month_day))
+         fake_date = as.Date(paste0('2020-',month_day))
          )
 
 # Moving Avg --------------------------------------------------------------
@@ -322,12 +330,17 @@ LT_dv_data_viz <- LT_dv_data_w_MA |>
 ### 3. Generate Lineplots
 ```{r flow_data_line_plot, warning=FALSE, message=FALSE, results = 'hide'}
 
+
+## generate line plots
+## Note - function pulled from 'src/funs.R'
 line_plot_lst <- LT_dv_data_viz |>
   group_map( ~time_series_plot(data = .x,
-                               x_var = 'fake_year',
+                               x_var = 'fake_date', ## note - created a fake date with same year to get each year as different line
                                y_var = 'MA',
                                date_range =  c('1975-01-01', '2023-04-15'),
-                               top_year_num = 4, out_folder = 'out',
+                               title = sprintf('Site Number: %s', site),
+                               top_year_num = 4,
+                               out_folder = 'out',
                                ## NEED HELP WITH COLORS
                                color_palette = RColorBrewer::brewer.pal(9, 'BrBG')),
              keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.

@@ -48,7 +48,7 @@ final_map_formatting <- function(map,out_file){
 #' @param out_folder path of folder in which the plots will be saved. 
 #' @example time_series_plot(data = streamflow_df, y_var = 'flow', date_range =  c('1975-01-01', '2023-04-15'), top_year_num = 4, out_folder = 'Viz/out')
 
-time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_year_num = 5, out_folder = 'out'){
+time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_year_num = 5, title, out_folder = 'out'){
   
   ## extract site number
   site <- unique(data$site_no)
@@ -56,7 +56,7 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
   
   # ## TEMP
   # data <- LT_dv_data_viz |> filter(site_no == LT_dv_data$site_no[1])
-  # x_var = 'fake_year'
+  # x_var = 'fake_date'
   # y_var = 'MA'
   # date_range =  c('1975-01-01', '2023-04-15')
   # top_year_num = 5
@@ -64,7 +64,7 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
   # color_palette = RColorBrewer::brewer.pal(9, 'BuGn')
   # ##
   
-  ## Determine highest annual mean flow years for the site (excluding 2023, which we want to include in any case)
+  ## Determine highest annual mean flow years for the given site (excluding 2023, which we want to include in any case)
   top_years_df <- data |> 
     ungroup() |> 
     filter(year != 2023) |> 
@@ -86,8 +86,10 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
                   y = .data[[y_var]],
                   colour =  as.factor(year)))+
     theme_classic()+
+    ## make labels on x axis just month
     scale_x_date(date_labels = '%b')+
-    labs(title = sprintf('Site Number: %s', site),
+    ## generic title - to cahnge
+    labs(title = title,
          colour = "Top Flow Years"
          )+
     xlab(label = 'Time')+
