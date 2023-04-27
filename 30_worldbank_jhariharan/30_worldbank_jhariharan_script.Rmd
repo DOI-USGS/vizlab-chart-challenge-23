@@ -1,0 +1,182 @@
+---
+title: "World Bank Data Plot"
+author: "Jayaram Hariharan"
+date: "2023-04-30"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+library(WDI) # get world bank data
+library(gganimate) # animation!
+library(magick) # parse frames and re-animate
+
+# These are used for the layout of the viz
+library(grid) # textGrob
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Indicator codes for % of annual freshwater withdrawals in the US for
+
+# agriculture
+agr <- "ER.H2O.FWAG.ZS"
+
+# domestic
+dom <- "ER.H2O.FWDM.ZS"
+
+# industry
+ind <- "ER.H2O.FWIN.ZS"
+
+# volume of annual freshwater withdrawals in the US in billions of cubic meters
+vol <- "ER.H2O.FWTL.K3"
+
+# fetch all of this data
+df <- WDI(indicator=c(agr, dom, ind, vol)) %>% dplyr::filter(country=="United States")
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+# rename columns
+df <- dplyr::rename(df, agriculture = agr)
+df <- dplyr::rename(df, domestic = dom)
+df <- dplyr::rename(df, industry = ind)
+# re-format table for plotting
+df_tidy <- tidyr::pivot_longer(df, cols=5:7, names_to="use", values_to="amount")
+# fill na values with 0s
+df_tidy <- df_tidy %>% replace(is.na(.), 0)
+# clip years to be between 1990 and 2019
+df_tidy <- df_tidy %>% dplyr::filter(year > 1989) %>% dplyr::filter(year < 2020)
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Pirata One"
+sysfonts::font_add_google("Pirata One")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "#0A1927"
+font_color = "#ffffff"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+
+# Main plot
+main_plot <- ggplot(df_tidy, aes(x = year, y = amount*.data[[vol]])) + 
+  geom_col(aes(fill = use)) + 
+  xlab("") +
+  ylab("Volume of Freshwater Withdrawal, cubic kilometers") + 
+  ggtitle("Annual Freshwater Withdrawals in the United States (1990-2019)", subtitle="World Bank World Development Indicators Data") + 
+  labs(fill = "EXPLANATION") + 
+  theme(panel.background = element_blank(),
+        plot.background = element_rect(fill = background_color),
+        panel.grid.major = element_line(colour="#B8B8B8"),
+        text = element_text(colour = "white", size=14),
+        legend.background = element_blank(),
+        axis.text = element_text(colour = "#B8B8B8", size = 18),
+        axis.ticks = element_line(colour = "#B8B8B8"),
+        plot.title = element_text(size = 30, margin = margin(0, 0, 0.25, 0, unit = "cm"), face="bold"),
+        plot.subtitle = element_text(size = 22, margin = margin(0, 0, 0.5, 0, unit = "cm")),
+        axis.title.y = element_text(size = 18, colour = "white", margin = margin(0, 1, 0, 0, unit = "cm")),
+        legend.title = element_text(size=22),
+        legend.text = element_text(size=18),
+        legend.position = 'top',
+        plot.caption = element_text(size=14, colour="white", hjust=1),
+        plot.margin = margin(1, 1, 1, 1, unit = "cm")) +
+  scale_fill_manual(values = c("#ff71ce", "#01cdfe", "#00d182")) + 
+  labs(caption="World Bank World Development Indicators Data, The World Bank Group, 2023.\nData acquisition and plotting done in the R programming language using the WDI, ggplot2, and tidyverse packages.", margin = margin(1, 0, 0, 0, unit = "cm")) + 
+  gganimate::transition_time(year) + 
+  gganimate::shadow_mark() + 
+  gganimate::enter_grow() + 
+  gganimate::enter_fade()
+
+(main_gif <- gganimate::animate(main_plot, height = 9, width = 16, units = "in", res = 100))
+
+gganimate::anim_save("out/base.gif", main_gif)
+```
+
+
+## Produce final plot
+
+Here, use `magick` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r}
+magick_gif <- magick::image_read('out/base.gif')
+
+gif_w_logo <- magick::image_composite(magick_gif, image_scale(usgs_logo, "150"), offset = "+10+810")
+
+(magick::image_write(gif_w_logo, 'out/20230430_worldbank_jhariharan.gif'))
+
+
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Industrial freshwater withdrawals have gone down since 1990
+2. Overall freshwater withdrawals are not significantly different from what they were in 1990
+
+### Data source(s)
+
+World Bank World Development Indicators Data, The World Bank Group, 2023.
+
