@@ -171,21 +171,4 @@ calc_ice_summary_stats <- function(ice_tibble, homes_order = TRUE) {
   }
   
   return(df_summary)
-  
-  # workshopping these
-  
-  # # calculate years where max ice was a global max and global min
-  # df_min_ice_yr <- df_max_ice_yday |> 
-  #   group_by(lake) |> 
-  #   slice_min(perc_ice_cover, na_rm = TRUE) |> 
-  #   select(lake, year, perc_ice_cover) |> 
-  #   arrange(lake) |> 
-  #   ungroup()
-  # 
-  # df_max_ice_yr <- df_max_ice_yday |> 
-  #   group_by(lake) |> 
-  #   slice_max(perc_ice_cover, na_rm = TRUE) |> 
-  #   select(lake, year, perc_ice_cover) |> 
-  #   arrange(lake) |> 
-  #   ungroup()
 }
