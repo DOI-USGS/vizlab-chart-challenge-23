@@ -332,20 +332,18 @@ LT_dv_data_viz |>
   filter(
   year %in% c(2018, 2019,2020),
   # year %in% c(2018,2019,2020, 2021, 2022, 2023),
-  site_no == site) |>
+  site_no == '103366092') |>
   ggplot()+
   geom_line(aes(x = fake_date, y = Flow, color = as.factor(year)))+
-  geom_smooth()
   geom_line(aes(x = fake_date, y = MA, color = as.factor(year)), linetype = 'dotted')+
-  theme_minimal()+
-  gghighlight(max(MA), max_highlight = 3L)+
-  facet_wrap(vars(site_no), scales = 'free')
+  theme_minimal()
+  # gghighlight(max(MA), max_highlight = 3L)+
+  # facet_wrap(vars(site_no), scales = 'free')
 
 ```
 
 ### 3. Generate Lineplots
 ```{r flow_data_line_plot, warning=FALSE, message=FALSE, results = 'hide'}
-
 
 ## generate line plots
 ## Note - function pulled from 'src/funs.R'
@@ -354,7 +352,7 @@ line_plot_lst <- LT_dv_data_viz |>
                                x_var = 'fake_date', ## note - created a fake date with same year to get each year as different line
                                y_var = 'MA',
                                date_range =  c('1975-01-01', '2023-04-15'),
-                               title = sprintf('Site Number: %s', site),
+                               string_format_title = 'Site Number: %s',
                                top_year_num = 4,
                                out_folder = 'out',
                                ## NEED HELP WITH COLORS
@@ -366,8 +364,10 @@ setNames(line_plot_lst, unique(LT_dv_data_viz$site_no))
 line_plot_grid_1 <- cowplot::plot_grid(plotlist = line_plot_lst[1:5])
 line_plot_grid_2 <-cowplot::plot_grid(plotlist = line_plot_lst[6:10])
 
-ggsave(plot = line_plot_grid_1, filename = 'out/line_plot_grid_1.png', width = 9, height = 9, dpi = 300)
-ggsave(plot = line_plot_grid_2, filename = 'out/line_plot_grid_2.png', width = 9, height = 9, dpi = 300)
+ggsave(plot = line_plot_grid_1, filename = 'out/line_plot_grid_1.png',
+       width = 9, height = 9, dpi = 300)
+ggsave(plot = line_plot_grid_2, filename = 'out/line_plot_grid_2.png',
+       width = 9, height = 9, dpi = 300)
 
 ```
 

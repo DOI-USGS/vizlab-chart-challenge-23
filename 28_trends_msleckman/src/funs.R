@@ -48,7 +48,7 @@ final_map_formatting <- function(map,out_file){
 #' @param out_folder path of folder in which the plots will be saved. 
 #' @example time_series_plot(data = streamflow_df, y_var = 'flow', date_range =  c('1975-01-01', '2023-04-15'), top_year_num = 4, out_folder = 'Viz/out')
 
-time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_year_num = 5, title, out_folder = 'out'){
+time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_year_num = 5, string_format_title = 'Site Number: %s', out_folder = 'out'){
   
   ## extract site number
   site <- unique(data$site_no)
@@ -81,7 +81,7 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
   ## Generate plot
   plot  <- data %>% 
     filter(
-      # year %in% c(top_years,'2023'),
+      year %in% c(top_years,'2023'),
       Date > date_range[1] & Date < date_range[2]
       ) |> 
     ggplot()+
@@ -93,7 +93,7 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
     ## make labels on x axis just month
     scale_x_date(date_labels = '%b')+
     ## generic title - to cahnge
-    labs(title = title,
+    labs(title = sprintf(string_format_title, site),
          colour = "Top Flow Years"
          )+
     xlab(label = 'Time')+
