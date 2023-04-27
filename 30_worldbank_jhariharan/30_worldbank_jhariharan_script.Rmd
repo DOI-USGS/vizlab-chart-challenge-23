@@ -164,7 +164,7 @@ magick_gif <- magick::image_read('out/base.gif')
 
 gif_w_logo <- magick::image_composite(magick_gif, image_scale(usgs_logo, "150"), offset = "+10+810")
 
-magick::image_write(gif_w_logo, 'out/20230430_worldbank_jhariharan.gif')
+(magick::image_write(gif_w_logo, 'out/20230430_worldbank_jhariharan.gif'))
 
 
 ```
