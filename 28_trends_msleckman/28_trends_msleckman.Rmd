@@ -5,9 +5,7 @@ date: "2023-03-10"
 output: html_document
 ---
 
-## SET UP
-
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 ## currently empty
@@ -16,7 +14,7 @@ source('src/funs.R')
 
 ```
 
-```{r libraries, warning=FALSE, message=FALSE}
+```{r libraries,include=FALSE, warning=FALSE, message=FALSE}
 # Load libraries
 library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
@@ -26,6 +24,7 @@ library(zoo)
 library(sf)
 library(mapdata)
 library(maps)
+library(purrr)
 library(spData)
 library(ggspatial)
 library(ggrepel)
@@ -43,7 +42,7 @@ library(mapview) # for interactive map viz
 
 ```
 
-```{r options_dir_creation}
+```{r options_dir_creation, include=FALSE, warning=FALSE, message=FALSE}
 
 options(tidyverse.quiet = TRUE, timeout = 500)
 mapviewOptions(fgb = FALSE)
@@ -57,8 +56,8 @@ dir.create('in/R/nhdPlusTools', showWarnings = F)
 
 ## A. Workflow for Map 
 ### 1. Fetching nhdplus spatial data w/ nhdplustools
-
-```{r generic_nhdPlus_data_fetch}
+_code hidden_
+```{r generic_nhdPlus_data_fetch, include=FALSE, warning=FALSE, message=FALSE}
 
 # state boundaries --------------------------------------------------------
 
@@ -132,8 +131,8 @@ lakes_in_CA_hucs <- st_join(lakes_CA, huc6_CA) |>
 ```
 
 ### 2. Fetch geospatial data for Lake Tahoe Basin
-
-```{r LT_data_pull}
+_code hidden_
+```{r LT_data_pull, include=FALSE, warning=FALSE, message=FALSE}
 
 # NHDPLUS Tools data - Lake Tahoe subset ----------------------------------
 
@@ -171,8 +170,8 @@ active_nwis_sites_lake_tahoe <- get_nwis(AOI = Lake_Tahoe_huc8,
 ```
 
 #### Obs. LT spatial data in mapview
-
-```{r looking_at_spatial_data_w_mapview}
+_code hidden_
+```{r looking_at_spatial_data_w_mapview, echo = FALSE,  warning=FALSE, message=FALSE}
 
 # Quick Mapview -----------------------------------------------------------
 
@@ -186,7 +185,7 @@ mapview(LT_flines, color = 'darkblue')+
 
 
 ### 3. Map Plotting
-```{r LT_map}
+```{r LT_map, warning=FALSE, message=FALSE}
 
 # Viz Variables -----------------------------------------------------------
 
@@ -247,14 +246,15 @@ lt_map <- ggplot()+
 ## using generic save_map function to generate final map
 lt_map_for_viz <- final_map_formatting(lt_map,
                                    out_file = 'out/LT_map_gauges.png')
- 
+
 ```
 
 
 ## B. Workflow for lineplots
 
 ### 1. Extract and Process Gauge Data for plots
-```{r pull_nwis_data}
+_code hidden_
+```{r pull_nwis_data, include= FALSE, warning= FALSE, message=FALSE}
 
 # Pull all NWIS data for active sites
 
@@ -284,7 +284,8 @@ LT_dv_data <- readNWISdv(siteNumbers = active_sites_2023,
 ```
 
 ### 2. Process flow data
-```{r flow_data_processing}
+_code hidden_
+```{r flow_data_processing, include= FALSE, warning= FALSE, message=FALSE}
 
 # Dates --------------------------------------------------------------
 
@@ -319,7 +320,7 @@ LT_dv_data_viz <- LT_dv_data_w_MA |>
 ```
 
 ### 3. Generate Lineplots
-```{r flow_data_line_plot}
+```{r flow_data_line_plot, warning=FALSE, message=FALSE, results = 'hide'}
 
 line_plot_lst <- LT_dv_data_viz |>
   group_map( ~time_series_plot(data = .x,
@@ -327,9 +328,11 @@ line_plot_lst <- LT_dv_data_viz |>
                                y_var = 'MA',
                                date_range =  c('1975-01-01', '2023-04-15'),
                                top_year_num = 4, out_folder = 'out',
+                               ## NEED HELP WITH COLORS
                                color_palette = RColorBrewer::brewer.pal(9, 'BrBG')),
              keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.
 
+setNames(line_plot_lst, unique(LT_dv_data_viz$site_no))
 
 line_plot_grid_1 <- cowplot::plot_grid(plotlist = line_plot_lst[1:5])
 line_plot_grid_2 <-cowplot::plot_grid(plotlist = line_plot_lst[6:10])
@@ -337,18 +340,24 @@ line_plot_grid_2 <-cowplot::plot_grid(plotlist = line_plot_lst[6:10])
 ggsave(plot = line_plot_grid_1, filename = 'out/line_plot_grid_1.png', width = 9, height = 9, dpi = 300)
 ggsave(plot = line_plot_grid_2, filename = 'out/line_plot_grid_2.png', width = 9, height = 9, dpi = 300)
 
-lt_map_for_viz
 ```
 
-**PLOTS are: **
+### Final Viz Pieces
 
 1. lt_map_for_viz
 2. line_plot_lst
 
-## CODE CHUNKS BELOW ARE UNTOUCHED FROM TEMPLATE
-This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+```{r plots, warning = FALSE, message = FALSE}
 
-> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+lt_map_for_viz
+line_plot_grid_1
+line_plot_grid_2
+
+```
+
+
+
+## Formatting
 
 ```{r plotting_vars}
 
@@ -389,27 +398,35 @@ Yjitter <- (0.40 - 2*Ymargin)/2
 Xjitter <- (1 - 2*Xmargin)/5 # total jitter
 Xwidth <- 0.15
 
-draw_line_plots <- map(1:length(line_plot_lst),
-                       function(x){
-                         print(paste0('line plot #', x))
+## Note - purrr must be placed ahead of map otherwise the loop won't work (`coerce of type `closure` error`)
+draw_line_plots <- purrr::map(1:length(line_plot_lst), function(x){
+                         
+                  #       1:length(line_plot_lst)
+                         # print(x)
+                         # print(paste0('line plot #', x))
+
+                         # X axis positioning on the two sides of LT Map 
                          if(x %in% seq(1,5)){
                              X_position <- Xmargin + Xjitter  # 0.224
                              } else {
-                               X_position <- Xbase
-                          } # 0.96
+                               X_position <- Xbase # 0.96
+                             } 
+                         
+                         # Y axis positioning from top to bottom
                          if(x %in% c(1,6)){
                            Y_position <- Ybase + (4*Yjitter) # 0.72
-                         } else if(x %in% c(2,7)){
+                        } else if(x %in% c(2,7)){
                            Y_position <- Ybase + (3*Yjitter)  # 0.56
-                         } else if(x %in% c(3,8)){
+                        } else if(x %in% c(3,8)){
                            Y_position <- Ybase + (2*Yjitter)  # 0.4
-                         } else if(x %in% c(4,9)){
+                        } else if(x %in% c(4,9)){
                            Y_position <- Ybase + (1*Yjitter) # 0.24
-                           } else {
+                        } else {
                              Y_position <- Ybase
-                          }
-                       print(paste0('X_position = ', X_position))
-                       print(paste0('Y_position = ', Y_position))
+                        }
+                       
+                       # print(paste0('X_position = ', X_position))
+                       # print(paste0('Y_position = ', Y_position))
 
                        draw_plot(line_plot_lst[[x]],
                                  x = X_position,
@@ -428,7 +445,7 @@ draw_line_plots <- map(1:length(line_plot_lst),
 
 Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
 
-```{r cowplot, fig.width = 16, fig.height = 9}
+```{r cowplot, fig.width = 16, fig.height = 9, warning=FALSE, message=FALSE}
 
 
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
