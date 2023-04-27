@@ -147,7 +147,7 @@ main_plot <- ggplot(df_tidy, aes(x = year, y = amount*.data[[vol]])) +
   gganimate::enter_grow() + 
   gganimate::enter_fade()
 
-main_gif <- gganimate::animate(main_plot, height = 9, width = 16, units = "in", res = 100)
+(main_gif <- gganimate::animate(main_plot, height = 9, width = 16, units = "in", res = 100))
 
 gganimate::anim_save("out/base.gif", main_gif)
 ```
