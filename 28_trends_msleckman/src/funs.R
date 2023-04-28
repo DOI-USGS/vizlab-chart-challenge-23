@@ -50,10 +50,7 @@ final_map_formatting <- function(map,out_file){
 
 time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_year_num = 5, string_format_title = 'Site Number: %s', out_folder = 'out'){
   
-  ## extract site number
-  site <- unique(data$site_no)
-  print(site)
-  
+
   # ## TEMP
   # data <- LT_dv_data_viz |> filter(site_no == LT_dv_data$site_no[1])
   # x_var = 'fake_date'
@@ -61,9 +58,13 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
   # date_range =  c('1975-01-01', '2023-04-15')
   # top_year_num = 5
   # site <- LT_dv_data$site_no[1]
-  # color_palette = RColorBrewer::brewer.pal(9, 'BuGn')
-  # title = sprintf('Site Number: %s', site)
+  # color_palette = "#66C2A4"
+  # string_format_title = 'Site Number: %s'
   # ##
+  
+  ## extract site number
+  site <- unique(data$site_no)
+  print(site)
   
   ## Determine highest annual mean flow years for the given site (excluding 2023, which we want to include in any case)
   top_years_df <- data |> 
@@ -81,24 +82,29 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
   ## Generate plot
   plot  <- data %>% 
     filter(
-      year %in% c(top_years,'2023'),
+      # year %in% c(top_years,'2023'),
       Date > date_range[1] & Date < date_range[2]
       ) |> 
     ggplot()+
     geom_line(aes(x = .data[[x_var]],
                   y = .data[[y_var]],
-                  colour =  as.factor(year)))+
-    # gghighlight(year %in% c(top_years, 2023))+
+                  colour =  as.factor(year)),
+              linewidth = 1.1)+
+    gghighlight(year == 2023,
+                label_key = year,
+                unhighlighted_params = list(linewidth = 0.5, colour = alpha("grey", 0.4))
+                )+
     theme_classic()+
     ## make labels on x axis just month
     scale_x_date(date_labels = '%b')+
     ## generic title - to cahnge
     labs(title = sprintf(string_format_title, site),
-         colour = "Top Flow Years"
+         colour = ""
          )+
-    xlab(label = 'Time')+
+    xlab(label = '')+
     ylab(label = 'Flow (cfs)')+
-    scale_color_manual(values = color_palette)
+    scale_color_manual(values = color_palette)+
+    theme(legend.position="none")
   
   # plot 
    
