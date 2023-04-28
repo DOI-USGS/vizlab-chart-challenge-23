@@ -82,13 +82,14 @@ if(is.null(list.files('in/R/nhdPlusTools'))){
   
   print(paste('Downloading NHD data for the following CA HUC4s',CA_huc4))
 
-  download_nhdplushr('in/', CA_huc4)
+  download_nhdplushr('in/R/nhdPlusTools', CA_huc4)
 }
 
 huc_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_HU_CA_data.gpkg'
 wtbdy_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_CA_wtrbdy_data.gpkg'
 
 if(is.null(list.files('in/R/nhdPlusTools', full.names = T, pattern = '_data.gpkg'))){
+
   # Store HUCs shps into geopackage
   print(paste('... Storing HUCs shps into a local geopackage here:', huc_gpkg_path))
   nhdplusTools::get_nhdplushr(hr_dir = 'in/R/nhdPlusTools/',
@@ -98,7 +99,7 @@ if(is.null(list.files('in/R/nhdPlusTools', full.names = T, pattern = '_data.gpkg
   # Store Waterbodies shps into geopackage
   print(paste('... Storing Waterbody shps into a local geopackage here:', wtbdy_gpkg_path))
   nhdplusTools::get_nhdplushr(hr_dir = 'in/R/nhdPlusTools/',
-                              out_gpkg = 'in/R/nhdplustools_CA_wtrbdy_data.gpkg',
+                              out_gpkg = wtbdy_gpkg_path,
                               layer = 'NHDWaterbody')
 
   # # Store Waterbodies shps into geopackage
