@@ -28,7 +28,7 @@ Ice data is from the Great Lakes Environmental Research Lab
 
 Great Lakes spatial data is from [US Geological Survey](https://www.sciencebase.gov/catalog/item/530f8a0ee4b0e7e46bd300dd)
 
-Key programs and/or packages used:
+Key programs and/or packages used: `R`, packages: `targets`, `ggplot2`, `cowplot`
 
   * tidyverse
   * dataRetrieval
