@@ -10,7 +10,9 @@ Date for your prompt in April: April 29
 
 Image:
 
+![20230429_monochrome_mharlan](/uploads/287ee56970de528f9774f4fc5320c216/20230429_monochrome_mharlan.gif)
 
+![20230429_monochrome_mharlan](/uploads/a2545159f1a250dfa8180d2d21a049b1/20230429_monochrome_mharlan.png)
 
 Your key takeaways (1-2 sentences each):
 
