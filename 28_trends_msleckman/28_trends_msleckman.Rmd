@@ -78,7 +78,7 @@ CA_huc4 <- CA_huc8$huc8 |> substr(1,4) |> unique()
 
 # NHD Data Download (conditional Run only if not downloaded yet) ----------------------------------
 
-if(is.null(list.files('in/R/nhdPlusTools'))){
+if(length(list.files('in/R/nhdPlusTools')) == 0){
   
   print(paste('Downloading NHD data for the following CA HUC4s',CA_huc4))
 
