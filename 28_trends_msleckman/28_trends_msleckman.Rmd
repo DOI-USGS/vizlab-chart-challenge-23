@@ -88,7 +88,7 @@ if(is.null(list.files('in/R/nhdPlusTools'))){
 huc_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_HU_CA_data.gpkg'
 wtbdy_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_CA_wtrbdy_data.gpkg'
 
-if(is.null(list.files('in/R/nhdPlusTools', full.names = T, pattern = '_data.gpkg'))){
+if(length(list.files('in/R/nhdPlusTools', full.names = T, pattern = '_data.gpkg')) == 0){
 
   # Store HUCs shps into geopackage
   print(paste('... Storing HUCs shps into a local geopackage here:', huc_gpkg_path))
