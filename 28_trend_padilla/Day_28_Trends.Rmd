@@ -1,0 +1,141 @@
+---
+title: "Day 28: Trends"
+author: "Julie Padilla"
+date: "2023-04-24"
+output: html_document
+---
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(targets)
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+library(terra) # here, used for raster processing
+library(spData) # state boundaries as sf object
+library(sf) # general spatial processing
+library(scico) # good color themes for mapping
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Load the appropriate targets pipeline outputs
+
+
+```{r load}
+
+tar_load(p3_great_lakes_ice_lolli)
+plt <- p3_great_lakes_ice_lolli
+
+```
+
+## Set up main plot
+
+This chunk is where the output from the targets pipeline is combined with standard VizLab formatting
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+font_legend <- "Lato"
+sysfonts::font_add_google("Lato")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Define colors
+background_color = "white"
+font_color = "gray15"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
+
+# Main plot
+(main_plot <- plt)
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230101_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+out <- 
+  ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+              xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(main_plot,
+            x = - 0.01,
+            y = 0.11,
+            height = 0.85) +
+  # explainer text
+  draw_label("Julie Padilla, USGS\nData from NOAA Great Lakes Environmental Research Lab\nU.S. Geological Survey",
+             fontfamily = font_legend,
+             fontface = 'italic',
+             x = 0.96,
+             y = 0.04,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = font_color) +
+  # Add logo
+draw_image(usgs_logo,
+           x = 0.04,
+           y = 0.04,
+           width = 0.1,
+           hjust = 0, vjust = 0,
+           halign = 0, valign = 0)
+
+ggsave(plot = out, filename = "out/20230428_trends_greatlakesice.png", 
+       width = 16, height = 9, dpi = 300, units = "in")
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. 2023 ice coverage on all 5 of the Great Lakes was significantly below the 50 year average
+2. The greatest deviation from the average was on Lake Superior (- 67% below average) and the smallest deviation was on Lake Ontario (- 45%).
+3. Basin-wide 2023 ice coverage was 59% below average
+
+### Data source(s)
+
+Ice data is from the Great Lakes Environmental Research Lab 
+
+* [press release](https://research.noaa.gov/article/ArtMID/587/ArticleID/2941/Low-ice-on-the-Great-Lakes-this-winter)
+* [Daily ice data from 1973-2022](https://www.glerl.noaa.gov/data/ice/glicd/daily/)
+* [Daily ice data from 2023](https://coastwatch.glerl.noaa.gov/statistic/ice/dat/g2022_2023_ice.dat)
+
+Great Lakes spatial data is from [US Geological Survey](https://www.sciencebase.gov/catalog/item/530f8a0ee4b0e7e46bd300dd)
+
+
