@@ -230,11 +230,11 @@ lt_map <- ggplot()+
            color = "#A8D0F4",  ## probably easier to write out huc but currently dont have R studio updated to show colors
            alpha = 0.8)+
   ## huc8 boundary of basin
-   geom_sf(data = Lake_Tahoe_huc8,
-           fill = 'transparent',
-           color = 'firebrick',
-           size = 0.8,
-           linetype = 'dotted')+
+   # geom_sf(data = Lake_Tahoe_huc8,
+   #         fill = 'transparent',
+   #         color = 'firebrick',
+   #         size = 0.8,
+   #         linetype = 'dotted')+
   ## Basin flowlines
    geom_sf(data = LT_flines,
            color = "#A8D0F4",
