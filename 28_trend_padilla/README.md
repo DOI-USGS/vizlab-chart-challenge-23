@@ -10,7 +10,7 @@ Date for your prompt in April: 28
 
 Image:
 
-This pipeline fully produces the figure. I sent it along to Althea via email as she requested
+![20230428_trends_greatlakesice](/uploads/1cc7ea649af59614c170a91c36f8ba4d/20230428_trends_greatlakesice.png)
 
 Your key takeaways (1-2 sentences each):
 
