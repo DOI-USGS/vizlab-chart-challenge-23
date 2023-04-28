@@ -97,14 +97,18 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
     theme_classic()+
     ## make labels on x axis just month
     scale_x_date(date_labels = '%b')+
-    ## generic title - to cahnge
+    ## generic title
     labs(title = sprintf(string_format_title, site),
          colour = ""
          )+
     xlab(label = '')+
     ylab(label = 'Flow (cfs)')+
     scale_color_manual(values = color_palette)+
-    theme(legend.position="none")
+    theme(legend.position="none",
+          plot.title = element_text(lineheight=.8,
+                                    colour =  "#6B5E56",
+                                    face = 'italic',
+                                    size = '11'))
   
   # plot 
    

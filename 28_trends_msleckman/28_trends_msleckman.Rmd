@@ -178,7 +178,8 @@ active_sites_2023 <- factor(active_sites_2023, site_lst_ordered) |> sort()
 active_nwis_sites_lake_tahoe <- get_nwis(AOI = Lake_Tahoe_huc8,
                                          t_srs = NULL,
                                          buffer = 0) |>
-  filter(site_no %in% active_sites_2023)
+  filter(site_no %in% active_sites_2023) |> 
+  mutate(site_no = factor(site_no, active_sites_2023)) |> arrange(site_no)
 
 ```
 
@@ -213,7 +214,7 @@ lt_all_colors <- c("#000000", "#0046A5", "#005DBA", "#0082CD", "#001E54","#00427
 
 show_col(lt_all_colors)
 
-
+dodge <- 
 # Main map -----------------------------------------------------------
 
 lt_map <- ggplot()+
@@ -241,21 +242,31 @@ lt_map <- ggplot()+
            size  = 0.5,
            alpha = 0.7)+
   ## nwis st stations around LT
-   geom_sf(data = active_nwis_sites_lake_tahoe,
-           color = "#00B79F",
+   geom_sf(data = active_nwis_sites_lake_tahoe |>
+             filter(!site_no %in% c('10336698','10336700')),
+           color = "#97D4AB",
            fill = "#00B79F",
            size = 3, 
            shape = 21)+
-  ## station labels
-   geom_text_repel(data = active_nwis_sites_lake_tahoe,
-                  color = 'black',
-                aes(label = site_no,
-                    geometry = geometry),
-                stat = "sf_coordinates",
-    min.segment.length = 1,
-    size =3,
-    nudge_x = 0.05,
-    point.padding = 1e-04)+
+    ## nwis st stations around LT
+   geom_sf(data = active_nwis_sites_lake_tahoe |>
+             filter(site_no %in% c('10336698',
+                                   '10336700')) |> 
+             st_jitter(amount = 0.005),
+           color = "#97D4AB",
+           fill = "#00B79F",
+           size = 3,
+           shape = 21)+
+  # ## station labels
+  #  geom_text_repel(data = active_nwis_sites_lake_tahoe,
+  #                 color = 'black',
+  #               aes(label = site_no,
+  #                   geometry = geometry),
+  #               stat = "sf_coordinates",
+  #   min.segment.length = 1,
+  #   size =3,
+  #   nudge_x = 0.05,
+  #   point.padding = 1e-04)+
    coord_sf(
      ylim = c(map_bbox$ymin, map_bbox$ymax),
      xlim = c(map_bbox$xmin, map_bbox$xmax)
@@ -267,10 +278,56 @@ lt_map <- ggplot()+
   annotate('text', x = -119.95, y = 39.34, label = c('Nevada'),
            hjust = 'left', size = 3, fontface = 'italic', colour = 'grey')
 
-lt_map
+  lt_map_segs <- lt_map + 
+    # 
+    geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[1]][1] - 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[1]][1] - 0.1, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[1]][2] + 0.01, yend = active_nwis_sites_lake_tahoe$geometry[[1]][2] + 0.07),
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    #
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[2]][1] - 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[2]][1] - 0.1, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[2]][2], yend = active_nwis_sites_lake_tahoe$geometry[[2]][2]), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    #
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[3]][1] - 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[3]][1] - 0.15, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[3]][2] - 0.003, yend = active_nwis_sites_lake_tahoe$geometry[[3]][2] - 0.08), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    #
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[4]][1]-0.015, xend = active_nwis_sites_lake_tahoe$geometry[[4]][1] - 0.27, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[4]][2]- 0.006, yend = active_nwis_sites_lake_tahoe$geometry[[4]][2] - 0.1 ), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # 
+     geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[5]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[5]][1] + 0.11, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[5]][2], yend = active_nwis_sites_lake_tahoe$geometry[[5]][2] - 0.05), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    #
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[6]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[6]][1] + 0.07, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[6]][2], yend = active_nwis_sites_lake_tahoe$geometry[[6]][2] - 0.03), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # 
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[7]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[7]][1] + 0.04, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[7]][2], yend = active_nwis_sites_lake_tahoe$geometry[[7]][2]), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # 
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[8]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[8]][1] + 0.05, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[8]][2] - 0.005, yend = active_nwis_sites_lake_tahoe$geometry[[8]][2] - 0.01), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[9]][1], xend = active_nwis_sites_lake_tahoe$geometry[[9]][1] + 0.04, 
+                       y = active_nwis_sites_lake_tahoe$geometry[[9]][2] + 0.015, yend = active_nwis_sites_lake_tahoe$geometry[[9]][2] + 0.08), 
+                   arrow = arrow(length = unit(0.03, "npc")),
+                   arrow.fill = "#354658", alpha = 0.4)
+  
+lt_map_segs
 
 ## using generic save_map function to generate final map (in 'src/funs.R')
-lt_map_for_viz <- final_map_formatting(lt_map,
+lt_map_for_viz <- final_map_formatting(lt_map_segs,
                                        out_file = 'out/LT_map_gauges.png')
 
 ```
@@ -381,11 +438,10 @@ line_plot_lst <- LT_dv_data_viz |>
   group_map( ~time_series_plot(data = .x,
                                x_var = 'fake_date', ## note - created a fake date with same year to get each year as different line
                                y_var = 'MA',
-                               date_range =  c('1975-01-01', '2023-04-30'),
-                               string_format_title = 'Site Number: %s',
+                               date_range =  c('1975-01-01', '2023-05-15'),
+                               string_format_title = 'USGS Station ID: %s',
                                top_year_num = 4,
                                out_folder = 'out',
-                               ## NEED HELP WITH COLORS
                                color_palette = "#00B79F"
                                ),
              .keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.
@@ -420,8 +476,8 @@ line_plot_grid_2
 ```{r plotting_vars}
 
 # Load some custom fonts and set some custom settings
-font_legend <- "Pirata One"
-sysfonts::font_add_google("Pirata One")
+font_legend <- "Vollkorn"
+sysfonts::font_add_google("Vollkorn")
 supporting_font <- "Source Sans Pro"
 sysfonts::font_add_google("Source Sans Pro")
 showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
@@ -483,7 +539,7 @@ draw_line_plots <- purrr::map(1:length(line_plot_lst), function(x){
                           Y_position <- 0.48
                         } else if(x == 8){
                           X_position <- 0.88
-                          Y_position <- 0.65
+                          Y_position <- 0.62
                         } else if(x == 9){
                           X_position <- 0.8
                           Y_position <- 0.8
@@ -534,7 +590,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0,
              color = font_color)+
   # Title
-  draw_label("The 'Big Melt' has just begun. \n How much snowmelt is flowing into Lake Tahoe so Far?",
+  draw_label("The 'Big Melt' has just begun.\nHow much snowmelt\nis flowing into Lake Tahoe?",
              x = 0.04,
              y = 0.985,
              hjust = 0,
@@ -542,7 +598,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              lineheight = 0.75,
              fontfamily = font_legend,
              color = font_color,
-             size = 40) +
+             size = 36) +
   # Add logo
   draw_image(usgs_logo, 
              x = 0.04,
