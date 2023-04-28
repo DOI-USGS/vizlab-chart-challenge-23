@@ -55,6 +55,7 @@ tanana_gage <- readNWISdv(siteNumbers = c("15485500"), parameterCd = "00060")
 tanana_site <- readNWISsite(siteNumbers = c("15485500"))
 
 # read in satellite imagery files
+# See instructions in Data Source(s) section, below, for how imagery can be downloaded
 DSWE_files <- list.files("in/DSWE/", full.names = TRUE)
 
 ```
@@ -473,5 +474,5 @@ Instructions:
 - draw a bounding box around Tanana Fairbanks (64 43' 36'' N, 146 51' 59'' W) OR upload shapefile downloaded from Smith et al., 2022 data repository
 - select dates corresponding to imagery (09/18/2014, 07/03/2015, 06/06/2017, 07/06/2017, 07/06/2011)
 - filter data to Landsat 4-9 C2 Dynamic Surface Water Extent
-- download INTR scene for each date
+- download INTR scene for each date and save to `in/DSWE`
 
