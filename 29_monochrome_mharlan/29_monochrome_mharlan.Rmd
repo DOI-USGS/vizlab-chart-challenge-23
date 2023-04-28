@@ -1,0 +1,477 @@
+---
+title: "29 Uncertainties Monochrome"
+author: "Merritt Harlan"
+date: "2023-04-19"
+output: html_document
+---
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse)
+library(readr) # best for reading and writing csvs
+library(downloader)
+library(dataRetrieval)
+library(raster)
+library(sf)
+library(dplyr)
+
+# These are used for the layout of the viz
+library(ggpubr)
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+library(scales)
+```
+
+
+
+## Load files
+
+```{r load}
+# load Tanana data from data release
+tanana_zip <- download("https://alaska.usgs.gov/data/hydrology/streamflow_satelliteComputed_alaska/tanana_fairbanks.zip", destfile = "in/tanana_fairbanks.zip")
+
+unzip("in/tanana_fairbanks.zip", exdir = "in/tanana_fairbanks")
+
+tanana_flow <- read_csv("in/tanana_fairbanks/tanana_fairbanks_Zone 6_008051_Tanana_TPJOJ_2_5_1_RSQ_DATA.csv")
+
+tanana_dswe <- read_csv("in/tanana_fairbanks/tanana_fairbanks_Zone 6_008051_Tanana_TPJOJ_2_5_1_altim_DSWE_relation_DATA.csv")[c(2:6),]#remove first row, which contains a Landsat 7 image, with known scanline corrector issues
+
+tanana_shp <- read_sf("in/tanana_fairbanks/shapefile/tanana_fairbank_zone7.shp")
+
+# load Tanana Fairbanks gage data
+tanana_gage <- readNWISdv(siteNumbers = c("15485500"), parameterCd = "00060")
+
+tanana_site <- readNWISsite(siteNumbers = c("15485500"))
+
+# read in satellite imagery files
+DSWE_files <- list.files("in/DSWE/", full.names = TRUE)
+
+```
+
+## Get data ready for plotting
+
+```{r processing}
+# Add your processing code here
+tanana_dswe_cleaned = as.data.frame(tanana_dswe) %>%
+  mutate(Date = as.Date(date, format = "%m/%d/%Y")) %>%
+  mutate(width_ft = DSWE12/length_km * 3.2808399 * 1000) %>%
+  mutate(wse_ft = wse_m * 3.2808399) %>%
+  dplyr::select(Date, width_ft, wse_ft, tileName)
+
+tanana_flow_cleaned = data.frame(tanana_flow) %>% 
+  mutate(Date = as.Date(datetime, format = "%m/%d/%Y %H:%M")) %>%
+  mutate(width_ft = width_m * 3.2808399) %>%
+  mutate(wse_ft = wse_m * 3.2808399) %>% 
+  mutate(Q_satellite = Q_cfs) %>%
+  right_join(tanana_gage) %>% 
+  mutate(Q_gage = X_00060_00003) %>%
+  filter(Date > min(tanana_dswe_cleaned$Date)) %>%
+  filter(Date < max(tanana_dswe_cleaned$Date)) %>% 
+  dplyr::select(Date, wse_ft, Q_satellite, Q_gage)
+
+DSWE_crop <- function(DSWE_file){
+  r = raster(DSWE_file)
+  date = as.Date(substr(DSWE_file, nchar(DSWE_file)-33, nchar(DSWE_file)-26), format = "%Y%m%d")
+  shp = tanana_shp %>% st_transform(crs(r)) %>% st_zm()
+  masked = mask(crop(r, shp), shp)
+  spdf = as.data.frame(as(masked, "SpatialPixelsDataFrame"))
+  dswe_meaning = data.frame(value = c(0:4), DSWE = c("", "water - high confidence", "water - moderate conference", "potential wetland", "water/wetland - low confidence"))
+  colnames(spdf) = c("value", "x", "y")
+  spdf$Date = date
+  spdf = spdf %>% left_join(dswe_meaning)
+  return(spdf)
+}
+
+dswe_images <- lapply(DSWE_files, DSWE_crop)
+
+```
+
+## Set up main plot
+
+```{r plotting}
+# Load some custom fonts and set some custom settings
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+title_fontsize = 40
+subtitle_fontsize = 18
+plot_fontsize = 16
+
+# Define colors
+background_color = "white"
+font_color = "dodgerblue4"
+
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# Load in USGS logo (also a black logo available)
+usgs_logo <- magick::image_read("../usgs_logo_black.png") %>% magick::image_colorize(100, font_color)
+
+# Plots
+width_plot <- ggplot(tanana_dswe_cleaned, aes(x = wse_ft, y = width_ft)) + 
+  geom_point(size = 3, alpha = 0.5, color = font_color) + 
+  theme_bw() + 
+  scale_y_continuous(labels = comma) +
+  xlab("Satellite River Elevation (ft)") + 
+  ylab("Satellite River Width (ft)") +
+  theme(
+    text=element_text(size=plot_fontsize, color = font_color, family = supporting_font),
+    axis.text = element_text(color = font_color),
+    axis.line = element_line(color = font_color),
+    axis.title.x = element_text(size=plot_fontsize, face="bold", family = supporting_font),
+    axis.title.y = element_text(size=plot_fontsize, face="bold", family = supporting_font),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill='transparent', color = NA), #transparent panel bg
+    plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+    panel.grid.major = element_blank(), #remove major gridlines
+    panel.grid.minor = element_blank(), #remove minor gridlines
+    legend.background = element_rect(fill='transparent'), #transparent legend bg
+  )
+
+altim_plot <- ggplot(tanana_flow_cleaned, aes(x = wse_ft, y = Q_satellite)) + 
+  geom_point(size = 3, alpha = 0.5, color = font_color) + 
+  theme_bw() + 
+  scale_y_continuous(labels = comma) +
+  xlab("Satellite River Elevation (ft)") + 
+  ylab(expression(bold(paste("Satellite Streamflow (", ft^{"3"},"/s)"))))+
+  theme(
+    text = element_text(size=plot_fontsize, color = font_color, family = supporting_font), 
+    axis.text = element_text(color = font_color),
+    axis.line = element_line(color = font_color),
+    axis.title.x = element_text(size=plot_fontsize, face="bold", family = supporting_font),
+    axis.title.y = element_text(size=plot_fontsize, face="bold", family = supporting_font),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill='transparent', color = NA), #transparent panel bg
+    plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+    panel.grid.major = element_blank(), #remove major gridlines
+    panel.grid.minor = element_blank(), #remove minor gridlines
+    legend.background = element_rect(fill='transparent'), #transparent legend bg
+  )
+
+flow_plot <- ggplot(tanana_flow_cleaned) + 
+  geom_line(aes(x = Date, y = Q_gage, color = "Gage"), size = 1) +
+  geom_point(aes(x = Date, y = Q_satellite, color= "Satellite"), size = 3, alpha = 0.5) + 
+  theme_bw() + xlab("Year") + 
+  ylab(expression(bold(paste("Satellite River Flow (", ft^{"3"},"/s)")))) + 
+  scale_y_continuous(labels = comma) +
+  scale_color_manual(name = NULL, breaks = c("Satellite", "Gage"), values = c("Satellite" = font_color, "Gage" = "lightskyblue")) +
+  theme(
+    legend.position = "right",
+    legend.text = element_text(size = plot_fontsize, family = supporting_font),
+    text = element_text(size=plot_fontsize, color = font_color), 
+    axis.text = element_text(color = font_color),
+    axis.line = element_line(color = font_color),
+    axis.title.x = element_text(size=plot_fontsize, face="bold", family = supporting_font),
+    axis.title.y = element_text(size=plot_fontsize, face="bold", family = supporting_font),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill='transparent', color = NA), #transparent panel bg
+    plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+    panel.grid.major = element_blank(), #remove major gridlines
+    panel.grid.minor = element_blank(), #remove minor gridlines
+    legend.background = element_rect(fill='transparent'), #transparent legend bg
+  ) +
+  guides(color = guide_legend(override.aes = list(linetype = c(NA, 1), shape = c(19, NA))))
+
+dswe_image = dswe_images[[1]]
+dswe_image$DSWE = factor(dswe_image$DSWE, levels = c("", "water - high confidence", "water - moderate conference", "potential wetland", "water/wetland - low confidence"))
+
+dswe_plot <- ggplot() +  
+  geom_tile(data=dswe_image, aes(x=x, y=y, fill= DSWE), alpha=0.8) + 
+  coord_equal() +
+  scale_fill_manual(name = "Classification", values = c("white", "dodgerblue4", "dodgerblue", "lightskyblue", "lightblue1")) +
+  theme_map() +
+  theme(legend.position="right",
+        legend.text = element_text(size = subtitle_fontsize, color = font_color, family = supporting_font),
+        legend.title = element_text(size = subtitle_fontsize, color = font_color, face = "bold", family = supporting_font))
+        
+#Get outline of AK for basemap
+AK_shp <- spData::alaska %>% st_as_sf()
+
+AK_inset <- ggplot() + 
+  geom_sf(data = AK_shp, color = "lightskyblue", fill = "lightskyblue") +
+  geom_sf(data = st_as_sf(tanana_site, coords = c("dec_long_va", "dec_lat_va"), crs = 4267) %>% st_transform(st_crs(AK_shp)),
+          color = "dodgerblue4", linewidth = 2) + 
+  theme_map()
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+#Static Image
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # satellite image
+  draw_plot(dswe_plot,
+            x = 0.00,
+            y = 0.03,
+            width = 0.96) +
+  # width height plot
+  draw_plot(width_plot,
+            x = 0.01,
+            y = 0.01,
+            height = 0.34,
+            width = 0.22) +
+  # height flow plot
+  draw_plot(altim_plot,
+            x = 0.25,
+            y = 0.01,
+            height = 0.34,
+            width = 0.22) +
+  # height flow plot
+  draw_plot(flow_plot,
+            x = 0.49,
+            y = 0.01,
+            height = 0.34,
+            width = 0.34) +
+  # Alaska inset map
+  draw_plot(AK_inset,
+            x = 0.75,
+            y = 0.72,
+            height = 0.25,
+            width = 0.25) +
+  # explainer text
+  draw_label(paste('Merritt Harlan, USGS', 
+                   'Data: Smith, T. L., et al., 2022, Computed streamflow using',
+                   'satellite data for the Copper, Nushagak, Tanana, Yukon,', 
+                   'Susitna, and Knik, Koyukuk Rivers, Alaska, 2008-2021:',
+                   'USGS data release, https://doi.org/10.5066/P94LLG4R.',
+                   'Tanana River in Fairbanks, AK- USGS Site 15485500', sep = '\n'),
+             fontfamily = supporting_font,
+             fontface = "italic",
+             x = 0.96,
+             y = 0.03,
+             size = 10,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+ # Title
+  draw_label(stringr::str_wrap("Estimating streamflow from satellites",60),
+             x = 0.03,
+             y = 0.92,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             color = font_color,
+             size = title_fontsize) +
+  # Annotation
+  draw_label(paste("By relating optical satellite imagery, which can give us an estimate of river width,",
+                   "to satellite altimetry, which gives us an estimate of river elevation, we can approximate",
+                   "streamflow in large rivers. Although this data can have high uncertainty, combined with ",
+                   "knowledge of rivers and ground data, satellites can help us improve monitoring.", sep = '\n'),
+             x = 0.05,
+             y = 0.77,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             color = font_color,
+             size = subtitle_fontsize) +
+  # Add logo
+  draw_image(usgs_logo,
+             x = 0.96,
+             y = 0.15,
+             width = 0.10,
+             hjust = 1, vjust = 0,
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230429_monochrome_mharlan.png", 
+       width = 14, height = 9, dpi = 300)
+```
+
+## Final GIF
+
+```{r gif}
+##### Create 3D GIF for output #####
+
+# Set up parameters for loop to create GIF
+n_frames <- length(dswe_images)
+img_frames <- paste0("out/cache/dswe_uncertainty_", seq_len(n_frames), ".png")
+
+
+for(i in 1:n_frames){
+  dswe_index = arrange(tanana_dswe_cleaned, width_ft)[i,]
+  date = dswe_index$Date
+  flow_index = tanana_flow_cleaned %>% filter(Date == date)
+  
+  
+  filtered_image = lapply(dswe_images, function(x) filter(x, Date == date))
+  dswe_image = data.frame()
+  for(x in 1:length(filtered_image)){
+    if(nrow(filtered_image[[x]])>0){
+      dswe_image= filtered_image[[x]]
+    }
+  }
+  
+  dswe_image$DSWE = factor(dswe_image$DSWE, levels = c("", "water - high confidence", "water - moderate conference", "potential wetland", "water/wetland - low confidence"))
+  
+  dswe_plot <- ggplot() +  
+    geom_tile(data=dswe_image, aes(x=x, y=y, fill= DSWE), alpha=0.8) + 
+    coord_equal() +
+    scale_fill_manual(name = "Classification", values = c("white", "dodgerblue4", "dodgerblue", "lightskyblue", "lightblue1")) +
+    theme_map() +
+  theme(legend.position="right",
+        legend.text = element_text(size = subtitle_fontsize, 
+                                   color = font_color, 
+                                   family = supporting_font),
+        legend.title = element_text(size = subtitle_fontsize, 
+                                    color = font_color, 
+                                    face = "bold", 
+                                    family = supporting_font))
+  
+  width_plot_new <- width_plot + geom_point(data = dswe_index, aes(x = wse_ft, y = width_ft), 
+                                            size = 7, shape = 19, color = "dodgerblue")
+
+  ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  draw_plot(dswe_plot,
+            x = 0.00,
+            y = 0.03,
+            width = 0.96) +
+  # width height plot
+  draw_plot(width_plot_new,
+            x = 0.01,
+            y = 0.01,
+            height = 0.34,
+            width = 0.22) +
+  # height flow plot
+  draw_plot(altim_plot,
+            x = 0.25,
+            y = 0.01,
+            height = 0.34,
+            width = 0.22) +
+  # height flow plot
+  draw_plot(flow_plot,
+            x = 0.49,
+            y = 0.01,
+            height = 0.34,
+            width = 0.34) +
+  # Alaska inset map
+  draw_plot(AK_inset,
+            x = 0.75,
+            y = 0.72,
+            height = 0.25,
+            width = 0.25) +
+  # explainer text
+  draw_label(paste('Merritt Harlan, USGS', 
+                   'Data: Smith, T. L., et al., 2022, Computed streamflow using',
+                   'satellite data for the Copper, Nushagak, Tanana, Yukon,', 
+                   'Susitna, and Knik, Koyukuk Rivers, Alaska, 2008-2021:',
+                   'USGS data release, https://doi.org/10.5066/P94LLG4R.',
+                   'Tanana River in Fairbanks, AK- USGS Site 15485500', sep = '\n'),
+             fontfamily = supporting_font,
+             fontface = "italic",
+             x = 0.96,
+             y = 0.03,
+             size = 10,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+ # Title
+  draw_label(stringr::str_wrap("Estimating streamflow from satellites",60),
+             x = 0.03,
+             y = 0.92,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             color = font_color,
+             size = title_fontsize) +
+  # Annotation
+  draw_label(paste("By relating optical satellite imagery, which can give us an estimate of river width,",
+                   "to satellite altimetry, which gives us an estimate of river elevation, we can approximate",
+                   "streamflow in large rivers. Although this data can have high uncertainty, combined with ",
+                   "knowledge of rivers and ground data, satellites can help us improve monitoring.", sep = '\n'),
+             x = 0.05,
+             y = 0.77,
+             hjust = 0,
+             vjust = 0,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             color = font_color,
+             size = subtitle_fontsize) +
+  # Add logo
+  draw_image(usgs_logo,
+             x = 0.96,
+             y = 0.15,
+             width = 0.10,
+             hjust = 1, vjust = 0,
+             halign = 0, valign = 0)
+
+
+  # Save the final image in Twitter's 16 by 9 format
+  # !! Use format for saving with the date of your prompt: 
+  #         YYYYMMDD_prompt_name ()
+  # e.g. `20230101_part-to-whole-cnell.png`
+  ggsave(filename = img_frames[i], 
+         width = 14, height = 9, dpi = 300)
+}
+
+# Build GIF using cached images - add labels here to control size better
+magick::image_read(img_frames) %>%
+  magick::image_write_gif(path="out/20230429_monochrome_mharlan.gif",delay=12/n_frames) # Number here is duration
+
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Satellite optical and altimetry data can be combined to estimate streamflow, as shown here for the Tanana River in Fairbanks Alaska. We can use the classified water extent to estimate river width by dividing the water extent area and the length of the river, and match this data with overlapping satellite altimeters to build relationships between river width, elevation, and streamflow. 
+
+2. Future data from the Surface Water Ocean Topography (SWOT) satellite will provide simultaneous water extent and elevation, providing even more data!
+
+### Data source(s)
+
+Landsat Collection 2 Level-3 Dynamic Surface Water Extent (DSWE) Science Products courtesy of the U.S. Geological Survey.
+
+Jones, J.W., 2019. Improved Automated Detection of Subpixel-Scale Inundation—Revised Dynamic Surface Water Extent (DSWE) Partial Surface Water Tests. Remote Sens., 11, 374 https://doi.org/10.3390/rs11040374.
+
+Smith, T. L., et al., 2022, Computed streamflow using satellite data for the Copper, Nushagak, Tanana, Yukon, Susitna, and Knik, Koyukuk Rivers, Alaska, 2008-2021: United States Geological Survey data release, https://doi.org/10.5066/P94LLG4R.
+
+Tanana River in Fairbanks, AK- USGS Site 15485500
+
+DSWE data can be downloaded from https://earthexplorer.usgs.gov/
+Instructions: 
+- draw a bounding box around Tanana Fairbanks (64 43' 36'' N, 146 51' 59'' W) OR upload shapefile downloaded from Smith et al., 2022 data repository
+- select dates corresponding to imagery (09/18/2014, 07/03/2015, 06/06/2017, 07/06/2017, 07/06/2011)
+- filter data to Landsat 4-9 C2 Dynamic Surface Water Extent
+- download INTR scene for each date
+
