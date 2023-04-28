@@ -6,7 +6,7 @@ Your name:
 
 Your prompt:
 
-Date for your prompt in April:
+Date for your prompt in April: April 28
 
 Image:
 
