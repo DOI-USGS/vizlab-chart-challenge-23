@@ -30,6 +30,7 @@ library(ggspatial)
 library(ggrepel)
 library(colorfindr)
 library(gghighlight)
+library(scales)
 library(nhdplusTools)
 library(dataRetrieval)
 
@@ -193,7 +194,7 @@ map_bbox <- st_bbox(Lake_Tahoe_huc8)
 # extract colors form image
 colors_lt1 <- get_colors(img='in/R/lake-tahoe-1591339_1280.jpeg')
 colors_lt2 <- get_colors(img='in/R/Lake-Tahoe-in-summer.png')
-colors_lt3 <- get_colors(img='in/R/lake_tahoe_w_boat..jpg')
+colors_lt3 <- get_colors(img='in/R/lake_tahoe_w_boat.pmg.jpg')
 # create palette, default palette size is 10
 lt_colours_vector_1 <- make_palette(colors_lt1)
 lt_colours_vector_2 <- make_palette(colors_lt2)
@@ -258,7 +259,7 @@ lt_map <- ggplot()+
 lt_map
 ## using generic save_map function to generate final map (in 'src/funs.R')
 lt_map_for_viz <- final_map_formatting(lt_map,
-                                   out_file = 'out/LT_map_gauges.png')
+                                       out_file = 'out/LT_map_gauges.png')
 
 ```
 
@@ -300,6 +301,11 @@ LT_dv_data <- readNWISdv(siteNumbers = active_sites_2023,
 _code hidden_
 ```{r flow_data_processing, include= FALSE, warning= FALSE, message=FALSE}
 
+site_lst <- unique(LT_dv_data$site_no)
+print(site_lst)
+
+site_lst_ordered <- c("10336676", "10336660", "10336645", "10336610", "103366092", "10336780", "10336730", "10336715", "10336700", "10336698")
+
 # Dates --------------------------------------------------------------
 
 LT_dv_data_dates <- LT_dv_data |>
@@ -332,7 +338,11 @@ LT_dv_data_viz <- LT_dv_data_w_MA |>
 #         year %in% c(2020,2021,2022,2023),
 #        day_of_week %in% c('Mon','Wed','Fri')
          ) |>
-  group_by(site_no)
+  ## reorder counter clock wise for plot
+  mutate(site_no = factor(site_no, site_lst_ordered)) |> 
+  arrange(site_no) |> 
+  group_by(site_no) 
+  
 
 ### Temp code to run plit quickly and ###
 # # ## Generate plot
@@ -366,8 +376,6 @@ line_plot_lst <- LT_dv_data_viz |>
                                ## NEED HELP WITH COLORS
                                color_palette = RColorBrewer::brewer.pal(9, 'BrBG')),
              .keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.
-
-setNames(line_plot_lst, unique(LT_dv_data_viz$site_no))
 
 line_plot_grid_1 <- cowplot::plot_grid(plotlist = line_plot_lst[1:5])
 line_plot_grid_2 <-cowplot::plot_grid(plotlist = line_plot_lst[6:10])
@@ -435,31 +443,35 @@ Yjitter <- (0.40 - 2*Ymargin)/2
 Xjitter <- (1 - 2*Xmargin)/5 # total jitter
 Xwidth <- 0.15
 
+
 ## Note - purrr must be placed ahead of map otherwise the loop won't work (`coerce of type `closure` error`)
 draw_line_plots <- purrr::map(1:length(line_plot_lst), function(x){
                          
-                  #       1:length(line_plot_lst)
-                         # print(x)
-                         # print(paste0('line plot #', x))
-
-                         # X axis positioning on the two sides of LT Map 
-                         if(x %in% seq(1,5)){
-                             X_position <- Xmargin + Xjitter  # 0.224
+                         # X axis positioning on the two sides of LT Map - specific placing 
+                        # for 5 and 10
+                         if(x %in% seq(1,4)){
+                             X_position <- 0.224
+                             } else if(x == 5){
+                               X_position <- 0.32 # 0.96
+                             } else if(x == 10){
+                               X_position <- 0.8 # 0.96
                              } else {
-                               X_position <- Xbase # 0.96
-                             } 
+                               X_position <- Xbase
+                          }
                          
                          # Y axis positioning from top to bottom
-                         if(x %in% c(1,6)){
-                           Y_position <- Ybase + (4*Yjitter) # 0.72
-                        } else if(x %in% c(2,7)){
-                           Y_position <- Ybase + (3*Yjitter)  # 0.56
-                        } else if(x %in% c(3,8)){
-                           Y_position <- Ybase + (2*Yjitter)  # 0.4
-                        } else if(x %in% c(4,9)){
-                           Y_position <- Ybase + (1*Yjitter) # 0.24
+                         if(x %in% c(1,9)){
+                           Y_position <- 0.72 # 0.72
+                        } else if(x %in% c(2,8)){
+                           Y_position <- 0.55  # 0.56
+                        } else if(x %in% c(3,7)){
+                           Y_position <- 0.35 # 0.4
+                        } else if(x %in% c(4,6)){
+                           Y_position <- 0.18 # 0.24
+                        } else if(x == 5){
+                           Y_position <- 0.06 
                         } else {
-                             Y_position <- Ybase
+                           Y_position <- 0.85
                         }
                        
                        # print(paste0('X_position = ', X_position))
@@ -473,7 +485,6 @@ draw_line_plots <- purrr::map(1:length(line_plot_lst), function(x){
                                  width = Xjitter) 
 
 })
-
 
 ```
 
