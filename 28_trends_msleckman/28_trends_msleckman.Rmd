@@ -459,37 +459,39 @@ Xwidth <- 0.15
 
 ## Note - purrr must be placed ahead of map otherwise the loop won't work (`coerce of type `closure` error`)
 draw_line_plots <- purrr::map(1:length(line_plot_lst), function(x){
-                         
-                         # X axis positioning on the two sides of LT Map - specific placing 
-                        # for 5 and 10
-                         if(x %in% seq(1,4)){
-                             X_position <- 0.35
-                             # } else if(x == 5){
-                             #   X_position <- 0.32
-                             } else if(x == 9){
-                               X_position <- 0.8 
-                             } else {
-                               X_position <- Xbase - 0.06 # 0.96
+  
+                          if(x == 1){
+                          X_position <- 0.38
+                          Y_position <- 0.65
+                        } else if(x == 2){
+                          X_position <- 0.36
+                          Y_position <- 0.48  
+                        } else if(x == 3){
+                          X_position <- 0.4
+                          Y_position <- 0.30
+                        } else if(x == 4){
+                          X_position <- 0.45
+                          Y_position <- 0.13  
+                        } else if(x == 5){
+                          X_position <- 0.82
+                          Y_position <- 0.13  
+                        } else if(x == 6){
+                          X_position <- 0.88
+                          Y_position <- 0.3   
+                        } else if(x == 7){
+                          X_position <- 0.88
+                          Y_position <- 0.48
+                        } else if(x == 8){
+                          X_position <- 0.88
+                          Y_position <- 0.65
+                        } else if(x == 9){
+                          X_position <- 0.8
+                          Y_position <- 0.8
+                        } else { 
+                          X_position <- 0.35
+                          Y_position <- 0.08
                           }
-                         
-                         # Y axis positioning from top to bottom
-                         if(x %in% c(1, 8)){
-                           Y_position <- 0.65 # 0.72
-                        } else if(x %in% c(2,7)){
-                           Y_position <- 0.48  # 0.56
-                        } else if(x %in% c(3,6)){
-                           Y_position <- 0.30 # 0.4
-                        } else if(x %in% c(4,5)){
-                           Y_position <- 0.10 # 0.24
-                        # } else if(x == 9){
-                        #    Y_position <- 0.06 
-                        } else {
-                           Y_position <- 0.80
-                        }
-                       
-                       # print(paste0('X_position = ', X_position))
-                       # print(paste0('Y_position = ', Y_position))
-
+  
                        draw_plot(line_plot_lst[[x]],
                                  x = X_position,
                                  y = Y_position,
@@ -515,13 +517,13 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 9, width = 16,
             hjust = 0, vjust = 1) +
   # the main plot
-  draw_line_plots +
   draw_plot(lt_map_for_viz,
             x = 0.01,
             y = 0.01,
             height = 1,
             width = 1,
             scale = 0.8) +
+  draw_line_plots +
   # explainer text
   draw_label("Explainer text",
              fontfamily = supporting_font,
@@ -532,7 +534,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 0,
              color = font_color)+
   # Title
-  draw_label("The 'Big Melt' has just begun. How much snowmelt is\n flowing into Lake Tahoe so Far?",
+  draw_label("The 'Big Melt' has just begun. \n How much snowmelt is flowing into Lake Tahoe so Far?",
              x = 0.04,
              y = 0.985,
              hjust = 0,
@@ -540,7 +542,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              lineheight = 0.75,
              fontfamily = font_legend,
              color = font_color,
-             size = 48) +
+             size = 40) +
   # Add logo
   draw_image(usgs_logo, 
              x = 0.04,
