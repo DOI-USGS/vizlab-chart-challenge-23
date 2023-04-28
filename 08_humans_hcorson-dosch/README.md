@@ -12,7 +12,7 @@
 
 **Your key takeaways (1-2 sentences each):**
 
-1. How we use water varies by county across the continental U.S. In the western U.S. water is used largely for irrigation, while in the east, water is used primarily for public supply and industry. 
+1. How we use water varies by county across the continental U.S. In the western U.S. water is used largely for irrigation, while in the east, water is used primarily for thermoelectric power generation and public supply. 
 
 **Your data sources:**
 
