@@ -26,16 +26,35 @@ final_map_formatting <- function(map,out_file){
           legend.position = 'bottom', 
           axis.ticks = element_blank(),
           axis.text = element_blank())+
-    ggspatial::annotation_north_arrow(location = "br", which_north = "true",  
-                                      pad_x = unit(0.0, "in"), pad_y = unit(0.4, "in"), 
-                                      style = north_arrow_fancy_orienteering(fill = 'black')) + 
-    ggspatial::annotation_scale(location = 'br')
+    ggspatial::annotation_north_arrow(location = "tl", which_north = "true",  
+                                      pad_x = unit(0.0, "in"), pad_y = unit(0.0, "in"),
+                                      height = unit(1.2, "cm"),
+                                      width = unit(1.2, "cm"),
+                                      style = north_arrow_fancy_orienteering(line_width = 0,
+                                                                             line_col = "#889756",
+                                                                             fill = c("#889756", "#889756"),
+                                                                             text_col = "white"),
+                                      )+ 
+    ggspatial::annotation_scale(location = 'br', bar_cols = c("#889756", "white"),
+                                height = unit(0.15, 'cm'), 
+                                # color = 'grey',
+                                line_width = 0.2,
+                                text_cex = 0.5,
+                                text_face = 'italic',
+                                text_family = "",
+                                tick_height = 0.6,
+                                text_col = '#889756'
+                                )
   
   ggsave(out_file, width = 9, height = 9, dpi = 300)
   
   return(cleaned_map)
   
 }
+
+# 
+final_map_formatting(lt_map_segs,
+                     out_file = 'out/LT_map_gauges.png')
 
 
 #' @title time_series_plot
@@ -48,7 +67,7 @@ final_map_formatting <- function(map,out_file){
 #' @param out_folder path of folder in which the plots will be saved. 
 #' @example time_series_plot(data = streamflow_df, y_var = 'flow', date_range =  c('1975-01-01', '2023-04-15'), top_year_num = 4, out_folder = 'Viz/out')
 
-time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_year_num = 5, string_format_title = 'Site Number: %s', out_folder = 'out'){
+time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336676', color_palette, top_year_num = 5, string_format_title = 'Site Number: %s', out_folder = 'out'){
   
 
   # ## TEMP
@@ -90,10 +109,6 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
                   y = .data[[y_var]],
                   colour =  as.factor(year)),
               linewidth = 1.1)+
-    gghighlight(year == 2023,
-                label_key = year,
-                unhighlighted_params = list(linewidth = 0.5, colour = alpha("grey", 0.4))
-                )+
     theme_classic()+
     ## make labels on x axis just month
     scale_x_date(date_labels = '%b')+
@@ -103,15 +118,28 @@ time_series_plot <- function(data, x_var, y_var, date_range, color_palette, top_
          )+
     xlab(label = '')+
     ylab(label = 'Flow (cfs)')+
-    scale_color_manual(values = color_palette)+
     theme(legend.position="none",
           plot.title = element_text(lineheight=.8,
                                     colour =  "#6B5E56",
                                     face = 'italic',
                                     size = '11'))
   
-  # plot 
-   
+  if(unique(data$site_no) == label_site){
+  plot <- plot +
+    gghighlight(year == 2023,
+                label_key = year,
+                unhighlighted_params = list(linewidth = 0.5, colour = alpha("grey", 0.4))
+                )+
+                scale_color_manual(values = color_palette)
+  } else{
+  plot <- plot +
+      gghighlight(year == 2023,
+                  label_key = NULL,
+                  unhighlighted_params = list(linewidth = 0.5, colour = alpha("grey", 0.4))
+      )+
+      scale_color_manual(values = color_palette)    
+  }
+  
   ggsave(file.path(out_folder, sprintf('ts_%s.png', site)), width = 9, height = 9, dpi = 300)
   
     return(plot)
