@@ -319,7 +319,7 @@ lt_map <- ggplot()+
                  arrow = arrow(length = unit(0.03, "npc")),
                  arrow.fill = "#354658", alpha = 0.4)+
     # top-right-right
-      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[8]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[8]][1] + 0.05, 
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[8]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[8]][1] + 0.085, 
                      y = active_nwis_sites_lake_tahoe$geometry[[8]][2] - 0.005, yend = active_nwis_sites_lake_tahoe$geometry[[8]][2] - 0.02), 
                  arrow = arrow(length = unit(0.03, "npc")),
                  arrow.fill = "#354658", alpha = 0.4)+
