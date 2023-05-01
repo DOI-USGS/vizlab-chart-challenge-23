@@ -516,7 +516,7 @@ showtext::showtext_auto(enable = TRUE)
 # Define colors
 background_color = "#FFFEFF"
 font_color_1 = "#0046A5"
-font_color_2 = "#63AEEF"
+font_color_2 = "#63AEEF" # "#3DA6DD"
 # The background canvas for your viz
 canvas <- grid::rectGrob(
   x = 0, y = 0, 
@@ -624,22 +624,22 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontfamily = supporting_font,
              color = font_color_1,
              size = 36) +
-    # Title 2
-  draw_label("Trend in Spring Snowmelt Runoff\ninto Lake Tahoe in 2023 compared\nto historical record.",
-             x = 0.04,
+    # Title 2 2023 spring flows into Lake Tahoe compared to the historical record
+  draw_label("2023 spring flows into Lake Tahoe\ncompared to historical record.",
+             x = 0.05,
              y = 0.90,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
              fontfamily = supporting_font,
              color = font_color_2,
-             size = 22) +
+             size = 24) +
   # Some explainer text
   draw_label("Margaux Sleckman, USGS\nFlow data from the USGS National Water Information System: https://waterdata.usgs.gov/nwis/rt",
              fontfamily = supporting_font,
              x = 0.96,   
              y = 0.05,
-             size = 12,
+             size = 14,
              hjust = 1,
              vjust = 0,
              color = font_color_1,
