@@ -236,8 +236,7 @@ show_col(lt_all_colors)
   ## State boundaries
    geom_sf(data = CA_sf,
            fill = 'white',
-           color = 'grey',
-           alpha = 0.1,
+           color = alpha('#6D6D6D', 0.5),
            size = 0.5)+
   ## lakes (incl. all lakes in basin)
    geom_sf(data = LT,
@@ -303,14 +302,15 @@ extent_bbox <- st_bbox(Lake_Tahoe_huc8)
 extent_lt_huc8 <- st_as_sfc(extent_bbox)
 
 (extent_map <- ggplot() + 
-    geom_sf(data = CA_sf, fill = "white", color = alpha('grey', 0.5)) + 
+    geom_sf(data = CA_sf, fill = "white", color = alpha('#6D6D6D', 0.5)) + 
     geom_sf(data = extent_lt_huc8, color = 'forest green', fill = NA) +
     geom_sf(data = LT, fill = "#A8D0F4", color = "#A8D0F4", alpha = 0.8)+
    coord_sf(
-     ylim = c(extent_bbox$ymin - 5.5, extent_bbox$ymax + 5.5),
-     xlim = c(extent_bbox$xmin - 5.5, extent_bbox$xmax + 5.5)
+     ylim = c(extent_bbox$ymin - 6, extent_bbox$ymax + 4),
+     xlim = c(extent_bbox$xmin - 6, extent_bbox$xmax + 6)
      )+
-  theme_void())
+  theme_void()
+)
 
 ```
 
@@ -613,13 +613,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   # the main plot
   draw_plot(extent_map,
             x = 0.001,
-            y = 0.08,
+            y = 0.15,
             height = 0.4,
             width = 0.2
-            # hjust = 1
-            # # height = 1,
-            # width = 1,
-            # scale = 1
             )+
   draw_plot(lt_map_for_viz,
             x = 0.01,
