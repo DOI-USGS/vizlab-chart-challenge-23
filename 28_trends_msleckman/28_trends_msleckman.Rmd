@@ -573,7 +573,7 @@ draw_line_plots <- purrr::map(1:length(line_plot_lst), function(x){
                           Y_position <- 0.62
                         } else if(x == 9){
                           X_position <- 0.8
-                          Y_position <- 0.8
+                          Y_position <- 0.78
                         } else { 
                           X_position <- 0.35
                           Y_position <- 0.08
@@ -622,18 +622,30 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             scale = 0.8) +
   draw_line_plots +
   # explainer text
-  draw_label("Following an unprecedented Winter, the snowpack of the California Sierra Nevada mountain range is generating\nsignificant water flow through it's rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges\nsurrounding Lake Tahoe for the months of March to May in 2023, as well as all historical years dating back to 1975 (in grey).",
+  draw_label("Following an unprecedented Winter, the 2023 snowpack of the California Sierra Nevada mountain range is generating\nsignificant water flow through it's rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges\nsurrounding Lake Tahoe for the months of March to May in 2023 compared to historical data for that period dating back to 1975 (in grey).",
              fontfamily = supporting_font,
-             x = 0.35,   
+             x = 0.65,   
              y = 0.05,
              size = 12,
-             hjust = 0,
+             hjust = 0.5,
+             vjust = 0.5,
+             color = font_color,
+             fontface = 'italic'
+            
+             )+
+  # Name
+  draw_label("Margaux Sleckman, USGS\nFlow data from the USGS National Water Information System: https://waterdata.usgs.gov/nwis/rt",
+             fontfamily = supporting_font,
+             x = 0.96,   
+             y = 0.96,
+             size = 9,
+             hjust = 1,
              vjust = 0,
              color = font_color,
             
              )+
   # Title
-  draw_label("The Big Melt has begun.\nTrend of Spring Snowmelt Runoff\ninto Lake Tahoe in 2023\ncompared to historical record.",
+  draw_label("The Big Melt has begun.\nTrend in Spring Snowmelt Runoff\ninto Lake Tahoe in 2023\ncompared to historical record.",
              x = 0.04,
              y = 0.985,
              hjust = 0,
@@ -661,9 +673,9 @@ ggsave(filename = "out/20230428_trends_msleckman.png",
 ## Supporting information
 
 ### Key takeaways of this viz (1-2 sentences each)
-Following an unprecedented Winter, the snowpack of the California Sierra Nevada mountain rain is generating\nsignificant water flow through rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges surrounding Lake Tahoe\nfor the months of March to May in 2023, as well as all historical years dating back to 1975 (in grey).
 
-1. Key takeaways here
+Following an unprecedented Winter, the 2023 snowpack of the California Sierra Nevada mountain range is generating\nsignificant water flow through rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges surrounding Lake Tahoe\nfor the months of March to May in 2023, as well as all historical years dating back to 1975 (in grey).
+
 * While it is still early in the Spring season, the 2023 snowmelt runoff in the Lake Tahoe basin is trending upwards across all stream gauges, aiming to surpass previous years dating back to 1975. 
 * All gauges are found in tributaries that are uniquely influenced by environmental factors that drive snow melt such as temperature or topography. This explains the variability in flow across each gauges. 
 
