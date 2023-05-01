@@ -70,7 +70,10 @@ final_map_formatting <- function(map, scale_arrow_color, out_file){
 #' @param out_folder path of folder in which the plots will be saved. 
 #' @example time_series_plot(data = streamflow_df, y_var = 'flow', date_range =  c('1975-01-01', '2023-04-15'), top_year_num = 4, out_folder = 'Viz/out')
 
-time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336676', color_palette, top_year_num = 5, string_format_title = 'Site Number: %s', out_folder = 'out'){
+time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336676',
+                             color_palette_highlight,
+                             color_palette_unhighlight, 
+                             top_year_num = 5, string_format_title = 'Site Number: %s', out_folder = 'out'){
   
 
   # ## TEMP
@@ -127,17 +130,17 @@ time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336
     gghighlight(year == 2023,
                 max_highlight = 5L,
                 label_key = year,
-                unhighlighted_params = list(linewidth = 0.5, colour = alpha("grey", 0.4))
+                unhighlighted_params = list(linewidth = 0.5, colour = alpha(color_palette_unhighlight, 1))
                 )+
-                scale_color_manual(values = color_palette)
+                scale_color_manual(values = color_palette_highlight)
   } else{
   plot <- plot +
       gghighlight(year == 2023,
                   max_highlight = 5L, 
                   label_key = NULL,
-                  unhighlighted_params = list(linewidth = 0.5, colour = alpha("grey", 0.4))
+                  unhighlighted_params = list(linewidth = 0.5, colour = alpha(color_palette_unhighlight, 1))
       )+
-      scale_color_manual(values = color_palette)    
+      scale_color_manual(values = color_palette_highlight)    
   }
   
   ggsave(file.path(out_folder, sprintf('ts_%s.png', site)), width = 9, height = 9, dpi = 300)

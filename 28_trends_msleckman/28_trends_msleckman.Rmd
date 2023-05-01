@@ -226,6 +226,10 @@ lt_all_colors <- c("#000000", "#0046A5", "#005DBA", "#0082CD", "#001E54","#00427
 
 show_col(lt_all_colors)
 
+teal_1 <- "#00B79F"
+selected_teal <- '#008F81'
+selected_grey <- "#E3E3E3"
+
 ```
 
 ```{r extent_map}
@@ -277,7 +281,7 @@ extent_lt_huc8 <- st_as_sfc(extent_bbox)
              ## removing sites that are too close together
              filter(!site_no %in% c('10336698','10336700')),
            color = "#97D4AB",
-           fill = "#00B79F",
+           fill = selected_teal,
            size = 3, 
            shape = 21)+
     ## nwis st stations around LT
@@ -285,8 +289,8 @@ extent_lt_huc8 <- st_as_sfc(extent_bbox)
              filter(site_no %in% c('10336698',
                                    '10336700')) |> 
              st_jitter(amount = 0.005),
-           color = "#97D4AB",
-           fill = "#00B79F",
+           color = "#00B79F", 
+           fill = selected_teal,
            size = 3,
            shape = 21)+
    coord_sf(
@@ -306,7 +310,7 @@ extent_lt_huc8 <- st_as_sfc(extent_bbox)
 
 ```{r segments}
 
-  lt_map_segs <- lt_map + 
+(lt_map_segs <- lt_map + 
     # top left
     geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[1]][1] - 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[1]][1] - 0.1, 
                      y = active_nwis_sites_lake_tahoe$geometry[[1]][2] + 0.005, yend = active_nwis_sites_lake_tahoe$geometry[[1]][2] + 0.06),
@@ -351,14 +355,18 @@ extent_lt_huc8 <- st_as_sfc(extent_bbox)
       geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[9]][1] + 0.01, xend = active_nwis_sites_lake_tahoe$geometry[[9]][1] + 0.08, 
                        y = active_nwis_sites_lake_tahoe$geometry[[9]][2] + 0.01, yend = active_nwis_sites_lake_tahoe$geometry[[9]][2] + 0.08), 
                    arrow = arrow(length = unit(0.03, "npc")),
-                   arrow.fill = "#354658", alpha = 0.4)
+                   arrow.fill = "#354658", alpha = 0.4))
+
+```
+
+```{r final_formatting_map}
   
 
 ## using generic save_map function to generate final map (in 'src/funs.R')
-lt_map_for_viz <- final_map_formatting(lt_map_segs,
+(lt_map_for_viz <- final_map_formatting(lt_map_segs,
                                        scale_arrow_color = "#00427C",
                                        out_file = 'out/LT_map_gauges.png')
-
+)
 ```
 
 ## B. Workflow for lineplots
@@ -472,7 +480,8 @@ line_plot_lst <- LT_dv_data_viz |>
                                string_format_title = 'USGS Station ID: %s',
                                top_year_num = 4,
                                out_folder = 'out',
-                               color_palette = "#66C2A4"
+                               color_palette_highlight = selected_teal,
+                               color_palette_unhighlight = selected_grey
                                ),
              .keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.
 
