@@ -60,6 +60,7 @@ _code hidden_
 # state boundaries --------------------------------------------------------
 
 CA_sf <- us_states |> filter(NAME == 'California')
+
 West_sf <- us_states |> filter(NAME %in% c('California','Oregon',
                                            'Nevada','Utah',
                                            'Arizona',
@@ -68,22 +69,25 @@ West_sf <- us_states |> filter(NAME %in% c('California','Oregon',
 # AOI for NHD data extraction ---------------------------------------------
 
 ## grab huc 8s with nhdplus tools
-CA_huc8 <- nhdplusTools::get_huc8(AOI = CA_sf)
+CA_huc8 <- nhdplusTools::get_huc8(AOI = CA_sf) 
+
+LT_huc8 <- CA_huc8|> 
+  filter(name == 'Lake Tahoe')
 
 ## define all huc4 to allow data download
-CA_huc4 <- CA_huc8$huc8 |> substr(1,4) |> unique()
+LT_huc4 <- LT_huc8$huc8 |> substr(1,4) |> unique()
 
 # NHD Data Download (conditional Run only if not downloaded yet) ----------------------------------
 
 if(length(list.files('in/R/nhdPlusTools')) == 0){
   
-  print(paste('Downloading NHD data for the following CA HUC4s',CA_huc4))
+  print(paste('Downloading NHD data for the following selected CA HUC4s', LT_huc4))
 
-  download_nhdplushr('in/R/nhdPlusTools', CA_huc4)
+  download_nhdplushr('in/R/nhdPlusTools', LT_huc4)
 }
 
-huc_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_HU_CA_data.gpkg'
-wtbdy_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_CA_wtrbdy_data.gpkg'
+huc_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_HU_data.gpkg'
+wtbdy_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_wtrbdy_data.gpkg'
 
 if(length(list.files('in/R/nhdPlusTools', full.names = T, pattern = '_data.gpkg')) == 0){
 
@@ -102,7 +106,7 @@ if(length(list.files('in/R/nhdPlusTools', full.names = T, pattern = '_data.gpkg'
   # # Store Waterbodies shps into geopackage
   # # This one takes A-WHILE so defaulted to using nhdplustools::get_flines()
   # nhdplusTools::get_nhdplushr(hr_dir = 'in/R/nhdPlusTools/',
-  #                            out_gpkg = 'in/R/nhdplustools_CA_flines_data.gpkg',
+  #                            out_gpkg = 'in/R/nhdplustools_flines_data.gpkg',
   #                            layer = 'NHDFlowline')
 
   }
@@ -113,15 +117,15 @@ print(st_layers(wtbdy_gpkg_path))
 
 # Load nhdPlus features for AOI ----------------------------------------------------------------
 ## HUCS
-huc10_CA <- st_read(huc_gpkg_path, layer = 'WBDHU10')
-huc8_CA <- st_read(huc_gpkg_path, layer = 'WBDHU8') 
-huc6_CA <- st_read(huc_gpkg_path, layer = 'WBDHU6')
+huc10 <- st_read(huc_gpkg_path, layer = 'WBDHU10')
+huc8 <- st_read(huc_gpkg_path, layer = 'WBDHU8') 
+huc6 <- st_read(huc_gpkg_path, layer = 'WBDHU6')
 
 ## Waterbodies
-lakes_CA <- st_read(wtbdy_gpkg_path, layer = 'NHDWaterbody') |> 
+lakes <- st_read(wtbdy_gpkg_path, layer = 'NHDWaterbody') |> 
   st_make_valid()
 
-lakes_in_CA_hucs <- st_join(lakes_CA, huc6_CA) |>
+lakes_in_hucs <- st_join(lakes, huc6) |>
   ## filtering out NA HUC6 because this ensures that we only have Lakes within the CA Huc6 boundaries
   filter(!is.na(HUC6),
   ## rm-ing NA AreaSqKM
@@ -136,12 +140,15 @@ _code hidden_
 # NHDPLUS Tools data - Lake Tahoe subset ----------------------------------
 
 # HUC
-Lake_Tahoe_huc6 <- filter(huc6_CA, Name == 'Truckee') 
-Lake_Tahoe_huc8 <- filter(huc8_CA, Name == 'Lake Tahoe')
+Lake_Tahoe_huc6 <- filter(huc6, Name == 'Truckee') 
+Lake_Tahoe_huc8 <- filter(huc8, Name == 'Lake Tahoe')
 
 # Water features
-LT_lakes <- st_join(lakes_in_CA_hucs , Lake_Tahoe_huc8) |>
+LT_lakes <- st_join(lakes_in_hucs , Lake_Tahoe_huc8) |>
   filter(!is.na(HUC8))
+
+## grabbing just LT
+LT <- LT_lakes |> filter(GNIS_Name == "Lake Tahoe")
 
 LT_flines <- get_nhdplus(AOI = Lake_Tahoe_huc8,
                          realization = 'flowline',
@@ -214,21 +221,22 @@ lt_all_colors <- c("#000000", "#0046A5", "#005DBA", "#0082CD", "#001E54","#00427
 
 show_col(lt_all_colors)
 
-dodge <- 
+```
+
+```{r main_map}
 # Main map -----------------------------------------------------------
 
 lt_map <- ggplot()+
   ## State boundaries
-   geom_sf(data = West_sf,
+   geom_sf(data = CA_sf,
            fill = 'white',
            color = 'grey',
            alpha = 0.1,
            size = 0.5)+
   ## lakes (incl. all lakes in basin)
-   geom_sf(data = LT_lakes |>
-             filter(GNIS_Name == "Lake Tahoe"),
+   geom_sf(data = LT,
            fill = "#A8D0F4", 
-           color = "#A8D0F4",  ## probably easier to write out huc but currently dont have R studio updated to show colors
+           color = "#A8D0F4",
            alpha = 0.8)+
   ## huc8 boundary of basin
    # geom_sf(data = Lake_Tahoe_huc8,
@@ -243,6 +251,7 @@ lt_map <- ggplot()+
            alpha = 0.7)+
   ## nwis st stations around LT
    geom_sf(data = active_nwis_sites_lake_tahoe |>
+             ## removing sites that are too close together
              filter(!site_no %in% c('10336698','10336700')),
            color = "#97D4AB",
            fill = "#00B79F",
@@ -277,6 +286,24 @@ lt_map <- ggplot()+
            hjust = 'left', size = 3, fontface = 'italic',  colour = 'grey')+
   annotate('text', x = -119.95, y = 39.34, label = c('Nevada'),
            hjust = 'left', size = 3, fontface = 'italic', colour = 'grey')
+
+```
+
+```{r extent_map}
+extent_bbox <- st_bbox(Lake_Tahoe_huc8)
+extent_lt_huc8 <- st_as_sfc(extent_bbox)
+
+extent_map <- ggplot() + 
+    geom_sf(data = West_sf, fill = "white", color = alpha('grey', 0.5)) + 
+    geom_sf(data = extent_lt_huc8, color = 'forest green', fill = NA) +
+    geom_sf(data = LT, fill = "#A8D0F4", color = "#A8D0F4", alpha = 0.8)+
+   coord_sf(
+     ylim = c(extent_bbox$ymin - 5.5, extent_bbox$ymax + 5.5),
+     xlim = c(extent_bbox$xmin - 5.5, extent_bbox$xmax + 5.5)
+     )+
+  theme_void()
+
+extent_map
 
 ```
 
@@ -329,10 +356,10 @@ lt_map <- ggplot()+
                    arrow = arrow(length = unit(0.03, "npc")),
                    arrow.fill = "#354658", alpha = 0.4)
   
-lt_map_segs
 
 ## using generic save_map function to generate final map (in 'src/funs.R')
 lt_map_for_viz <- final_map_formatting(lt_map_segs,
+                                       scale_arrow_color = "#00427C",
                                        out_file = 'out/LT_map_gauges.png')
 
 ```
@@ -446,7 +473,7 @@ line_plot_lst <- LT_dv_data_viz |>
                                string_format_title = 'USGS Station ID: %s',
                                top_year_num = 4,
                                out_folder = 'out',
-                               color_palette = "#00B79F"
+                               color_palette = "#66C2A4"
                                ),
              .keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.
 
@@ -499,7 +526,7 @@ canvas <- grid::rectGrob(
 )
 
 # Load in USGS logo (also a black logo available)
-usgs_logo <- magick::image_read("../usgs_logo_white.png") 
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
 
 
 ```
@@ -577,6 +604,16 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 9, width = 16,
             hjust = 0, vjust = 1) +
   # the main plot
+  draw_plot(extent_map,
+            x = 0.001,
+            y = 0.08,
+            height = 0.4,
+            width = 0.2
+            # hjust = 1
+            # # height = 1,
+            # width = 1,
+            # scale = 1
+            )+
   draw_plot(lt_map_for_viz,
             x = 0.01,
             y = 0.01,
@@ -585,22 +622,24 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             scale = 0.8) +
   draw_line_plots +
   # explainer text
-  draw_label("Explainer text",
+  draw_label("Following an unprecedented Winter, the snowpack of the California Sierra Nevada mountain range is generating\nsignificant water flow through it's rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges\nsurrounding Lake Tahoe for the months of March to May in 2023, as well as all historical years dating back to 1975 (in grey).",
              fontfamily = supporting_font,
-             x = 0.96,   
+             x = 0.35,   
              y = 0.05,
              size = 12,
-             hjust = 1,
+             hjust = 0,
              vjust = 0,
-             color = font_color)+
+             color = font_color,
+            
+             )+
   # Title
-  draw_label("The 'Big Melt' has just begun.\nHow much snowmelt\nis flowing into Lake Tahoe?",
+  draw_label("The Big Melt has begun.\nTrend of Spring Snowmelt Runoff\ninto Lake Tahoe in 2023\ncompared to historical record.",
              x = 0.04,
              y = 0.985,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
-             fontfamily = font_legend,
+             fontfamily = supporting_font,
              color = font_color,
              size = 30) +
   # Add logo
@@ -622,12 +661,11 @@ ggsave(filename = "out/20230428_trends_msleckman.png",
 ## Supporting information
 
 ### Key takeaways of this viz (1-2 sentences each)
-[draft]
-2023 is a record snowpack year for the Lake Tahoe basin, and with that, a record snow melt year.
-This viz is meant to highlight how the 2023 streamflow into the Lake Tahoe compares, thus far, to the top flow years. 
+Following an unprecedented Winter, the snowpack of the California Sierra Nevada mountain rain is generating\nsignificant water flow through rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges surrounding Lake Tahoe\nfor the months of March to May in 2023, as well as all historical years dating back to 1975 (in grey).
 
 1. Key takeaways here
-tbd
+* While it is still early in the Spring season, the 2023 snowmelt runoff in the Lake Tahoe basin is trending upwards across all stream gauges, aiming to surpass previous years dating back to 1975. 
+* All gauges are found in tributaries that are uniquely influenced by environmental factors that drive snow melt such as temperature or topography. This explains the variability in flow across each gauges. 
 
 ### Data source(s)
 

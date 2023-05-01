@@ -13,7 +13,7 @@
 #' @param 
 #' @example 
 
-final_map_formatting <- function(map,out_file){
+final_map_formatting <- function(map, scale_arrow_color, out_file){
   
   cleaned_map <- map +
     theme(plot.title = element_text(size = 10, face= 'bold'),
@@ -28,14 +28,15 @@ final_map_formatting <- function(map,out_file){
           axis.text = element_blank())+
     ggspatial::annotation_north_arrow(location = "tl", which_north = "true",  
                                       pad_x = unit(0.0, "in"), pad_y = unit(0.0, "in"),
-                                      height = unit(1.2, "cm"),
-                                      width = unit(1.2, "cm"),
+                                      height = unit(1.1, "cm"),
+                                      width = unit(1.1, "cm"),
                                       style = north_arrow_fancy_orienteering(line_width = 0,
-                                                                             line_col = "#889756",
-                                                                             fill = c("#889756", "#889756"),
+                                                                             line_col = scale_arrow_color,
+                                                                             fill = c(scale_arrow_color,
+                                                                                      scale_arrow_color),
                                                                              text_col = "white"),
                                       )+ 
-    ggspatial::annotation_scale(location = 'br', bar_cols = c("#889756", "white"),
+    ggspatial::annotation_scale(location = 'br', bar_cols = c(scale_arrow_color, "white"),
                                 height = unit(0.15, 'cm'), 
                                 # color = 'grey',
                                 line_width = 0.2,
@@ -43,7 +44,7 @@ final_map_formatting <- function(map,out_file){
                                 text_face = 'italic',
                                 text_family = "",
                                 tick_height = 0.6,
-                                text_col = '#889756'
+                                text_col = scale_arrow_color
                                 )
   
   ggsave(out_file, width = 9, height = 9, dpi = 300)
@@ -53,8 +54,8 @@ final_map_formatting <- function(map,out_file){
 }
 
 # 
-final_map_formatting(lt_map_segs,
-                     out_file = 'out/LT_map_gauges.png')
+# final_map_formatting(lt_map_segs,
+#                      out_file = 'out/LT_map_gauges.png')
 
 
 #' @title time_series_plot
@@ -71,6 +72,7 @@ time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336
   
 
   # ## TEMP
+  # label_site = '10336676'
   # data <- LT_dv_data_viz |> filter(site_no == LT_dv_data$site_no[1])
   # x_var = 'fake_date'
   # y_var = 'MA'
@@ -127,6 +129,7 @@ time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336
   if(unique(data$site_no) == label_site){
   plot <- plot +
     gghighlight(year == 2023,
+                max_highlight = 5L,
                 label_key = year,
                 unhighlighted_params = list(linewidth = 0.5, colour = alpha("grey", 0.4))
                 )+
@@ -134,6 +137,7 @@ time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336
   } else{
   plot <- plot +
       gghighlight(year == 2023,
+                  max_highlight = 5L, 
                   label_key = NULL,
                   unhighlighted_params = list(linewidth = 0.5, colour = alpha("grey", 0.4))
       )+
