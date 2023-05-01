@@ -232,7 +232,7 @@ show_col(lt_all_colors)
 
 # Main map -----------------------------------------------------------
 
-lt_map <- ggplot()+
+(lt_map <- ggplot()+
   ## State boundaries
    geom_sf(data = CA_sf,
            fill = 'white',
@@ -291,7 +291,7 @@ lt_map <- ggplot()+
   annotate('text', x = -120.10, y = 39.34, label = c('California'),
            hjust = 'left', size = 3, fontface = 'italic',  colour = 'grey')+
   annotate('text', x = -119.95, y = 39.34, label = c('Nevada'),
-           hjust = 'left', size = 3, fontface = 'italic', colour = 'grey')
+           hjust = 'left', size = 3, fontface = 'italic', colour = 'grey'))
 
 ```
 
