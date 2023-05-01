@@ -87,18 +87,6 @@ time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336
   site <- unique(data$site_no)
   print(site)
   
-  ## Determine highest annual mean flow years for the given site (excluding 2023, which we want to include in any case)
-  top_years_df <- data |> 
-    ungroup() |> 
-    filter(year != 2023) |> 
-    group_by(year) |>
-    summarize(annual_flow = mean(.data[[y_var]], na.rm = TRUE)) |> 
-    arrange(desc(annual_flow)) |>
-    head(top_year_num)
-  print(top_years_df)
-  
-  ## Pull top years
-  top_years <- top_years_df |> pull(year)
   
   ## Generate plot
   plot  <- data %>% 
