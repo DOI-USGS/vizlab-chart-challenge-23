@@ -301,7 +301,7 @@ extent_bbox <- st_bbox(Lake_Tahoe_huc8)
 extent_lt_huc8 <- st_as_sfc(extent_bbox)
 
 (extent_map <- ggplot() + 
-    geom_sf(data = West_sf, fill = "white", color = alpha('grey', 0.5)) + 
+    geom_sf(data = CA_sf, fill = "white", color = alpha('grey', 0.5)) + 
     geom_sf(data = extent_lt_huc8, color = 'forest green', fill = NA) +
     geom_sf(data = LT, fill = "#A8D0F4", color = "#A8D0F4", alpha = 0.8)+
    coord_sf(
