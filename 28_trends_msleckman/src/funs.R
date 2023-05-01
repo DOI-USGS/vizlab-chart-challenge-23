@@ -26,8 +26,9 @@ final_map_formatting <- function(map, scale_arrow_color, out_file){
           legend.position = 'bottom', 
           axis.ticks = element_blank(),
           axis.text = element_blank())+
-    ggspatial::annotation_north_arrow(location = "tl", which_north = "true",  
-                                      pad_x = unit(0.0, "in"), pad_y = unit(0.0, "in"),
+    ggspatial::annotation_north_arrow(location = "br", which_north = "true",  
+                                      pad_x = unit(-0.005, "in"),
+                                      pad_y = unit(0.2, "in"),
                                       height = unit(1.1, "cm"),
                                       width = unit(1.1, "cm"),
                                       style = north_arrow_fancy_orienteering(line_width = 0,
@@ -36,7 +37,8 @@ final_map_formatting <- function(map, scale_arrow_color, out_file){
                                                                                       scale_arrow_color),
                                                                              text_col = "white"),
                                       )+ 
-    ggspatial::annotation_scale(location = 'br', bar_cols = c(scale_arrow_color, "white"),
+    ggspatial::annotation_scale(location = 'br',
+                                bar_cols = c(scale_arrow_color, "white"),
                                 height = unit(0.15, 'cm'), 
                                 # color = 'grey',
                                 line_width = 0.2,

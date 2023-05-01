@@ -289,9 +289,11 @@ show_col(lt_all_colors)
    theme_classic()+
   ## adding state labels at top of map
   annotate('text', x = -120.10, y = 39.34, label = c('California'),
-           hjust = 'left', size = 3, fontface = 'italic',  colour = 'grey')+
+           hjust = 'left', size = 3,
+           fontface = 'italic',  colour = 'grey')+
   annotate('text', x = -119.95, y = 39.34, label = c('Nevada'),
-           hjust = 'left', size = 3, fontface = 'italic', colour = 'grey'))
+           hjust = 'left', size = 3,
+           fontface = 'italic', colour = 'grey'))
 
 ```
 
