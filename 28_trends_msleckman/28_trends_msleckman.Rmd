@@ -260,7 +260,7 @@ extent_lt_huc8 <- st_as_sfc(extent_bbox)
    geom_sf(data = LT,
            fill = "#A8D0F4", 
            color = "#A8D0F4",
-           alpha = 0.8)+
+           alpha = 1)+
   ## huc8 boundary of basin
    # geom_sf(data = Lake_Tahoe_huc8,
    #         fill = 'transparent',
