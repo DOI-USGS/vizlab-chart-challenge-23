@@ -114,7 +114,13 @@ time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336
           plot.title = element_text(lineheight=.8,
                                     colour =  "#6B5E56",
                                     face = 'italic',
-                                    size = '11'))
+                                    size = '11'),
+          axis.line.x = element_line(color= "#6B5E56", linewidth = 0.3),
+          axis.line.y = element_line(color= "#6B5E56", linewidth = 0.3),
+          axis.ticks = element_line(color= "#6B5E56", linewidth = 0.3),
+          axis.text = element_text(color= "#6B5E56"),
+          axis.title = element_text(color= "#6B5E56")
+          )
   
   if(unique(data$site_no) == label_site){
   plot <- plot +

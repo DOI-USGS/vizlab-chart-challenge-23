@@ -228,6 +228,24 @@ show_col(lt_all_colors)
 
 ```
 
+```{r extent_map}
+
+extent_bbox <- st_bbox(Lake_Tahoe_huc8)
+extent_lt_huc8 <- st_as_sfc(extent_bbox)
+
+(extent_map <- ggplot() + 
+    geom_sf(data = CA_sf, fill = "white", color = alpha('#6D6D6D', 0.5)) + 
+    geom_sf(data = extent_lt_huc8, color = 'forest green', fill = NA) +
+    geom_sf(data = LT, fill = "#A8D0F4", color = "#A8D0F4", alpha = 0.8)+
+   coord_sf(
+     ylim = c(extent_bbox$ymin - 6, extent_bbox$ymax + 4),
+     xlim = c(extent_bbox$xmin - 6, extent_bbox$xmax + 6)
+     )+
+  theme_void()
+)
+
+```
+
 ```{r main_map}
 
 # Main map -----------------------------------------------------------
@@ -271,16 +289,6 @@ show_col(lt_all_colors)
            fill = "#00B79F",
            size = 3,
            shape = 21)+
-  # ## station labels
-  #  geom_text_repel(data = active_nwis_sites_lake_tahoe,
-  #                 color = 'black',
-  #               aes(label = site_no,
-  #                   geometry = geometry),
-  #               stat = "sf_coordinates",
-  #   min.segment.length = 1,
-  #   size =3,
-  #   nudge_x = 0.05,
-  #   point.padding = 1e-04)+
    coord_sf(
      ylim = c(map_bbox$ymin, map_bbox$ymax),
      xlim = c(map_bbox$xmin, map_bbox$xmax)
@@ -289,28 +297,10 @@ show_col(lt_all_colors)
   ## adding state labels at top of map
   annotate('text', x = -120.10, y = 39.34, label = c('California'),
            hjust = 'left', size = 3,
-           fontface = 'italic',  colour = 'grey')+
-  annotate('text', x = -119.95, y = 39.34, label = c('Nevada'),
+           fontface = 'italic',  colour = '#6D6D6D')+
+  annotate('text', x = -119.975, y = 39.34, label = c('Nevada'),
            hjust = 'left', size = 3,
-           fontface = 'italic', colour = 'grey'))
-
-```
-
-```{r extent_map}
-
-extent_bbox <- st_bbox(Lake_Tahoe_huc8)
-extent_lt_huc8 <- st_as_sfc(extent_bbox)
-
-(extent_map <- ggplot() + 
-    geom_sf(data = CA_sf, fill = "white", color = alpha('#6D6D6D', 0.5)) + 
-    geom_sf(data = extent_lt_huc8, color = 'forest green', fill = NA) +
-    geom_sf(data = LT, fill = "#A8D0F4", color = "#A8D0F4", alpha = 0.8)+
-   coord_sf(
-     ylim = c(extent_bbox$ymin - 6, extent_bbox$ymax + 4),
-     xlim = c(extent_bbox$xmin - 6, extent_bbox$xmax + 6)
-     )+
-  theme_void()
-)
+           fontface = 'italic', colour = '#6D6D6D'))
 
 ```
 
@@ -472,7 +462,7 @@ LT_dv_data_viz |>
 ### 3. Generate Lineplots
 ```{r flow_data_line_plot, warning=FALSE, message=FALSE, results = 'hide'}
 
-## generate line plots
+## Generate line plots
 ## Note - function pulled from 'src/funs.R'
 line_plot_lst <- LT_dv_data_viz |>
   group_map( ~time_series_plot(data = .x,
