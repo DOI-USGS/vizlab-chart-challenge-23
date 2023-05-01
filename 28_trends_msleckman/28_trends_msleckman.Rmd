@@ -1,17 +1,19 @@
 ---
-title: "28 Trends - How much Water is entering Lake Tahoe?"
+title: "28 Trends - How much water is entering Lake Tahoe?"
 author: "Margaux Sleckman"
 date: "2023-03-10"
 output: html_document
 ---
 
 ```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+
 knitr::opts_chunk$set(echo = TRUE)
 source('src/funs.R')
 
 ```
 
 ```{r libraries,include=FALSE, warning=FALSE, message=FALSE}
+
 # Load libraries
 library(tidyverse) # includes ggplot
 library(readr) # best for reading and writing csvs
@@ -61,6 +63,7 @@ _code hidden_
 
 CA_sf <- us_states |> filter(NAME == 'California')
 
+## also grabbing Western states for extent map
 West_sf <- us_states |> filter(NAME %in% c('California','Oregon',
                                            'Nevada','Utah',
                                            'Arizona',
@@ -77,7 +80,7 @@ LT_huc8 <- CA_huc8|>
 ## define all huc4 to allow data download
 LT_huc4 <- LT_huc8$huc8 |> substr(1,4) |> unique()
 
-# NHD Data Download (conditional Run only if not downloaded yet) ----------------------------------
+# NHD Data Download (conditional Run only if not downloaded yet) ----------
 
 if(length(list.files('in/R/nhdPlusTools')) == 0){
   
@@ -150,6 +153,7 @@ LT_lakes <- st_join(lakes_in_hucs , Lake_Tahoe_huc8) |>
 ## grabbing just LT
 LT <- LT_lakes |> filter(GNIS_Name == "Lake Tahoe")
 
+## Flowlines
 LT_flines <- get_nhdplus(AOI = Lake_Tahoe_huc8,
                          realization = 'flowline',
                          streamorder = 1)
@@ -169,6 +173,7 @@ active_sites_data_2023 <- readNWISdata(huc = Lake_Tahoe_huc8$HUC8,
 ## Vector of currently active sites
 active_sites_2023 <- unique(active_sites_data_2023$site_no)
 
+## order sites now for viz after 
 site_lst_ordered <- c("10336676",
                       "10336660",
                       "10336645",
@@ -224,6 +229,7 @@ show_col(lt_all_colors)
 ```
 
 ```{r main_map}
+
 # Main map -----------------------------------------------------------
 
 lt_map <- ggplot()+
@@ -290,6 +296,7 @@ lt_map <- ggplot()+
 ```
 
 ```{r extent_map}
+
 extent_bbox <- st_bbox(Lake_Tahoe_huc8)
 extent_lt_huc8 <- st_as_sfc(extent_bbox)
 
@@ -302,8 +309,6 @@ extent_map <- ggplot() +
      xlim = c(extent_bbox$xmin - 5.5, extent_bbox$xmax + 5.5)
      )+
   theme_void()
-
-extent_map
 
 ```
 
@@ -370,9 +375,9 @@ lt_map_for_viz <- final_map_formatting(lt_map_segs,
 _code hidden_
 ```{r pull_nwis_data, include= FALSE, warning= FALSE, message=FALSE}
 
-# Pull all NWIS data for active sites
+# Pull all NWIS data for active sites ---------------------------------
 
-## check the site history
+## Check the site history
 view_data_summary <- readNWISstat(siteNumbers = as.character(active_sites_2023),
                                   parameterCd="00060",
                                   statReportType="annual",
@@ -416,15 +421,16 @@ LT_dv_data_dates <- LT_dv_data |>
 
 # Moving Avg ----------------------------------------------------------
 
-# Calc Moving average Values into a new column
+# Calc Moving Average Values into a new column
 LT_dv_data_w_MA <- LT_dv_data_dates |>
   ## calc MA with zoo::rollmean() . Check what k (2nd param) is for 
   mutate(MA = rollmean(x = Flow, 
                        k = 5,
                        na.pad = T,
-                       align = 'center'))
+                       align = 'center')
+         )
 
-# Focus on Spring flow ----------------------------------------------------
+# Focus on Spring flow -------------------------------------------------
 
 LT_dv_data_viz <- LT_dv_data_w_MA |> 
   ## all sites have data up until april 15 (one does have data passed that)
@@ -440,6 +446,7 @@ LT_dv_data_viz <- LT_dv_data_w_MA |>
   arrange(site_no) |> 
   group_by(site_no) 
   
+# Viz - MA vs Flow data -------------------------------------------------
 
 ### Temp code to run plit quickly and ###
 # # ## Generate plot
@@ -453,7 +460,7 @@ LT_dv_data_viz |>
                  )) |>
   ggplot()+
   geom_line(aes(x = fake_date, y = Flow, color = site_no))+
-  # geom_line(aes(x = fake_date, y = MA, color = site_no), linetype = 'dotted')+
+  geom_line(aes(x = fake_date, y = MA, color = site_no), linetype = 'dotted')+
   theme_minimal()
   # gghighlight(max(MA), max_highlight = 3L)+
   # facet_wrap(vars(site_no), scales = 'free')
@@ -528,7 +535,6 @@ canvas <- grid::rectGrob(
 # Load in USGS logo (also a black logo available)
 usgs_logo <- magick::image_read("../usgs_logo_black.png") 
 
-
 ```
 
 Arrange line plots 
@@ -542,7 +548,6 @@ Ybase <- Ymargin*2 # from bottom
 Yjitter <- (0.40 - 2*Ymargin)/2
 Xjitter <- (1 - 2*Xmargin)/5 # total jitter
 Xwidth <- 0.15
-
 
 ## Note - purrr must be placed ahead of map otherwise the loop won't work (`coerce of type `closure` error`)
 draw_line_plots <- purrr::map(1:length(line_plot_lst), function(x){
@@ -621,7 +626,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             width = 1,
             scale = 0.8) +
   draw_line_plots +
-  # explainer text
+  # Some explainer text
   draw_label("Following an unprecedented Winter, the 2023 snowpack of the California Sierra Nevada mountain range is generating\nsignificant water flow through it's rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges\nsurrounding Lake Tahoe for the months of March to May in 2023 compared to historical data for that period dating back to 1975 (in grey).",
              fontfamily = supporting_font,
              x = 0.65,   
@@ -633,7 +638,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontface = 'italic'
             
              )+
-  # Name
+  # Add Name and source
   draw_label("Margaux Sleckman, USGS\nFlow data from the USGS National Water Information System: https://waterdata.usgs.gov/nwis/rt",
              fontfamily = supporting_font,
              x = 0.96,   
@@ -663,9 +668,6 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              halign = 0, valign = 0)
 
 # Save the final image in Twitter's 16 by 9 format
-# !! Use format for saving with the date of your prompt: 
-#         YYYYMMDD_prompt_name ()
-# e.g. `20230101_part-to-whole-cnell.png`
 ggsave(filename = "out/20230428_trends_msleckman.png", 
        width = 16, height = 9, dpi = 300)
 ```
@@ -674,7 +676,7 @@ ggsave(filename = "out/20230428_trends_msleckman.png",
 
 ### Key takeaways of this viz (1-2 sentences each)
 
-Following an unprecedented Winter, the 2023 snowpack of the California Sierra Nevada mountain range is generating\nsignificant water flow through rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges surrounding Lake Tahoe\nfor the months of March to May in 2023, as well as all historical years dating back to 1975 (in grey).
+Following an unprecedented Winter, the 2023 snow pack of the California Sierra Nevada mountain range is generating significant water flow through rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges surrounding Lake Tahoe for the months of March to May in 2023, as well as all historical years dating back to 1975 (in grey).
 
 * While it is still early in the Spring season, the 2023 snowmelt runoff in the Lake Tahoe basin is trending upwards across all stream gauges, aiming to surpass previous years dating back to 1975. 
 * All gauges are found in tributaries that are uniquely influenced by environmental factors that drive snow melt such as temperature or topography. This explains the variability in flow across each gauges. 
