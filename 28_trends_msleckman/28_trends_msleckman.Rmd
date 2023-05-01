@@ -300,7 +300,7 @@ lt_map <- ggplot()+
 extent_bbox <- st_bbox(Lake_Tahoe_huc8)
 extent_lt_huc8 <- st_as_sfc(extent_bbox)
 
-extent_map <- ggplot() + 
+(extent_map <- ggplot() + 
     geom_sf(data = West_sf, fill = "white", color = alpha('grey', 0.5)) + 
     geom_sf(data = extent_lt_huc8, color = 'forest green', fill = NA) +
     geom_sf(data = LT, fill = "#A8D0F4", color = "#A8D0F4", alpha = 0.8)+
@@ -308,7 +308,7 @@ extent_map <- ggplot() +
      ylim = c(extent_bbox$ymin - 5.5, extent_bbox$ymax + 5.5),
      xlim = c(extent_bbox$xmin - 5.5, extent_bbox$xmax + 5.5)
      )+
-  theme_void()
+  theme_void())
 
 ```
 
