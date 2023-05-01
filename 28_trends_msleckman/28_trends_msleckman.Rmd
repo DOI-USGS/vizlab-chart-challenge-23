@@ -635,27 +635,16 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              color = font_color_2,
              size = 22) +
   # Some explainer text
-  draw_label("Following an unprecedented Winter, the 2023 snowpack of the California Sierra Nevada mountain range is generating\nsignificant water flow through it's rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges\nsurrounding Lake Tahoe for the months of March to May in 2023 compared to historical data for that period dating back to 1975 (in grey).",
-             fontfamily = supporting_font,
-             x = 0.68,   
-             y = 0.06,
-             size = 12,
-             hjust = 0.5,
-             vjust = 0.5,
-             color = font_color_1,
-             fontface = 'italic'
-             )+
-  # Add Name and source
   draw_label("Margaux Sleckman, USGS\nFlow data from the USGS National Water Information System: https://waterdata.usgs.gov/nwis/rt",
              fontfamily = supporting_font,
              x = 0.96,   
-             y = 0.96,
-             size = 9,
+             y = 0.05,
+             size = 12,
              hjust = 1,
              vjust = 0,
-             color = font_color_1
+             color = font_color_1,
+             fontface = 'italic'
              )+
-
   # Add logo
   draw_image(usgs_logo, 
              x = 0.04,
