@@ -610,7 +610,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             hjust = 0, vjust = 1) +
   # the main plot
   draw_plot(extent_map,
-            x = 0.001,
+            x = 0.03,
             y = 0.15,
             height = 0.4,
             width = 0.2
@@ -630,17 +630,37 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              vjust = 1,
              lineheight = 0.75,
              fontfamily = supporting_font,
+             fontface = 'bold',
              color = font_color_1,
              size = 36) +
     # Title 2 2023 spring flows into Lake Tahoe compared to the historical record
-  draw_label("2023 spring flows into Lake Tahoe\ncompared to historical record.",
-             x = 0.05,
-             y = 0.90,
+  draw_label("2023 spring flows",
+             x = 0.04,
+             y = 0.89,
              hjust = 0,
              vjust = 1,
              lineheight = 0.75,
              fontfamily = supporting_font,
-             color = font_color_2,
+             color = selected_teal,
+             fontface = 'bold',
+             size = 24) +
+  draw_label("into Lake Tahoe",
+             x = 0.207,
+             y = 0.89,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             color = '#6D6D6D',
+             size = 24) +
+    draw_label("compared to the historical record.",
+             x = 0.04,
+             y = 0.85,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             color = '#6D6D6D',
              size = 24) +
   # Some explainer text
   draw_label("Margaux Sleckman, USGS\nFlow data from the USGS National Water Information System: https://waterdata.usgs.gov/nwis/rt",
@@ -664,6 +684,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
 # Save the final image in Twitter's 16 by 9 format
 ggsave(filename = "out/20230428_trends_msleckman.png", 
        width = 16, height = 9, dpi = 300)
+
 ```
 
 ## Supporting information
