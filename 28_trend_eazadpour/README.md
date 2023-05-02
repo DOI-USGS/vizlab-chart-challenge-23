@@ -10,7 +10,7 @@ Date for your prompt in April: 04/28/2023
 
 Image:
 
-![20230428_trend_eazadpour](/uploads/27cae952a021e30c874b323876f00ad0/20230428_trend_eazadpour.png)
+![20230428_trend_eazadpour](/uploads/84f839490250c4bdc7bf2f4766dff703/20230428_trend_eazadpour.png)
 
 Your key takeaways (1-2 sentences each):
 
