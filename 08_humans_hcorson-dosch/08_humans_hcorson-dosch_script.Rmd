@@ -56,8 +56,17 @@ counties_sf <- tigris::counties() %>%
   rmapshaper::ms_simplify(keep = 0.2) %>%
   st_intersection(st_union(conus_sf))
 
-county_wu <- readr::read_csv('in/county_water_use.csv', col_types = cols())
-national_wu <- readr::read_csv('in/national_water_use.csv', col_types = cols())
+# Water use data pulled from NWIS (https://waterdata.usgs.gov/nwis/wu) using 
+# dataRetrieval, cleaned, then loaded to S3
+input_filename_county <- 'in/county_water_use.csv'
+county_csv <- download.file('https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/county_water_use.csv',
+                            destfile = input_filename_county)
+county_wu <- readr::read_csv(input_filename_county, col_types = cols())
+
+input_filename_national <- 'in/national_water_use.csv'
+national_csv <- download.file('https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/national_water_use.csv',
+                              destfile = input_filename_county)
+national_wu <- readr::read_csv(input_filename_national, col_types = cols())
 
 ```
 

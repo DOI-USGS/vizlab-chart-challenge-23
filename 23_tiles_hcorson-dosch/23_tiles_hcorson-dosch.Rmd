@@ -53,9 +53,17 @@ This is also a good place to load any data from other built-in packages such as 
 
 
 ```{r load}
-# Water use data loaded manually
-national_wu <- readr::read_csv('in/national_water_use.csv', col_types = cols())
-state_wu <- readr::read_csv('in/state_water_use.csv', col_types = cols())
+# Water use data pulled from NWIS (https://waterdata.usgs.gov/nwis/wu) using 
+# dataRetrieval, cleaned, then loaded to S3
+input_filename_national <- 'in/national_water_use.csv'
+national_csv <- download.file('https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/national_water_use.csv',
+                              destfile = input_filename_county)
+national_wu <- readr::read_csv(input_filename_national, col_types = cols())
+
+input_filename_state <- 'in/state_water_use.csv'
+national_csv <- download.file('https://labs.waterdata.usgs.gov/visualizations/23_chart_challenge/state_water_use.csv',
+                              destfile = input_filename_state)
+state_wu <- readr::read_csv(input_filename_state, col_types = cols())
 ```
 
 ## Get data ready for plotting
