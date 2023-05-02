@@ -10,9 +10,7 @@ Date for your prompt in April: April 21, 2023
 
 Image:
 
-Share the link in this document with the format `![](out/20230000_prompt-example_name.png)`:
-
-![](out/20230421_down-upward_aaarcher.png)
+![20230421_down-upward_aaarcher](/uploads/633e0fce9885abfa8baaff902ebd8e16/20230421_down-upward_aaarcher.png)
 
 Your key takeaways (1-2 sentences each):
 
