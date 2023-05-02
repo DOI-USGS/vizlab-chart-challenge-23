@@ -318,25 +318,6 @@ custom_plt <- ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items
              hjust = 0, vjust = 0,
              halign = 0, valign = 0) 
   
-
-# add oak tree - eastern U.S.
-oak <- png::readPNG("in/oak-tree.png")
-oak_opacity <- matrix(rgb(oak[,,1],oak[,,2],oak[,,3], oak[,,4] * 0.05), nrow = dim(oak)[1]) ## can adjust 0.05 alpha 
-
-# add pine tree - western U.S.
-pine <- png::readPNG("in/pine-tree.png")
-pine_opacity <- matrix(rgb(pine[,,1],pine[,,2], pine[,,3], pine[,,4] * 0.05), nrow = dim(pine)[1]) ## can adjust 0.05 alpha 
-
-(final_plt <- custom_plt +
-    annotation_custom(rasterGrob(oak_opacity,
-                                 width = unit(1,"npc"),
-                                 height = unit(1,"npc")),
-                      0.6, 1.21, -Inf, 1.5) +
-    annotation_custom(rasterGrob(pine_opacity,
-                                 width = unit(1,"npc"), 
-                                 height = unit(1,"npc")),
-                      -0.18, 0.28, 0, 1.5)
-)
 # Save the final image in Twitter's 16 by 9 format
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
