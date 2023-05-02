@@ -17,7 +17,7 @@ Your key takeaways (1-2 sentences each):
 1. Industrial freshwater withdrawals have gone down since 1990
 2. Overall freshwater withdrawals are not significantly different from what they were in 1990
 
-Your data sources: The HydroLAKES database.
+Your data sources:
 
 World Bank World Development Indicators Data, The World Bank Group, 2023.
 
