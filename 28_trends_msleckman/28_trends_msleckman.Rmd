@@ -1,0 +1,712 @@
+---
+title: "28 Trends - How much water is entering Lake Tahoe?"
+author: "Margaux Sleckman"
+date: "2023-04-28"
+output: html_document
+---
+## Set up: 
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r libraries,include=FALSE, warning=FALSE, message=FALSE}
+
+# Load libraries
+## main packages
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+library(lubridate)
+library(glue)
+library(zoo)
+library(purrr)
+
+## spatial packages
+library(sf)
+library(mapdata)
+library(maps)
+library(spData)
+library(ggspatial)
+library(ggrepel)
+library(mapview) # for interactive map viz
+
+# viz packages
+library(gghighlight)
+library(scales)
+library(colorfindr)
+
+# USGS packages 
+library(nhdplusTools)
+library(dataRetrieval)
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+
+
+## sourcing internal functions 
+source('src/funs.R')
+
+```
+
+```{r options_dir_creation, include=FALSE, warning=FALSE, message=FALSE}
+
+options(tidyverse.quiet = TRUE, timeout = 500)
+mapviewOptions(fgb = FALSE)
+
+## Creating local folders for downloaded data
+dir.create('in/R', showWarnings = F)
+dir.create('in/R/nhdPlusTools', showWarnings = F)
+
+```
+
+## Fetch geospatial sata for viz
+
+### A. Fetching nhdplus spatial data w/ nhdplustools
+
+_Note: code hidden in markdown output_
+
+```{r generic_nhdPlus_data_fetch, include=FALSE, warning=FALSE, message=FALSE}
+
+# state boundarie --------------------------------------------------------
+
+CA_sf <- us_states |> filter(NAME == 'California')
+
+# Grabbing Huc 8 to create the AOI for USGS NHD data extraction ----------
+
+## Grab huc 8s with nhdplus tools
+CA_huc8 <- nhdplusTools::get_huc8(AOI = CA_sf) 
+
+## Filter to Lake Tahoe's Huc area
+LT_huc8 <- CA_huc8|> 
+  filter(name == 'Lake Tahoe')
+
+## Create huc4 string to allow data download for AOI (HR NHD data downloads only at Huc4 level)
+LT_huc4 <- LT_huc8$huc8 |> substr(1,4) |> unique()
+
+# NHD Data Download (conditional Run only if not yet downloaded) ----------
+
+if(length(list.files('in/R/nhdPlusTools')) == 0){
+  
+  print(paste('Downloading NHD data for the following selected CA HUC4s', LT_huc4))
+
+  download_nhdplushr('in/R/nhdPlusTools', LT_huc4)
+}
+
+## paths for geopackage
+huc_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_HU_data.gpkg'
+wtbdy_gpkg_path <- 'in/R/nhdPlusTools/nhdplustools_wtrbdy_data.gpkg'
+
+if(length(list.files('in/R/nhdPlusTools', full.names = T, pattern = '_data.gpkg')) == 0){
+
+  # Store HUC shps into own geopackage
+  print(paste('... Storing HUCs shps into a local geopackage here:', huc_gpkg_path))
+  nhdplusTools::get_nhdplushr(hr_dir = 'in/R/nhdPlusTools/',
+                              out_gpkg = huc_gpkg_path,
+                              layer = c('WBDHU6','WBDHU8', 'WBDHU10'))
+
+  # Store Waterbody shps into own geopackage
+  print(paste('... Storing Waterbody shps into a local geopackage here:', wtbdy_gpkg_path))
+  nhdplusTools::get_nhdplushr(hr_dir = 'in/R/nhdPlusTools/',
+                              out_gpkg = wtbdy_gpkg_path,
+                              layer = 'NHDWaterbody')
+  }
+  
+## Display gpkg layers
+print(st_layers(huc_gpkg_path))
+print(st_layers(wtbdy_gpkg_path))
+
+# Load nhdPlus features for AOI ----------------------------------------------------------------
+## HUCS
+huc10 <- st_read(huc_gpkg_path, layer = 'WBDHU10')
+huc8 <- st_read(huc_gpkg_path, layer = 'WBDHU8') 
+huc6 <- st_read(huc_gpkg_path, layer = 'WBDHU6')
+
+## Waterbodies
+lakes <- st_read(wtbdy_gpkg_path, layer = 'NHDWaterbody') |> 
+  st_make_valid()
+
+lakes_in_hucs <- st_join(lakes, huc6) |>
+  ## filtering out NA HUC6 because this ensures that we only have Lakes within the CA Huc6 boundaries
+  filter(!is.na(HUC6),
+  ## rm-ing NA AreaSqKM
+  !is.na(AreaSqKM.x))
+
+```
+
+### B. Fetch geospatial data for Lake Tahoe Basin
+
+_Note: code hidden in markdown output_
+
+```{r LT_data_pull, include=FALSE, warning=FALSE, message=FALSE}
+
+# NHDPLUS Tools data - Lake Tahoe subset ----------------------------------
+
+# HUC
+Lake_Tahoe_huc6 <- filter(huc6, Name == 'Truckee') 
+Lake_Tahoe_huc8 <- filter(huc8, Name == 'Lake Tahoe')
+
+# Water features
+LT_lakes <- st_join(lakes_in_hucs , Lake_Tahoe_huc8) |>
+  filter(!is.na(HUC8))
+
+## Grabbing just LT
+LT <- LT_lakes |> filter(GNIS_Name == "Lake Tahoe")
+
+## Flowlines - this is pulled from NHDplus tools integrated API vs. from local geopackage
+LT_flines <- nhdplusTools::get_nhdplus(AOI = Lake_Tahoe_huc8,
+                         realization = 'flowline',
+                         streamorder = 1)
+
+# NWIS Gauges --------------------------------------------------------------
+## for more information on USGS NWIS data, please visit: https://waterdata.usgs.gov/nwis and/or USGS dataRetrieval package documentation 
+
+# ID Active NWIS Sites in LT Basin
+
+## ID active sites
+### choosing active sites as active over last last 90 days 
+### selected daily nwis daily values (dv) 
+
+prev90days <- Sys.Date() - 90
+
+active_sites_data_2023 <- dataRetrieval::readNWISdata(huc = Lake_Tahoe_huc8$HUC8,
+                                       service = "dv",
+                                       parameterCd = "00060",
+                                       startDate = prev90days) |> 
+  ## Filtering out this site, determined ot be too far upstream (along a Southern tributary)
+  filter(site_no != "103366092")
+
+active_sites_2023 <- unique(active_sites_data_2023$site_no)
+
+## Order sites now for viz after 
+site_lst_ordered <- c("10336676",
+                      "10336660",
+                      "10336645",
+                      "10336610",
+                      "10336780",
+                      "10336730",
+                      "10336715",
+                      "10336700",
+                      "10336698")
+
+active_sites_2023 <- factor(active_sites_2023, site_lst_ordered) |> sort()
+
+## Final spatial data frame of active sites for Viz
+active_nwis_sites_lake_tahoe <- get_nwis(AOI = Lake_Tahoe_huc8,
+                                         t_srs = NULL,
+                                         buffer = 0) |>
+  filter(site_no %in% active_sites_2023) |> 
+  mutate(site_no = factor(site_no, active_sites_2023)) |>
+  arrange(site_no)
+
+```
+
+#### C. Obs. LT spatial data in mapview
+
+_Note: code hidden in markdown output_
+
+```{r looking_at_spatial_data_w_mapview, echo = FALSE,  warning=FALSE, message=FALSE}
+
+# Quick interim Mapview of spatial object fetched -----------------------------------------------------------
+
+mapview(LT_flines, color = 'darkblue')+
+  mapview(LT_lakes, col.regions = 'darkblue')+
+  mapview(active_nwis_sites_lake_tahoe, col.regions = 'red')+
+  mapview(Lake_Tahoe_huc8, col.regions = NA, color = 'black', alpha.regions = 0)
+
+```
+
+## Fetch streamflow data for viz 
+
+### A. Extract surface water gauge data for plots
+
+_Note: code hidden in markdown output_
+
+```{r pull_nwis_data, include= FALSE, warning= FALSE, message=FALSE}
+
+# Pull all NWIS data for active sites ---------------------------------
+
+## Get Data with readNWISdv 
+LT_dv_data <- readNWISdv(siteNumbers = active_sites_2023,
+           parameterCd = '00060') |> 
+  renameNWISColumns()
+
+```
+
+## Process data
+
+_Note: code hidden in markdown output_
+
+```{r flow_data_processing, include= FALSE, warning= FALSE, message=FALSE}
+
+# Dates --------------------------------------------------------------
+
+LT_dv_data_dates <- LT_dv_data |>
+  mutate(year = year(Date),
+         month = month(Date, label = T),
+         day = day(Date),
+         day_of_week = lubridate::wday(Date, label = T),
+         ## grabbing month_day only, as I hope this can be the X axis - however this is not considered Date format. 
+         month_day = format(Date,"%m-%d"),
+         ## making a fake date column  so that each year can be plotted as it's own line on the line plot 
+         fake_date = as.Date(paste0('2020-',month_day))
+         )
+
+# Moving Avg ----------------------------------------------------------
+
+# Calc Moving Average Values into a new column
+LT_dv_data_w_MA <- LT_dv_data_dates |>
+  ## calc MA with zoo::rollmean() . moving average period (k) chosen as 5 
+  mutate(MA = rollmean(x = Flow, 
+                       k = 5,
+                       na.pad = T,
+                       align = 'center')
+         )
+
+# Focus on Spring months -------------------------------------------------
+
+LT_dv_data_viz <- LT_dv_data_w_MA |> 
+  filter(month %in% c('Mar','Apr','May'),
+         fake_date >= '2020-03-01',
+         fake_date <= '2020-05-15'
+         ) |>
+  ## reorder table to factor in active_sites_2023 
+  mutate(site_no = factor(site_no, active_sites_2023)) |> 
+  arrange(site_no) |> 
+  ## group by to apply group-map
+  group_by(site_no) 
+
+```
+
+## Vizualize
+
+### A. Map
+
+```{r LT_map, warning=FALSE, message=FALSE}
+
+# Map Viz Variables -----------------------------------------------------------
+
+## bbox
+extent_bbox <- st_bbox(Lake_Tahoe_huc8)
+extent_lt_huc8 <- st_as_sfc(extent_bbox)
+
+map_bbox <- st_bbox(Lake_Tahoe_huc8)
+
+## colors
+
+lt_all_colors <- c("#000000", "#0046A5", "#005DBA", "#0082CD", "#001E54","#00427C",
+                "#FFFEFF", "#3DA6DD", "#574435", "#C7BBAD", "#4492DA", "#0079BE",
+                "#005E94", "#95C2E1", "#B0CFE3", "#171310", "#354658", "#97D4AB",
+                "#6B5E56", "#647100", "#A8D0F4", "#007FD0", "#63AEEF", "#00599F",
+                "#00B79F", "#00B3A0", "#00506B", "#001920", "#2EE5C6", "#889756"
+                )
+
+teal_1 <- "#00B79F"
+selected_teal <- '#008F81'
+selected_grey <- "#E3E3E3"
+
+```
+
+```{r extent_map}
+
+# Extent map -----------------------------------------------------------
+
+(
+  extent_map <- ggplot() + 
+    geom_sf(data = CA_sf,
+            fill = "white",
+            color = alpha('#6D6D6D', 0.5)
+            ) + 
+    geom_sf(data = extent_lt_huc8,
+            color = 'forest green',
+            fill = NA
+            )+
+    geom_sf(data = LT,
+            fill = "#A8D0F4",
+            color = "#A8D0F4",
+            alpha = 0.8
+            )+
+   coord_sf(
+     ylim = c(extent_bbox$ymin - 6,
+              ## just +4 otherwise it's too upper distance from centroid to top is too large  
+              extent_bbox$ymax + 4
+              ),
+     xlim = c(extent_bbox$xmin - 6,
+              extent_bbox$xmax + 6
+              )
+     )+
+  theme_void()
+)
+
+```
+
+```{r main_map}
+
+# Main map -----------------------------------------------------------
+
+(
+  lt_map <- ggplot()+
+   geom_sf(data = CA_sf,
+           fill = 'white',
+           color = alpha('#6D6D6D', 0.5),
+           size = 0.5
+           )+
+   geom_sf(data = LT,
+           fill = "#A8D0F4", 
+           color = "#A8D0F4",
+           alpha = 1
+           )+
+  ## Basin flowlines
+   geom_sf(data = LT_flines,
+           color = "#A8D0F4",
+           size  = 0.5,
+           alpha = 0.7
+           )+
+  ## Selected nwis st stations around LT
+   geom_sf(data = active_nwis_sites_lake_tahoe |>
+             ## removing sites that are too close together - added below
+             filter(!site_no %in% c('10336698','10336700')),
+           color = "#97D4AB",
+           fill = selected_teal,
+           size = 3, 
+           shape = 21
+           )+
+   geom_sf(data = active_nwis_sites_lake_tahoe |>
+             filter(site_no %in% c('10336698', '10336700')) |> 
+             ## slight jitter to ensure not completely overlapping
+             st_jitter(amount = 0.005),
+           color = "#00B79F", 
+           fill = selected_teal,
+           size = 3,
+           shape = 21
+           )+
+   coord_sf(
+     ylim = c(map_bbox$ymin,
+              map_bbox$ymax),
+     xlim = c(map_bbox$xmin,
+              map_bbox$xmax)
+     )+
+   theme_classic()+
+  ## adding state labels at top of map
+  annotate('text',
+           x = -120.10, y = 39.34, 
+           label = c('California'),
+           hjust = 'left', size = 3.5,
+           colour = '#6D6D6D'
+           )+ 
+  annotate('text',
+           x = -119.975, y = 39.34,
+           label = c('Nevada'),
+           hjust = 'left', size = 3.5,
+           colour = '#6D6D6D'
+           )
+)
+
+```
+
+```{r segments}
+
+(
+  lt_map_segs <- lt_map + 
+    # top left
+    geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[1]][1] - 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[1]][1] - 0.1, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[1]][2] + 0.005, yend = active_nwis_sites_lake_tahoe$geometry[[1]][2] + 0.06),
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # 2nd to top left
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[2]][1] - 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[2]][1] - 0.1, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[2]][2], yend = active_nwis_sites_lake_tahoe$geometry[[2]][2] - 0.03), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # 2nd to bottom left 
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[3]][1] - 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[3]][1] - 0.15, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[3]][2] - 0.003, yend = active_nwis_sites_lake_tahoe$geometry[[3]][2] - 0.08), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # bottom left
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[4]][1]-0.015, xend = active_nwis_sites_lake_tahoe$geometry[[4]][1] - 0.13, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[4]][2]- 0.006, yend = active_nwis_sites_lake_tahoe$geometry[[4]][2] - 0.07 ), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # bottom right
+     geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[5]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[5]][1] + 0.11, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[5]][2] - 0.01, yend = active_nwis_sites_lake_tahoe$geometry[[5]][2] - 0.1), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # 2nd to bottom on right
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[6]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[6]][1] + 0.07, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[6]][2] - 0.01, yend = active_nwis_sites_lake_tahoe$geometry[[6]][2] - 0.08), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # 3rd to top on right
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[7]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[7]][1] + 0.04, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[7]][2] - 0.01, yend = active_nwis_sites_lake_tahoe$geometry[[7]][2] - 0.04), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    # top-right-right
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[8]][1] + 0.015, xend = active_nwis_sites_lake_tahoe$geometry[[8]][1] + 0.085, 
+                     y = active_nwis_sites_lake_tahoe$geometry[[8]][2] - 0.005, yend = active_nwis_sites_lake_tahoe$geometry[[8]][2] - 0.02), 
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 arrow.fill = "#354658", alpha = 0.4)+
+    ## top-right
+      geom_segment(aes(x = active_nwis_sites_lake_tahoe$geometry[[9]][1] + 0.01, xend = active_nwis_sites_lake_tahoe$geometry[[9]][1] + 0.08, 
+                       y = active_nwis_sites_lake_tahoe$geometry[[9]][2] + 0.01, yend = active_nwis_sites_lake_tahoe$geometry[[9]][2] + 0.08), 
+                   arrow = arrow(length = unit(0.03, "npc")),
+                   arrow.fill = "#354658", alpha = 0.4)
+)
+
+```
+
+```{r final_formatting_map}
+  
+## Using generic final_map_formatting() function to generate final map (in 'src/funs.R')
+(
+  lt_map_for_viz <- final_map_formatting(lt_map_segs,
+                                         scale_arrow_color = "#00427C",
+                                         out_file = 'out/LT_map_gauges.png')
+)
+```
+
+### B. Streamflow plots
+
+```{r flow_data_line_plot, warning=FALSE, message=FALSE, results = 'hide'}
+
+## Generate line plots
+## Note - function pulled from 'src/funs.R'
+line_plot_lst <- LT_dv_data_viz |>
+  group_map( ~time_series_plot(data = .x,
+                               x_var = 'fake_date', ## note from above - created a fake date with same year to get each year as different line
+                               y_var = 'MA',
+                               date_range =  c('1975-01-01', '2023-05-15'),
+                               label_site = '10336676',
+                               string_format_title = 'USGS Station ID: %s',
+                               out_folder = 'out',
+                               color_palette_highlight = selected_teal,
+                               color_palette_unhighlight = selected_grey
+                               ),
+             .keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.
+
+(line_plot_grid_1 <- cowplot::plot_grid(plotlist = line_plot_lst[1:5]))
+(line_plot_grid_2 <-cowplot::plot_grid(plotlist = line_plot_lst[6:10]))
+
+ggsave(plot = line_plot_grid_1, filename = 'out/line_plot_grid_1.png',
+       width = 9, height = 9, dpi = 300)
+ggsave(plot = line_plot_grid_2, filename = 'out/line_plot_grid_2.png',
+       width = 9, height = 9, dpi = 300)
+
+```
+
+**Final Viz Pieces:**
+
+1. lt_map_for_viz
+2. line_plot_lst
+
+### C. Viz formatting
+
+```{r plotting_vars}
+
+# Custom fonts, custom settings
+font_legend <- "Vollkorn"
+sysfonts::font_add_google("Vollkorn")
+supporting_font <- "Source Sans Pro"
+sysfonts::font_add_google("Source Sans Pro")
+showtext::showtext_opts(dpi = 300, regular.wt = 200, bold.wt = 700)
+showtext::showtext_auto(enable = TRUE)
+
+# Colors
+background_color = "#FFFEFF"
+font_color_1 = "#0046A5"
+font_color_2 = "#63AEEF" 
+
+# The background canvas 
+canvas <- grid::rectGrob(
+  x = 0,
+  y = 0, 
+  width = 16,
+  height = 9,
+  gp = grid::gpar(fill = background_color,
+                  alpha = 1,
+                  col = background_color
+                  )
+)
+
+# Loading USGS logo (black selected)
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
+
+# Fixed X and Y position to sample from if needed
+## taken from @aarcher's Day4 viz : https://code.usgs.gov/wma/vizlab/chart-challenge-23/-/blob/main/04_historical_aaarcher/04_historical_aaarcher_script.Rmd
+Ymargin <- 0.04
+Xmargin <- 0.04
+Xbase <- 1-Xmargin # from right
+Ybase <- Ymargin*2 # from bottom
+Yjitter <- (0.40 - 2*Ymargin)/2
+Xjitter <- (1 - 2*Xmargin)/5 # total jitter
+Xwidth <- 0.15
+
+```
+
+```{r cowplotting_line_plots_arrangement}
+
+# Line plot arrangement --------------------------------------------------------
+## each plot placement individually due to to unique placement  and aligment with arrows on map 
+
+draw_line_plots <- purrr::map(1:length(line_plot_lst), function(x){ ## Note - purrr must be placed in front of map or loop won't work (`coerce of type `closure` error`)
+  
+                          if(x == 1){
+                          X_position <- 0.4
+                          Y_position <- 0.65
+                        } else if(x == 2){
+                          X_position <- 0.36
+                          Y_position <- 0.48  
+                        } else if(x == 3){
+                          X_position <- 0.4
+                          Y_position <- 0.30
+                        } else if(x == 4){
+                          X_position <- 0.49
+                          Y_position <- 0.11  
+                        } else if(x == 5){
+                          X_position <- 0.80
+                          Y_position <- 0.1  
+                        } else if(x == 6){
+                          X_position <- 0.84
+                          Y_position <- 0.27   
+                        } else if(x == 7){
+                          X_position <- 0.84
+                          Y_position <- 0.45
+                        } else if(x == 8){
+                          X_position <- 0.84
+                          Y_position <- 0.62
+                        } else if(x == 9){
+                          X_position <- 0.8
+                          Y_position <- 0.78
+                        } else { 
+                          X_position <- 0.35
+                          Y_position <- 0.08
+                          }
+  
+                       draw_plot(line_plot_lst[[x]],
+                                 x = X_position,
+                                 y = Y_position,
+                                 hjust = 1,
+                                 height = Yjitter,
+                                 width = Xjitter
+                                 ) 
+
+})
+
+```
+
+```{r final_plot_generation_and_save, fig.width = 16, fig.height = 9, warning=FALSE, message=FALSE}
+
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 16,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_plot(extent_map,
+            x = 0.03,
+            y = 0.15,
+            height = 0.4,
+            width = 0.2
+            )+
+  draw_plot(lt_map_for_viz,
+            x = 0.01,
+            y = 0.01,
+            height = 1,
+            width = 1,
+            scale = 0.8) +
+  draw_line_plots +
+    # Title 1
+  draw_label("The 'Big Melt' has begun.",
+             x = Xmargin,
+             y = 0.96,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             fontface = 'bold',
+             color = font_color_1,
+             size = 36) +
+    # Title 2 2023 spring flows into Lake Tahoe compared to the historical record
+  draw_label("2023 spring flows",
+             x = Xmargin,
+             y = 0.89,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             color = selected_teal,
+             fontface = 'bold',
+             size = 24) +
+  draw_label("into Lake Tahoe",
+             x = 0.207,
+             y = 0.89,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             color = '#6D6D6D',
+             size = 24) +
+  draw_label("compared to the historical record.",
+             x = Xmargin,
+             y = 0.85,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 0.75,
+             fontfamily = supporting_font,
+             color = '#6D6D6D',
+             size = 24) +
+  # Some explainer text
+  draw_label("Margaux Sleckman, USGS\nFlow data from the USGS National Water Information System: https://waterdata.usgs.gov/nwis/rt",
+             fontfamily = supporting_font,
+             x = Xbase,   
+             y = 0.05,
+             size = 14,
+             hjust = 1,
+             vjust = 0,
+             color = font_color_1,
+             fontface = 'italic'
+             )+
+  # Add logo
+  draw_image(usgs_logo, 
+             x = Xmargin,
+             y = 0.05,
+             width = 0.1, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+# Save the final image in Twitter's 16 by 9 format
+ggsave(filename = "out/20230428_trends_msleckman.png", 
+       width = 16,
+       height = 9,
+       dpi = 300)
+
+```
+
+## Supporting information
+
+The Big Melt has begun; 2023 spring flows into Lake Tahoe compared to the historical record. Nine timeseries plots show daily streamflow (cubic feet / second) from March 2023 to present, highlighted in green, compared to historical record, shown in grey that date back to 1975.  Streamgraphs show the 2023 snowmelt runoff in the basin trending upwards across all stream gauges, aiming to surpass previous years dating back to 1975. 
+
+### Key takeaways of this viz (1-2 sentences each)
+
+Following an unprecedented Winter, the 2023 snowpack in California’s Sierra Nevada mountain range is generating significant runoff through it’s rivers and lakes. This data visualization shows daily streamflow measurements at USGS stream gauges surrounding Lake Tahoe for the months of March to the start of May in 2023, as well as all historical years dating back to 1975 (in grey). 
+
+* While it is still early in the Spring season, the 2023 snowmelt runoff in the Lake Tahoe basin is trending upwards across all stream gauges, aiming to surpass previous years dating back to 1975.  
+
+* All gauges are found in tributaries that are uniquely influenced by environmental factors driving snow melt, such as temperature or topography. This explains the variability in flow across each gauges. 
+
+### Data source(s)
+
+NHDPlus High Resolution - geospatial dataset capturing water basins and flow of water across the Nation's landscapes. https://www.usgs.gov/national-hydrography/nhdplus-high-resolution
+
+USGS National Water Information System - water data collected at water gauges.
+https://waterdata.usgs.gov/nwis/rt
+
+
