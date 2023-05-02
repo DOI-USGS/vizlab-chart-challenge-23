@@ -301,10 +301,10 @@ extent_lt_huc8 <- st_as_sfc(extent_bbox)
   ## adding state labels at top of map
   annotate('text', x = -120.10, y = 39.34, label = c('California'),
            hjust = 'left', size = 3,
-           fontface = 'italic',  colour = '#6D6D6D')+
+           colour = '#6D6D6D')+ 
   annotate('text', x = -119.975, y = 39.34, label = c('Nevada'),
            hjust = 'left', size = 3,
-           fontface = 'italic', colour = '#6D6D6D'))
+           colour = '#6D6D6D'))
 
 ```
 
@@ -361,7 +361,6 @@ extent_lt_huc8 <- st_as_sfc(extent_bbox)
 
 ```{r final_formatting_map}
   
-
 ## using generic save_map function to generate final map (in 'src/funs.R')
 (lt_map_for_viz <- final_map_formatting(lt_map_segs,
                                        scale_arrow_color = "#00427C",

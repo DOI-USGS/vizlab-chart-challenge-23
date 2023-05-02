@@ -42,11 +42,10 @@ final_map_formatting <- function(map, scale_arrow_color, out_file){
                                 height = unit(0.15, 'cm'), 
                                 # color = 'grey',
                                 line_width = 0.2,
-                                text_cex = 0.5,
-                                text_face = 'italic',
+                                text_cex = 0.8,
                                 text_family = "",
                                 tick_height = 0.6,
-                                text_col = scale_arrow_color
+                                text_col = "#6B5E56"
                                 )
   
   ggsave(out_file, width = 9, height = 9, dpi = 300)
@@ -116,13 +115,12 @@ time_series_plot <- function(data, x_var, y_var, date_range, label_site = '10336
     theme(legend.position="none",
           plot.title = element_text(lineheight=.8,
                                     colour =  "#6B5E56",
-                                    face = 'italic',
-                                    size = '11'),
+                                    size = 10),
           axis.line.x = element_line(color= "#6B5E56", linewidth = 0.3),
           axis.line.y = element_line(color= "#6B5E56", linewidth = 0.3),
           axis.ticks = element_line(color= "#6B5E56", linewidth = 0.3),
-          axis.text = element_text(color= "#6B5E56"),
-          axis.title = element_text(color= "#6B5E56")
+          axis.text = element_text(color= "#6B5E56", size = 10),
+          axis.title = element_text(color= "#6B5E56", size = 10)
           )
   
   if(unique(data$site_no) == label_site){
