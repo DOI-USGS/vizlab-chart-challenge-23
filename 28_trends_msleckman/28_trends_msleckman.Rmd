@@ -300,10 +300,10 @@ extent_lt_huc8 <- st_as_sfc(extent_bbox)
    theme_classic()+
   ## adding state labels at top of map
   annotate('text', x = -120.10, y = 39.34, label = c('California'),
-           hjust = 'left', size = 3,
+           hjust = 'left', size = 3.5,
            colour = '#6D6D6D')+ 
   annotate('text', x = -119.975, y = 39.34, label = c('Nevada'),
-           hjust = 'left', size = 3,
+           hjust = 'left', size = 3.5,
            colour = '#6D6D6D'))
 
 ```
