@@ -37,11 +37,19 @@ library(gghighlight)
 library(scales)
 library(colorfindr)
 
+# USGS packages 
+library(nhdplusTools)
+library(dataRetrieval)
+
 # These are used for the layout of the viz
 library(cowplot) # for laying out the final plot
 library(sysfonts) # for text editing
 library(showtext) # for adding in google fonts
 library(magick) # for adding logo
+
+
+## sourcing internal functions 
+source('src/funs.R')
 
 ```
 
@@ -455,7 +463,7 @@ selected_grey <- "#E3E3E3"
 
 ```{r final_formatting_map}
   
-## Using generic save_map function to generate final map (in 'src/funs.R')
+## Using generic final_map_formatting() function to generate final map (in 'src/funs.R')
 (
   lt_map_for_viz <- final_map_formatting(lt_map_segs,
                                          scale_arrow_color = "#00427C",
@@ -476,15 +484,14 @@ line_plot_lst <- LT_dv_data_viz |>
                                date_range =  c('1975-01-01', '2023-05-15'),
                                label_site = '10336676',
                                string_format_title = 'USGS Station ID: %s',
-                               top_year_num = 4,
                                out_folder = 'out',
                                color_palette_highlight = selected_teal,
                                color_palette_unhighlight = selected_grey
                                ),
              .keep = TRUE) ## note - setting keep = TRUE ensure group col is kept.
 
-line_plot_grid_1 <- cowplot::plot_grid(plotlist = line_plot_lst[1:5])
-line_plot_grid_2 <-cowplot::plot_grid(plotlist = line_plot_lst[6:10])
+(line_plot_grid_1 <- cowplot::plot_grid(plotlist = line_plot_lst[1:5]))
+(line_plot_grid_2 <-cowplot::plot_grid(plotlist = line_plot_lst[6:10]))
 
 ggsave(plot = line_plot_grid_1, filename = 'out/line_plot_grid_1.png',
        width = 9, height = 9, dpi = 300)
