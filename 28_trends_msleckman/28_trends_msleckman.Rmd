@@ -700,7 +700,7 @@ Following an unprecedented Winter, the 2023 snowpack in California’s Sierra Ne
 
 * While it is still early in the Spring season, the 2023 snowmelt runoff in the Lake Tahoe basin is trending upwards across all stream gauges, aiming to surpass previous years dating back to 1975.  
 
-* All gauges are found in tributaries that are uniquely influenced by environmental factors that drive snow melt such as temperature or topography. This explains the variability in flow across each gauges. 
+* All gauges are found in tributaries that are uniquely influenced by environmental factors driving snow melt, such as temperature or topography. This explains the variability in flow across each gauges. 
 
 ### Data source(s)
 
