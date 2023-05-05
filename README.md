@@ -70,7 +70,3 @@ git pull upstream main
 git push origin main
 ```
 
-## Informal feedback sessions
-We will be hosting informal design workshop sessions each week through the end of April on Thursdays at 11 am CT via MS teams. The purpose of these sessions is to discuss ideas, data, design, and give peer feedback as we develop our charts. It is not required that you attend, but we hope you will join us if this could be valuable to you.
-
-
