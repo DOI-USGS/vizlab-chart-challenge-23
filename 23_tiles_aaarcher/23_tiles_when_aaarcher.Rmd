@@ -205,7 +205,7 @@ title_size <- 50
 support_size <- 24
 
 # Define colors
-background_color = "#c2dde6"
+background_color = "#D4E7ED"
 font_color = "#431c5d"
 base_color = "#634B79"
 pop_color = "#e05915"
