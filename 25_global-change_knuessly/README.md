@@ -6,7 +6,7 @@ Date for your prompt in April: 25
 
 Image:
 
-
+![Final image](out/Grassland_Biome_Loss_20230424.png)
 
 Alt text: Once spanning more than 580 million acres, the Central Grasslands are the world’s most imperiled and least conserved ecosystem. Grasslands are being lost at a far faster pace than they are being conserved due to agricultural conversion, invasive species, and climate change.
 
