@@ -1,0 +1,183 @@
+---
+title: "Global change"
+author: "Katie Nuessly"
+date: "2023-03-25"
+output: html_document
+---
+
+## Instructions for using this template
+
+> Make sure you have copied the template subdirectory and named it with your prompt's date, prompt's name and your name (e.g., `/01_part-to-whole_cnell`) before editing this document!
+
+1. Put all comments either in the html text (like this) or in the `r` chunks (delineated with 3 "`" marks) to explain your process to Vizlab reviewers
+2. Put all R code in the chunks. They're organized for you to (in order): do some set-up steps (load libraries), load in any data (manually or with built in packages), process your data for plotting, create plot using ggplot, and finally compose the twitter image with cowplot.
+3. You can run individual code chunks while developing code and plots. Note: the plots that are created in the RStudio coding window *do not* match the plot as created through the ggsave function. 
+4. To preview the final plot, use the `Knit` button above. That will create a preview of the final plot in the output `html` and will save the `png` in the `out/` folder. On many systems, the preview in the script document and the html will not match the output `png`, so please refer to the `png` for final proofing.
+5. When you're happy with the final plot, fill out the supporting information at the bottom and push to gitlab for review. Note: only commit input data if it can't be downloaded directly with code (e.g., `sbtools` or `dataRetrieval`).
+
+This website has great information on how to use RMarkdown: https://yihui.org/knitr/
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+Define libraries here. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse) # includes ggplot
+library(readr) # best for reading and writing csvs
+
+# These are used for the layout of the viz
+library(cowplot) # for laying out the final plot
+library(sysfonts) # for text editing
+library(showtext) # for adding in google fonts
+library(magick) # for adding logo
+```
+
+
+
+## Load files
+
+Save any files that you are using directly in the `in` folder. Then read them in to the environment with this chunk of code. Remember, use the RStudio project and relative file pathways, and never include any personal computer file pathways.
+
+This is also a good place to load any data from other built-in packages such as `dataRetrieval` or `spData`, etc.
+
+
+```{r load}
+# Predicted historic and current grassland biome spatial datasets were downloaded 
+# from NatureServe, with use approval from the authors of Comer et al. 2018. 
+# See details on how to access dataset in the `Data source(s)` section, below
+# 
+# Grassland area loss was calculated using the con function in 
+# the raster calculator tool of ArcGIS Pro (Version 2.9.5). Grassland loss is the 
+# difference in area between predicted historic and current spatial extent for 
+# each of the 12 main grassland types identified in Comer et. al 2018. Zonal 
+# statistics were used to extract the existing and lost grassland area by state.
+data <- read.csv("in/state_long.csv")
+```
+
+## Get data ready for plotting
+  
+This next section is for doing any pre-processing steps, data joins, etc, to get your data ready for plotting with ggplot. Remember that most of the time, ggplot prefers data in a "wide" format.
+
+
+```{r processing}
+##set up figure parameters
+#create empty bars for each group to space out the groups from one another in the plot
+empty_bar <- 2
+nObsType <- nlevels(as.factor(data$Category))
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(as.factor(data$Region))*nObsType, ncol(data)) )
+colnames(to_add) <- colnames(data)
+to_add$Region <- rep(levels(as.factor(data$Region)), each=empty_bar*nObsType )
+data <- rbind(data, to_add)
+data <- data %>% arrange(Region, State)
+data$id <- rep( seq(1, nrow(data)/nObsType) , each=nObsType)
+#generate the angle and the y position of each stacked bar label and create data frame for reference
+label_data <- data %>% group_by(id, State) %>% summarize(tot=sum(Area))
+number_of_bar <- nrow(label_data)
+angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar 
+  #subtract 0.5 from label id so that the label has the angle of the center of the bar
+  #(not extreme right(1) or extreme left (0))
+label_data$hjust <- ifelse( angle < -90, 1, 0)
+label_data$angle <- ifelse(angle < -90, angle+180, angle)
+#generate the base lines ("0" y-axis line) for each stacked bar group and create data frame for reference
+base_data <- data %>% 
+  group_by(Region) %>% 
+  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+#generate y-axis break line locations and create data frame for reference
+grid_data <- base_data
+grid_data$end <- grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
+grid_data$start <- grid_data$start - 1
+grid_data <- grid_data[-1,]
+
+
+```
+
+## Set up main plot
+
+This chunk is where the main ggplot grob definition and set-up occurs. You may have several ggplot grobs, depending on your approach. For each one, if you define it with the `<-` assignment operator and surround the whole code statement in parentheses, you'll be able to preview here what the plot looks like before the next cowplot step.
+
+> Note: The hardest part of this process is getting text to be the optimum size in the final `png` for Twitter. The font sizes here will **not** be the same as in the final image after the cowplot step. Make sure to check the output `png` for true font sizing and plot composition. 
+
+```{r plotting}
+# Build stacked circular bar chart
+(ggplot(data) +      
+  #add the data (stacked bars)
+  geom_bar(aes(x=as.factor(id), y=Area, fill=Category), stat="identity", alpha=1) +
+  #change color of stacked bars
+  scale_fill_manual(values=c("#607FBF","#F4683D")) +
+  #create y-axis lines at desired data breaks
+  geom_segment(data=grid_data, aes(x = end, y = 0, xend = start, yend = 0), 
+               colour = "grey", alpha=1, size=1 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 50000, xend = start, yend = 50000), 
+               colour = "grey", alpha=1, size=1 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 100000, xend = start, yend = 100000), 
+               colour = "grey", alpha=1, size=1 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 250000, xend = start, yend = 250000), 
+               colour = "grey", alpha=1, size=1 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 350000, xend = start, yend = 350000), 
+               colour = "grey", alpha=1, size=1 , inherit.aes = FALSE ) +
+  #label the y-axis lines
+  ggplot2::annotate("text", x = rep(max(data$id),5), y = c(0, 50000, 100000, 250000, 350000),
+                    label = c("0", "50,000", "100,000", "250,000", "350,000") , color="grey", size=3,
+                    angle=0, hjust=1) +
+  #create "0" y-axis line for each group
+  geom_segment(data=base_data, aes(x = start, y = 0, xend = end, yend = 0), 
+               colour = "grey", alpha=1, size=0.5, inherit.aes = FALSE )  +
+  #set internal circle size to accommodate group labels (first number) 
+  #and set external circle size to accommodate greatest y-axis line (second number)
+  ylim(-150000,max(label_data$tot+1000, na.rm=T)) +
+  #set theme
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(rep(-1,4), "cm") 
+  ) +
+  coord_polar() +
+  #label each stacked bar
+  geom_text(data=label_data, aes(x=id, y=tot+100, label=State, hjust=hjust), 
+             color="grey", fontface="bold",alpha=1, size=3, angle=label_data$angle, 
+             inherit.aes = FALSE ) +
+  #label each group
+  geom_text(data=base_data, aes(x = title, y = -100, label=Region), hjust=c(0.75,1.1,-.1,0), 
+          vjust=c(2,0,0,1.5), colour = "grey", alpha=1, size=3, fontface="bold", 
+          inherit.aes = FALSE))
+
+
+
+```
+
+
+## Produce final plot
+
+Here, use `cowplot` and `ggsave` to create the final viz for sharing out on Twitter. This template includes adding the USGS logo, title, text, etc.
+
+**Make sure to use the format for saving your png with the date of the prompt that you've been assigned to!** (e.g., `20230401_part-to-whole_cnell.png`)
+
+```{r cowplot, fig.width = 16, fig.height = 9}
+# Map generated in ArcPro
+# Final plot compiled in Illustrator
+```
+
+## Supporting information
+
+### Key takeaways of this viz (1-2 sentences each)
+
+1. Once spanning more than 580 million acres, the Central Grasslands are the world’s most imperiled and least conserved ecosystem. Grasslands are being lost at a far faster pace than they are being conserved due to agricultural conversion, invasive species, and climate change.
+
+### Data source(s)
+
+* Comer, P.J., J.C. Hak, K. Kindscher, E. Muldavin, and J. Singhurst. 2018. Continent-Scale Landscape Conservation Design for Temperate Grasslands of the Great Plains and Chihuahuan Desert. Natural Areas Journal 38(2), 196-211. https://doi.org/10.3375/043.038.0209
+
+* NatureServe data link: [https://transfer.natureserve.org/download/Longterm/Ecosystem_Americas/Maps/](https://transfer.natureserve.org/download/Longterm/Ecosystem_Americas/Maps/).File name: `'North American Ecosystems_IVC Distributions_2021update'`. Also check out the `'READ ME: READ ME - NatureServe Macrogroups and Terrestrial Ecological Systems of the Americas'` file.

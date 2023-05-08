@@ -29,6 +29,8 @@
 !17_networks_hcorson-dosch/in/stream_order.png
 !19_anthropocene_candrews/out/*
 !19_anthropocene_candrews/in/*
+!25_global-change_knuessly/in/state_long.csv
+!25_global-change_knuessly/out/Grassland_Biome_Loss_20230424.png
 
 
 # allow empty files to be committed
