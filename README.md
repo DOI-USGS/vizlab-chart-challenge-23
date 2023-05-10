@@ -30,43 +30,29 @@ We will review PRs from a design/conceptual/documentation perspective and not ne
 
 ### Guidance with git and gitlab
 
-1. On this repo's main page in Gitlab, click on the "Fork" button and then choose your username in the "Select a namespace" dropdown menu on the next page. Make sure the "Internal" visibility level is selected (should be the default).
-2. On your fork of the repo, select the blue "Clone" dropdown and copy the address under the "Clone with SSH" title. 
-3. Open Terminal on your computer in the place that you want the repository's folder to be saved. Clone the repository to your computer with `git clone` and your SSH address.
-4. Set the upstream repository to link to the Vizlab's canonical repository with `git remote add upstream` and the SSH address (pulled from the 'Clone with SSH' dropdown on the canonical repo).
+1. At the top of this repo, copy the address under the "Clone with SSH" option. 
+3. Open Terminal on your computer in the place that you want the repository's folder to be saved. Clone the repository to your computer with `git clone` and the copied SSH address.
+4. Create a branch with your username and description of tasks
 5. Copy the "00_template_yourname" folder and rename it with your prompt date, prompt title, and your name
 5. When you've got code you'd like to commit to your fork, commit it with `git add ...` and `git commmit -m "your commit message"`
-6. Once you've got code you'd like reviewed, create a merge request by pushing your changes to your fork with `git push origin main` (or use your branch in place of the "main", if applicable). Then, log into Gitlab and create a merge request. 
-7. Once your merge request is approved, we will ask you to share your final png in the README.md within your subdirectory and in a sharepoint folder.
-7. Once your merge request is approved and merged through the Gitlab interface, you can reconcile it locally and on your fork by pulling it locally with `git pull upstream main` and then push it to your fork with `git push origin main`
+6. Once you've got code you'd like reviewed, create a merge request by pushing your changes to your fork with `git push origin main` (or use your branch in place of the "main", if applicable). Then, log into Github and create a merge request. 
+
 
 Here's an example of the git workflow in full:
 
 ```
 #... to clone your fork locally, change username for your username:
-git clone git@code.usgs.gov:username/chart-challenge-23.git
+git clone git@github.com:DOI-USGS/vizlab-chart-challenge-23.git
 cd chart-challenge-23
-git remote add upstream git@code.usgs.gov:wma/vizlab/chart-challenge-23.git
+
+#... add new branch with your username
+git checkout -b username-branch
 
 #... to commit your changes as you go:
 git add 01_part-to-whole_cnell/
 git commit -m "final draft viz code"
 
 #... once you're ready to create a merge request:
-git push origin main
-
-#... if changes are requested during review:
-git add -u 
-git commit -m "updated code based on review"
-git push origin main
-
-#... once viz is final, make sure key messages and png are shared with final commit
-git add 00_your-prompt_yourname/README.md
-git commit -m "final viz"
-git push origin main
-
-#... once merge request is approved and merged on gitlab
-git pull upstream main
-git push origin main
+git push origin username-branch
 ```
 
