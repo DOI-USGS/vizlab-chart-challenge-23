@@ -1,0 +1,6 @@
+"","Id","Station","Name","ProjectFk","ChannelFk","ChannelKilometer","Description","Latitude","Longitude","ChannelMile","Name2"
+"26",26,"LPCR0024","Wahweap",3,5,2.4,"West- Southwest tip of Antelope Island River km 2.4",36.955278,-111.482778,5," — Wahweap"
+"37",37,"LPCR0905","Oak",3,5,90.5,"~ 0.5 km upstream from mouth Oak Canyon approx km 90.5",37.134444,-110.952222,56.234110892387,"— San Juan Confluence"
+"40",40,"LPCR1169","Escalante",3,5,116.9,"Directly in from of old spall near mouth 116.9km from dam",37.283056,-110.874444,72.6383156167961,"— Escalante Confluence"
+"44",44,"LPCR1679","Bullfrog",3,5,167.9,"To minimize pinched traffic interference at lower lake elevations",37.458643,-110.727647,104.328256561677," — Bullfrog"
+"60",60,"LPCR2387","Hite Basin",3,5,238.7,"Near mouth of White Canyon across from Trachyte Canyon",37.805278,-110.436944,148.321351049865,"  — Hite"

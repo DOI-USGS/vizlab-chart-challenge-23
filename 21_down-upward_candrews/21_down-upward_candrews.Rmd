@@ -1,0 +1,406 @@
+---
+title: "Summer Conditions at Lake Powell"
+author: "Caitlin M Andrews"
+date: "2023-05-05"
+output: html_document
+---
+
+## Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Load libraries
+library(lubridate)
+library(data.table)
+library(tidyr)
+library(dplyr)
+
+library(fields) # thin plate spines
+library(weathermetrics) # unit conversion
+
+library(ggthemes)
+library(paletteer)
+library(showtext)
+
+library(ggplot2)
+library(cowplot)
+library(magick)
+library(gifski)
+library(grid)
+
+```
+
+```{r data}
+
+# bathymetry
+bath <- read.csv('in/elevation_profile.csv')
+names(bath) <- c('distanceFromDam', 'elevation')
+bath$distanceFromDam <- bath$distanceFromDam * 3.28084
+bath$distanceFromDamMiles <- bath$distanceFromDam * 0.000189394
+bath$elevation <- bath$elevation * 3.28084
+
+# lake capacity curve
+curve <- read.csv('in/ele_str_area.csv') # for capacity text
+
+# site locations
+siteLocations <- read.csv('in/SiteLocations.csv')
+siteLocations[1,10] <- 5
+
+# Lake temps at specific stations
+summerTemps <- fread("in/TempsLateSummer.csv")
+
+# important dam features
+damHeights <- data.frame(name = c('Spillways', 'Penstock Depth', 'River Bypass'),
+                         elevation = c(3648, 3470, 3370))
+```
+
+```{r plotting-theme-setup}
+
+showtext_opts(dpi = 300)
+showtext_auto()
+font_add_google("Signika", "Signika")
+
+geom.text.size = 6.5
+theme_set(theme_light(base_size = 20, base_family = "Signika"))
+update_geom_defaults("text", list(size = geom.text.size, family = 'Signika'))
+
+g1 <- 
+  ggplot() + 
+  scale_x_continuous(expand = c(0,0),
+                     limits = c(0, max(bath$distanceFromDamMiles)),
+                     breaks = c(seq(50, 150, 50))) +
+  labs(x = 'Colorado River Miles Upstream from Glen Canyon Dam') +
+  theme(legend.position = c(.92, .33),
+        legend.background=element_blank(),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 16)) +
+  guides(color = "none",
+         fill = guide_colorbar(title = "Water Temp (°F)",
+                               title.theme = element_text(color = 'white', 
+                                                          size = 18,
+                                                          family = 'Signika',
+                                                          face = 'bold',
+                                                          angle = 90,
+                                                          hjust = .6),
+                                title.position = 'left',
+                                barwidth = 2,
+                                barheight = 12,
+                                nbin = 50,
+                                label.position = 'left',
+                                label.hjust = 1.2,
+                                label.theme = element_text(color = 'white', 
+                                                          size = 16,
+                                                          family = 'Signika'),
+                                frame.colour = "white",
+                                frame.linewidth = 5/.pt,
+                                ticks.colour = 'black',
+                                ticks.linewidth = 2/.pt
+                                )) 
+
+# for legend 
+minAll2 <- round(celsius.to.fahrenheit(2), 1)
+maxAll2 <- round(celsius.to.fahrenheit(29.41), 1) 
+
+```
+
+```{r cowplot-setup}
+
+# Define colors for cowplot
+background_color = "white"
+font_color = "#0A1927"
+  
+# The background canvas for your viz
+canvas <- grid::rectGrob(
+  x = 0, y = 0, 
+  width = 16, height = 9,
+  gp = grid::gpar(fill = background_color, alpha = 1, col = background_color)
+)
+
+# images 
+usgs_logo <- magick::image_read("../usgs_logo_black.png") 
+gcd <- magick::image_read('in/gcd4.png')
+gcd2 <- grid::rasterGrob(gcd)
+```  
+
+
+```{r loop-process-plot}
+
+years <- unique(summerTemps$year)
+
+for(yR in years) { 
+  
+  # ----------------------------------------------------------------------------
+  # ----------------------------   DATA   --------------------------------------
+  # ----------------------------------------------------------------------------
+  
+  # ------------------          SUBSET DATA            -------------------------
+  temp1yr <- summerTemps[year == yR, ]
+  
+  ns <- length((unique(temp1yr$Station))) # check that more than one site was sampled
+  if(ns == 1) next
+
+  # bathymetry
+  bath$lakedepth <- unique(temp1yr$Elevation) - bath$elevation
+  bath2 <- bath[bath$lakedepth > 0,]
+  
+  # stats
+  elev1yr <- round(unique(mean(temp1yr$Elevation)))
+  totalLakeDepth <- round(max(bath$lakedepth))
+  referenceHeight <- elev1yr
+
+  # ---------------------- INTERPOLATION OF LAKE TEMPS ---------------------- --
+
+  temp1yr2 <- temp1yr[,c('ChannelMile', 'Depth', 'Value')]
+  
+  # make a grid of values ------------------------------------------------------
+  x <- unique(temp1yr2$ChannelMile)
+  
+  temp1yr2$Depth2 <- cut(temp1yr2$Depth, 
+                         breaks = seq(-5, max(temp1yr$Depth)+10, 5), 
+                         labels =  seq(0, max(temp1yr$Depth)+10, 5))
+  
+  temp1yr2$Depth2 <-  as.numeric(levels( temp1yr2$Depth2 ))[ temp1yr2$Depth2 ]
+  
+  y <- c(0, sort(unique(temp1yr2$Depth2)), max(temp1yr2$Depth2 + 10))
+  
+  locs <- data.frame(ChannelMile = rep(x, each = length(y)),
+                     Depth2 = rep(y, times = length(x)))
+  
+  locs <- plyr::join(locs, temp1yr2[,c('ChannelMile','Depth2', 'Value')])
+  
+  # fake some data so it extends the whole channel line -------------------------
+  begin <- locs[locs$ChannelMile == x[1], ]
+  begin$ChannelMile <- 0
+  
+  end <- locs[locs$ChannelMile == x[length(x)], ]
+  end$ChannelMile <- max(bath$distanceFromDamMiles) + 1
+  
+  locs <- rbind(begin, locs, end)
+  
+  # interpolate with thin plate splines! ---------------------------------------
+  locs2 <- as.matrix(locs[,c(1,2)])
+  fit <- fields::Tps(locs2, locs$Value)
+  out.p <- predictSurface( fit)
+  
+  # Retrieve interpolated values -----------------------------------------------
+  predictedTemps <- data.frame(ChannelMile = out.p$x, Value = out.p$z)
+  names(predictedTemps) <- c('ChannelMile', out.p$y)
+  predictedTemps <- melt(predictedTemps, id.vars = 'ChannelMile')
+  predictedTemps$variable <- as.numeric(as.character(predictedTemps$variable))
+  names(predictedTemps)[2:3] <- c('Depth', 'Value')
+  predictedTemps$Elevation <- referenceHeight - predictedTemps$Depth 
+  
+  # fill in some NAs
+  predictedTemps <- predictedTemps %>% 
+    group_by(ChannelMile) %>% #by group
+    fill(Value)
+  
+  predictedTemps$Value <- celsius.to.fahrenheit(predictedTemps$Value)
+
+  # ----------------------------------------------------------------------------
+  # --------------------- FIGURE -----------------------------------------------
+  # ----------------------------------------------------------------------------
+  
+  # ------------------------------ ANNOTATIONS ---------------------------------
+  
+  textForViz1 <- paste(yR)
+  
+  nearest <- curve[which.min(abs(elev1yr - curve[[1]])), 2]
+  fullness <- format(round((nearest/24322365) * 100, 1), nsmall = 1)
+  textForViz2 <- paste0(fullness, "% Full") # Elevation Capacity Curve
+
+  # ----- find weighted average from two closest values for temp ---------------
+  
+  wahweapSub <- temp1yr[Station == 'LPCR0024', ]
+  wahweapSub <- wahweapSub[order(Depth),]
+
+  calc <- (referenceHeight - wahweapSub$Depth) - 3470
+  absCalc <- abs(calc)
+  location <- which.min(absCalc)
+  location2 <- ifelse(calc[location] < 0, location - 1, location + 1)
+  weights <- 100 - abs(c(calc[location], calc[location2]))
+  temp1 <- weighted.mean(wahweapSub[c(location, location2),Value], weights)
+  
+  tempforViz <- paste0(format(round(celsius.to.fahrenheit(temp1), 1), nsmall = 1), '°F')
+  
+  yPlace <- 3540
+
+  # specific year adjustments --------------------------------------------------
+  if(yR == 1991) tempforViz <- ''
+
+  if(yR %in% c(1980, 1982:1986, 1995, 1997:1999)) {
+    breaksYR = c(3700, 3500, 3365)
+    labelsYR = c(3700, 3500, 3370)
+  } else {
+    breaksYR = c(3700, referenceHeight, 3500, 3365)
+    labelsYR = c(3700, referenceHeight, 3500, 3370)
+  }
+  
+  # theme update ---------------------------------------------------------------
+  g2 <- g1 + 
+    scale_x_continuous(expand = c(0,0),
+                       limits = c(0, max(bath$distanceFromDamMiles)),
+                       breaks = c(seq(50, 150, 50)))  +
+    scale_y_continuous(expand = c(0,0), 
+                       limits = c(3100, 3760),
+                       breaks = c(),
+                       labels = c(),
+                       name ="",
+                       # # Add a second axis a
+                       sec.axis = dup_axis(
+                         breaks = breaksYR,
+                         labels = labelsYR,
+                         name = "Elevation above sea level (feet)")) 
+    
+  Fig2 <- g2 +    
+     # temperatures -------------------------------------------------------------
+    geom_tile(data =  predictedTemps,
+              aes(x = ChannelMile, y = Elevation, fill = Value)) +
+
+    paletteer::scale_fill_paletteer_c("grDevices::Geyser", 
+                                      limits = c(minAll2, maxAll2),
+                                      breaks = c(minAll2, 51, 67, maxAll2),
+                                      labels = c(36, 51, 67, 85)) +
+  
+    # dam points --------------------- ▶ ---------------------------------------
+    geom_text(data = damHeights,
+              aes(x = 1, y = elevation, color = name),
+              label = " ▶",  size = 16, family = "wqy-microhei")  +
+    scale_color_manual(values = c( "#767676FF" , "#8A9045FF", "#155F83FF") ) +
+
+    # lake elevation            ------------------------------------------------
+    geom_hline(aes(yintercept = referenceHeight + .5),
+                   color = '#07659b', linewidth = 3.5) +
+    
+    # bathymetry ---------------------------------------------------------------
+    geom_ribbon(data = bath,
+              aes(x= distanceFromDamMiles, ymin = 3100, ymax = elevation),
+              fill = '#a1523d')  +
+    geom_line(data = bath,
+              aes(x = distanceFromDamMiles, y = elevation),
+              size = 2.5, color = '#eab676') +
+    
+    # locations of certain sites  ----------------------------------------------
+    geom_point(data = siteLocations, 
+             aes(y = 3100 + 12, x = ChannelMile, label = Name2),
+             color = 'white', pch = 23, size = 3.5, stroke = 1.2, fill = '#65b073') +
+    geom_text(data = siteLocations, 
+              aes(y = 3100 + 10, x = ChannelMile, label = Name2),
+              hjust = -.05, vjust = .5,  angle = 25, color = 'white',
+              size = 18/.pt) +
+    
+    # text information ---------------------------------------------------------
+    annotate("text", x = 161.5, y = yPlace, label = textForViz1, 
+             color = 'white', fontface = 'bold', size = 32/.pt)  +
+    annotate("text", x = 160, y = yPlace - 48, label = textForViz2, 
+              color = 'white', fontface = 'bold', size = 21/.pt)  +
+    # temp 
+    annotate("text", x = 16, y = 3472, label = tempforViz, 
+             color = 'black', fontface = 'bold', size = 21/.pt) 
+
+  
+  #  ---------------------------------------------------------------------------
+  # cowplots -------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
+   ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+         xlim = c(0,1)) +
+    # a background
+    draw_grob(canvas,
+              x = 0, y = 1,
+              height = 9, width = 16,
+              hjust = 0, vjust = 1) +
+    # the main plot
+    draw_plot(Fig2,
+              x = 0.35, y = 0.1,
+              height = .9, width = .65) +
+    # illustration 
+    draw_image(gcd, 
+               x = 0.00, y = -.168,
+               width = 0.415, height = 1.3)  +
+    # Title
+    draw_label("Summer Conditions in",
+               x = 0.005, y = 0.975, 
+               hjust = 0, vjust = 1,
+               lineheight = 0.7,
+               fontfamily = 'Signika', color = font_color, size = 33) +
+    draw_label("Lake Powell",
+               x = 0.05, y = 0.915, 
+               hjust = 0, vjust = 1,
+               lineheight = 0.7,
+               fontfamily = 'Signika', color = font_color, fontface = 'bold', size = 33) +
+    # Main Text
+    draw_label("In the late summer,
+there are the greatest 
+differences between 
+surface and bottom 
+temperatures in Lake 
+Powell.",
+                x = 0.012, y = 0.81, 
+                hjust = 0, vjust = 1,
+                lineheight = .9,
+                fontfamily = 'Signika', color = font_color, size = 20) +
+    
+    draw_label("When lake levels fall, 
+the warm surface water 
+moves closer to the 
+power intakes that 
+move water downstream 
+to the Colorado 
+River.  
+
+In the summer of 2022, 
+temperatures reached   
+their warmest in 
+50 years.",
+
+               x = 0.012, y = 0.57, 
+               hjust = 0, vjust = 1,
+               lineheight =.9,
+               fontfamily = 'Signika', color = font_color, size = 20) +
+    
+    # Data and plot credit
+    draw_label("Data from the the Lake Powell Water Quality Database (doi.org/10.5066/P9ZIKVYW)
+Chart by C.M. Andrews and B.R. Deemer",
+               x = 0.01, y = 0.032, 
+               lineheight = 1,
+               hjust = 0,
+               fontfamily = 'Signika', color = '#afabab', size = 16) +
+    
+
+    draw_image(usgs_logo, 
+               x = 0.87, y = 0.01,
+               width = 0.12, 
+               hjust = 0, vjust = 0, 
+               halign = 0, valign = 0) 
+  
+  
+  
+  ggsave(filename = paste0('Temp_', yR, '.png'), 
+           path = 'out/base',
+           width = 16,
+           height = 9,
+           unit = 'in',
+           dpi = 300)
+
+   
+  }  
+
+```
+
+```{r make-gif}
+
+## Create a .gif with gifski
+imgs <- list.files('out/base', 
+                   full.names = TRUE)
+
+gif_file <- gifski(imgs, width = 4800, height = 2700, delay = .5, loop = FALSE,
+                   gif_file = "out/21_down-upward_candrews.gif")
+                   
+```
