@@ -1,7 +1,6 @@
 ---
 title: "Summer Conditions at Lake Powell"
 author: "Caitlin M Andrews"
-date: "2023-05-05"
 output: html_document
 ---
 
