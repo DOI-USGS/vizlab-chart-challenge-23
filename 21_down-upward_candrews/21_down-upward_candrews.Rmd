@@ -48,7 +48,7 @@ curve <- read.csv('in/ele_str_area.csv') # for capacity text
 
 # site locations
 siteLocations <- read.csv('in/SiteLocations.csv')
-siteLocations[1,10] <- 5
+siteLocations[1, "Longitude"] <- 5
 
 # Lake temps at specific stations
 summerTemps <- fread("in/TempsLateSummer.csv")
@@ -190,7 +190,7 @@ for(yR in years) {
   out.p <- predictSurface( fit)
   
   # Retrieve interpolated values -----------------------------------------------
-  predictedTemps <- data.frame(ChannelMile = out.p$x, Value = out.p$z)
+  predictedTemps <- data.table(ChannelMile = out.p$x, Value = out.p$z)
   names(predictedTemps) <- c('ChannelMile', out.p$y)
   predictedTemps <- melt(predictedTemps, id.vars = 'ChannelMile')
   predictedTemps$variable <- as.numeric(as.character(predictedTemps$variable))
@@ -400,7 +400,7 @@ Chart by C.M. Andrews and B.R. Deemer",
 imgs <- list.files('out/base', 
                    full.names = TRUE)
 
-gif_file <- gifski(imgs, width = 4800, height = 2700, delay = .5, loop = FALSE,
+gif_file <- gifski(imgs, width = 4800, height = 2700, delay = .5, loop = TRUE,
                    gif_file = "out/21_down-upward_candrews.gif")
                    
 ```
