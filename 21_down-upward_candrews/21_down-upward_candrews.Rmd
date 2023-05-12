@@ -337,20 +337,19 @@ for(yR in years) {
                fontfamily = 'Signika', color = font_color, fontface = 'bold', size = 33) +
     # Main Text
     draw_label("In the late summer,
-there are the greatest 
-differences between 
-surface and bottom 
+the greatest differences 
+between surface and bottom 
 temperatures in Lake 
-Powell.",
+Powell exist.",
                 x = 0.012, y = 0.81, 
                 hjust = 0, vjust = 1,
                 lineheight = .9,
                 fontfamily = 'Signika', color = font_color, size = 20) +
     
     draw_label("When lake levels fall, 
-the warm surface water 
-moves closer to the 
-power intakes that 
+the warmer surface 
+water is drawn closer to 
+the power intakes that 
 move water downstream 
 to the Colorado 
 River.  
@@ -360,7 +359,7 @@ temperatures reached
 their warmest in 
 50 years.",
 
-               x = 0.012, y = 0.57, 
+               x = 0.012, y = 0.59, 
                hjust = 0, vjust = 1,
                lineheight =.9,
                fontfamily = 'Signika', color = font_color, size = 20) +
