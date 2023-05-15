@@ -338,9 +338,9 @@ for(yR in years) {
     # Main Text
     draw_label("In the late summer,
 the greatest differences 
-between surface and bottom 
-temperatures in Lake 
-Powell exist.",
+between surface and 
+bottom temperatures in 
+Lake Powell exist.",
                 x = 0.012, y = 0.81, 
                 hjust = 0, vjust = 1,
                 lineheight = .9,
