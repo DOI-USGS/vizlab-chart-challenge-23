@@ -10,9 +10,7 @@ Date for your prompt in April: April 29
 
 Image:
 
-![20230429_monochrome_mharlan](/uploads/287ee56970de528f9774f4fc5320c216/20230429_monochrome_mharlan.gif)
-
-![20230429_monochrome_mharlan](/uploads/a2545159f1a250dfa8180d2d21a049b1/20230429_monochrome_mharlan.png)
+![20230429_monochrome_mharlan](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/221cdddb-3d99-4bdb-83c1-b0da648c919a)
 
 Your key takeaways (1-2 sentences each):
 
