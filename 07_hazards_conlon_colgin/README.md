@@ -8,7 +8,7 @@
 
 **Image:** 
 
-![20230407_hazards_conlon_colgin](/uploads/70e29bb8634801a1d159b98ea3e29cec/20230407_hazards_conlon_colgin.gif)
+![20230407_hazards_conlon_colgin](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/9924565d-a664-4340-8166-eef8ed50259f)
 
 **Your key takeaways (1-2 sentences each):**
 
