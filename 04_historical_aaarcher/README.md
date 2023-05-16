@@ -10,7 +10,7 @@ Date for your prompt in April: April 4
 
 Image: 
 
-![20230404_historical_aaarcher](/uploads/faa780bd72f515c6ea141bf80cdee8b8/20230404_historical_aaarcher.png)
+![20230404_historical_aaarcher](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/50f0bf05-a91d-4fd6-8c03-e838f6bc9267)
 
 Your key takeaways (1-2 sentences each):
 
