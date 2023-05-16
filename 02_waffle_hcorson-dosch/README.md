@@ -8,7 +8,7 @@ Date for your prompt in April: April 2
 
 Image: 
 
-![20230402_waffle_hcorson-dosch](/uploads/8c943f389e7f2509f840e5cbb0865261/20230402_waffle_hcorson-dosch.png)
+![20230402_waffle_hcorson-dosch](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/7ae1311e-f459-4974-a55e-cda70f6ca432)
 
 Your key takeaways (1-2 sentences each):
 
