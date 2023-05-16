@@ -10,7 +10,7 @@ Date for your prompt in April: Aril 6
 
 Image: 
 
-![20230406_OWID_hcorson-dosch](/uploads/a9612c095aef4712e0030f3450a80a82/20230406_OWID_hcorson-dosch.png)
+![20230406_OWID_hcorson-dosch](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/0c6e5cab-d2ba-4fd4-b916-340a6a2ca39e)
 
 Your key takeaways (1-2 sentences each):
 
