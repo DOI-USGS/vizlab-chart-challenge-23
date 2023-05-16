@@ -10,7 +10,7 @@ Date for your prompt in April: 22
 
 Image: 
 
-![20230422_green-energy_ancarr](/uploads/285172545a56a4d07495f4ad22b10a79/20230422_green-energy_ancarr.png)
+![20230422_green-energy_ancarr](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/d12a72e5-55b9-4265-80d5-27c8948a694b)
 
 Your key takeaways (1-2 sentences each):
 
