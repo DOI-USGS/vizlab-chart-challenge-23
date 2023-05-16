@@ -8,7 +8,7 @@
 
 **Image:**
 
-![20230408_humans_hcorson-dosch](/uploads/05dcb296fc127be65c7b66def1113986/20230408_humans_hcorson-dosch.png)
+![20230408_humans_hcorson-dosch](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/043eb41a-c799-47a4-aad8-d0062dcb3be8)
 
 **Your key takeaways (1-2 sentences each):**
 
