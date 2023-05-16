@@ -10,7 +10,7 @@ Date for your prompt in April: 11
 
 Image:
 
-![20230411_circular_jhariharan](/uploads/f2fdc1d61a7dd980013775db14787c6b/20230411_circular_jhariharan.png)
+![20230411_circular_jhariharan](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/78fb9408-1dd5-4248-80d6-fb6ba4e8f943)
 
 Your key takeaways (1-2 sentences each):
 
