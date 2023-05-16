@@ -10,7 +10,7 @@ Date for your prompt in April: April 23
 
 Image:
 
-![20230423_tiles_hcorson-dosch](/uploads/6fa3c5008e02e28404de14b52a8dd4d8/20230423_tiles_hcorson-dosch.png)
+![20230423_tiles_hcorson-dosch](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/8a0d2dd1-b2e0-41c4-ba42-a7185a2fba8b)
 
 Your key takeaways (1-2 sentences each):
 
