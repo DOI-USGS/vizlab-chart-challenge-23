@@ -10,7 +10,7 @@ Date for your prompt in April: 30
 
 Image: 
 
-![20230430_worldbank_jhariharan](/uploads/a3aaf937175bc34db70f481278f55d95/20230430_worldbank_jhariharan.gif)
+![20230430_worldbank_jhariharan](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/91ade37f-926f-4b22-8bac-7e8ae1d301b6)
 
 Your key takeaways (1-2 sentences each):
 
