@@ -10,7 +10,7 @@ Date for your prompt in April: April 21, 2023
 
 Image:
 
-![20230421_down-upward_aaarcher](/uploads/633e0fce9885abfa8baaff902ebd8e16/20230421_down-upward_aaarcher.png)
+![20230421_down-upward_aaarcher](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/5cd67dd4-8e3d-4f62-aec2-420f0c089167)
 
 Your key takeaways (1-2 sentences each):
 
