@@ -10,7 +10,7 @@ Date for your prompt in April: 28
 
 Image:
 
-![20230428_trends_greatlakesice](/uploads/1cc7ea649af59614c170a91c36f8ba4d/20230428_trends_greatlakesice.png)
+![20230428_trends_greatlakesice](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/e4bbc2f0-d2b6-490e-aa36-dcb9dee6f21b)
 
 Your key takeaways (1-2 sentences each):
 
