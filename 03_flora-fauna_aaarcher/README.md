@@ -10,7 +10,7 @@ Date for your prompt in April: April 3
 
 Image: 
 
-![20230403_flora-fauna-aaarcher](/uploads/2ac7fce9c47eac52eb82c8051fb6d760/20230403_flora-fauna-aaarcher.png)
+![20230403_flora-fauna-aaarcher](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/31f5e62a-83f3-4232-a009-40ab0e291308)
 
 Your key takeaways (1-2 sentences each):
 
