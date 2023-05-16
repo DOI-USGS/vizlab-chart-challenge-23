@@ -10,7 +10,7 @@ Date for your prompt in April: 04/28/2023
 
 Image:
 
-![20230428_trend_eazadpour](/uploads/84f839490250c4bdc7bf2f4766dff703/20230428_trend_eazadpour.png)
+![20230428_trend_eazadpour](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/d062c3d1-80df-4bc5-b004-47bcea1fd542)
 
 Your key takeaways (1-2 sentences each):
 
