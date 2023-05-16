@@ -10,7 +10,7 @@ Please fill out this information prior to creating a merge request, *unless you'
 
 **Image:**
 
-![17_networks_hcorson-dosch](/uploads/6daac59e7509f084a1b9699ab8a8e8ac/17_networks_hcorson-dosch.png)
+![20230417_networks_hcorson-dosch](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/eb1eb42f-e712-4c2f-8d5d-bb7ef20563c5)
 
 **Your key takeaways (1-2 sentences each):**
 
