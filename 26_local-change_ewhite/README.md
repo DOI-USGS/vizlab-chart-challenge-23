@@ -8,9 +8,9 @@ Date for your prompt in April: 04/25/2023
 
 Image: 
 
-![20230426a_local-change_ewhite](/uploads/0944d1885df9dbe2ea7d7bf2d5f6a7e2/20230426a_local-change_ewhite.png)
+![20230426a_local-change_ewhite](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/f5165542-a394-4336-b1b9-56d2adfd3d3d)
 
-![20230426b_local-change_ewhite](/uploads/56a5134afe9df04e7a45c17384e9ea58/20230426b_local-change_ewhite.png)
+![20230426b_local-change_ewhite](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/5adcbbc6-5be2-4fd9-9dc7-072b5e5c17a1)
 
 Your key takeaways (1-2 sentences each):
 
