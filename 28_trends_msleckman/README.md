@@ -8,7 +8,7 @@ Margaux Sleckman
 
 **Image:**
 
-![20230428_trends_msleckman](/uploads/c2a60d3052a277d5e651fd48a352eaf9/20230428_trends_msleckman.png)
+![20230428_trends_msleckman](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/677367c3-8432-4e32-abf0-c795c501f8ac)
 
 **Summary:**
 The Big Melt has begun; 2023 spring flows into Lake Tahoe compared to the historical record. Nine timeseries plots show daily streamflow (cubic feet / second) from March 2023 to present, highlighted in green, compared to historical record, shown in grey that date back to 1975.  Streamgraphs show the 2023 snowmelt runoff in the basin trending upwards across all stream gages, aiming to surpass previous years dating back to 1975. 
