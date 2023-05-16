@@ -10,7 +10,7 @@ Date for your prompt in April: 04/19/2023
 
 Image:
 
-![20230419_anthropocene_mjaenicke](/uploads/7e828506c2cdb2283310838140ea8ff2/20230419_anthropocene_mjaenicke.png)
+![20230419_anthropocene_mjaenicke](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/9f01845e-d645-45fb-a436-d8bfcf185c16)
 
 Your key takeaways (1-2 sentences each):
 
