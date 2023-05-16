@@ -10,11 +10,11 @@ Date for your prompt in April: April 20
 
 Image:
 
-![20230420_correlation_aaarcher](/uploads/fc1165babce62d73744269b2438a232f/20230420_correlation_aaarcher.png)
+![20230420_correlation_aaarcher](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/0416ca94-daca-4b29-8b3e-646471b8f729)
 
 Gif:
 
-![20230420_correlation_aaarcher](/uploads/291689bd8133a3464aac8d259287cc9b/20230420_correlation_aaarcher.gif)
+![20230420_correlation_aaarcher](https://github.com/DOI-USGS/vizlab-chart-challenge-23/assets/54007288/a3e62dd1-9050-4010-99ed-94835be2e6ba)
 
 Key messages: 
 
