@@ -44,35 +44,35 @@ library(magick) # for adding logo
 # Add your code here
 # Load drought properties data from ScienceBase
 #authenticate_sb() (username includes email address)
-# Drought Properties - 7day window - 1921-2020 dataset
-drought21_properties_7d_file <- "in/Drought_Properties_jd_07d_wndw_1921.csv"
-if(!file.exists(drought21_properties_7d_file)){ # if files don't exist, download
+# Drought Properties - site - 1921-2020 dataset
+drought21_properties_site_file <- "in/Drought_Properties_site_1921.csv"
+if(!file.exists(drought21_properties_site_file)){ # if files don't exist, download
   sbtools::item_file_download(sb_id = "62f463c5d34eacf5397395d9",
-                              names = "Drought_Properties_jd_07d_wndw.csv",
-                              destinations =  "in/Drought_Properties_jd_07d_wndw_1921.csv",
+                              names = "Drought_Properties_site.csv",
+                              destinations =  "in/Drought_Properties_site_1921.csv",
                               overwrite_file = FALSE)
 }
-temp_1921 <- readr::read_csv(drought21_properties_7d_file) 
+temp_1921 <- readr::read_csv(drought21_properties_site_file) 
 
-# Drought Properties - 7day window - 1951-2020 dataset
-drought51_properties_7d_file <- "in/Drought_Properties_jd_07d_wndw_1951.csv"
-if(!file.exists(drought51_properties_7d_file)){ # if files don't exist, download
+# Drought Properties - site - 1951-2020 dataset
+drought51_properties_site_file <- "in/Drought_Properties_site_1951.csv"
+if(!file.exists(drought51_properties_site_file)){ # if files don't exist, download
   sbtools::item_file_download(sb_id = "627974ccd34e8d45aa6e3c81",
-                              names = "Drought_Properties_jd_07d_wndw.csv",
-                              destinations =  "in/Drought_Properties_jd_07d_wndw_1951.csv",
+                              names = "Drought_Properties_site.csv",
+                              destinations =  "in/Drought_Properties_site_1951.csv",
                               overwrite_file = FALSE)
 }
-temp_1951 <- readr::read_csv(drought51_properties_7d_file) 
+temp_1951 <- readr::read_csv(drought51_properties_site_file) 
 
-# Drought Properties - 7day window - 1981-2020 dataset
-drought81_properties_7d_file <- "in/Drought_Properties_jd_07d_wndw_81.csv"
-if(!file.exists(drought81_properties_7d_file)){ # if files don't exist, download
+# Drought Properties - site - 1981-2020 dataset
+drought81_properties_site_file <- "in/Drought_Properties_site_81.csv"
+if(!file.exists(drought81_properties_site_file)){ # if files don't exist, download
   sbtools::item_file_download(sb_id = "62f475abd34eacf5397395e8",
-                              names = "Drought_Properties_jd_07d_wndw.csv",
-                              destinations =  "in/Drought_Properties_jd_07d_wndw_81.csv",
+                              names = "Drought_Properties_site.csv",
+                              destinations =  "in/Drought_Properties_site_81.csv",
                               overwrite_file = FALSE)
 }
-temp_1981 <- readr::read_csv(drought81_properties_7d_file) 
+temp_1981 <- readr::read_csv(drought81_properties_site_file) 
 
 
 file_in_metadata <- "in/study_watersheds_metadata.csv"
@@ -244,9 +244,9 @@ support_size <- 20
 # Define colors
 background_color = "#FFFAF4"
 font_color = "#431c5d"
-base_color =  "#73A9AD"
+base_color =  "#431c5d"#"#73A9AD"
 pop_color = "#e05915"
-viridis_palette = "viridis"
+viridis_palette = "inferno"
 viridis_begin = 0
 viridis_end = 0.7
 viridis_direction = -1
@@ -316,7 +316,6 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png")
    labs(fill = "Decade")+
    coord_polar()+
    theme_minimal()+
-   ylim(c(0, 2500))+
    scale_fill_viridis_c(begin = viridis_begin, end = viridis_end, 
                         direction = viridis_direction, option = viridis_palette)+
    theme(legend.title = element_blank(),
@@ -411,7 +410,7 @@ month_labels <- tibble(
    labs(fill = "Decade")+
    coord_polar()+
    theme_minimal()+
-   ylim(c(-1000, 6000))+
+   ylim(c(-1000, 10000))+
    scale_fill_viridis_c(begin = viridis_begin, end = viridis_end, 
                         direction = viridis_direction, option = viridis_palette)+
    theme(legend.position = "none",
@@ -449,7 +448,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 0.5,
             vjust = 0.5)+
   # explainer text
-  draw_label("Chart by Althea A Archer. Data based on streamgage records from 3,196 gages assessed from 1920 to 2020.\nSevere streamflow drought events were defined with 2% variable 7-day thresholds. https://doi.org/10.5066/P92FAASD.",
+  draw_label("Chart by Althea A Archer. Data based on streamgage records from 3,196 gages assessed from 1920 to 2020.\nSevere streamflow drought events were defined with 2% fixed thresholds. https://doi.org/10.5066/P92FAASD.",
              fontfamily = supporting_font,
              x = 1 - Xmargin,   
              y = Ymargin,
@@ -537,7 +536,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
 # !! Use format for saving with the date of your prompt: 
 #         YYYYMMDD_prompt_name ()
 # e.g. `20230101_part-to-whole-cnell.png`
-ggsave(filename = "out/20230423_timeseries-tiles_whenDrought_aaarcher.png", 
+ggsave(filename = "out/20230423_timeseries-tiles_whenDrought_aaarcherSITE.png", 
        width = 16, height = 9, dpi = 300)
 ```
 
