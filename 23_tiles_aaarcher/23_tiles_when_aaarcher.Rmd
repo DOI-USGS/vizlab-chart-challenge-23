@@ -244,11 +244,11 @@ support_size <- 20
 # Define colors
 background_color = "#FFFAF4"
 font_color = "#431c5d"
-base_color =  "#73A9AD"
+base_color =  "#431c5d"#"#73A9AD"
 pop_color = "#e05915"
-viridis_palette = "viridis"
-viridis_begin = 0
-viridis_end = 0.7
+viridis_palette = "inferno"
+viridis_begin = 0.15
+viridis_end = 0.8
 viridis_direction = -1
 
 # The background canvas for your viz
@@ -263,12 +263,19 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png")
 
 
 
+month_labels <- tibble(
+  drought_day_fakeYr = as.Date(c("1999-01-03", sprintf("1999-%s-01", 
+                                       c("02", "03", "04", "05", "06",
+                                         "07", "08", "09", "10", "11", "12")))),
+  y_CONUS = 8100,
+  label = c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
+)
 
 ```
 
 ### Making the "when is drought" viz
 
-```{r plot_tests1}
+```{r map}
 (map_plot <- ggplot(data = states_CASC) +
     geom_sf(fill = base_color, color = background_color, linewidth = 0.4) +
     geom_sf(data = mapping_data_regions, color = background_color, fill = NA, linewidth = 1.5)+
@@ -303,12 +310,12 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png")
 
 
 
-```{r plot_tests3}
+```{r plot_test}
 
 
 (CASC_season_plot <- ggplot(data = droughts_long, 
                      aes(x = drought_day_fakeYr, group = desc(decade))) +
-   geom_histogram(aes(fill = decade), boundary = 0, bins = 36)+
+   geom_histogram(aes(fill = sprintf("%ss", decade)), boundary = 0, bins = 36)+
    facet_wrap(~ CASC)+
    scale_x_date(breaks = "3 month", date_labels = "%b", 
                 limits = as.Date(c("1999-01-01", "1999-12-31")),
@@ -317,12 +324,12 @@ usgs_logo <- magick::image_read("../usgs_logo_black.png")
    coord_polar()+
    theme_minimal()+
    ylim(c(0, 2500))+
-   scale_fill_viridis_c(begin = viridis_begin, end = viridis_end, 
+   scale_fill_viridis_d(begin = viridis_begin, end = viridis_end, 
                         direction = viridis_direction, option = viridis_palette)+
    theme(legend.title = element_blank(),
          legend.text = element_text(size = support_size,
                                     family = supporting_font),
-         legend.key.height = unit(1.5, "cm"),
+         legend.key.height = unit(1, "cm"),
          legend.key.width = unit(1, "cm"))
  )
 
@@ -349,9 +356,9 @@ draw_CASC_plots <- map(1:length(CASC_names), function(x){
     ggplot(aes(x = drought_day_fakeYr, group = desc(decade))) +
     facet_wrap(~ CASC)+
     geom_histogram(aes(fill = decade), boundary = 0, bins = 36)+
-    scale_x_date(breaks = "month", date_labels = "%b", 
-                 limits = as.Date(c("1999-01-01", "1999-12-31")),
-                 expand = c(-0.015,0))+
+   scale_x_date(breaks = "3 month", date_labels = "%b", 
+                limits = as.Date(c("1998-12-30", "2000-01-03")),
+                expand = c(-0.0141,0))+
     coord_polar()+
     theme_minimal()+
     ylim(c(-500, 1500))+
@@ -391,27 +398,21 @@ draw_CASC_plots <- map(1:length(CASC_names), function(x){
 
 ```{r overallPlot}
 
-month_labels <- tibble(
-  drought_day_fakeYr = as.Date(sprintf("1999-%s-01", 
-                                       c("01", "02", "03", "04", "05", "06",
-                                         "07", "08", "09", "10", "11", "12"))),
-  y_CONUS = 6000,
-  label = c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
-)
 
 (full_plot <- ggplot(data = droughts_long, 
                      aes(x = drought_day_fakeYr)) +
    geom_histogram(aes(fill = decade, group = desc(decade)), boundary = 0, bins = 36)+
-   geom_text(data = month_labels, 
+   geom_text(data = month_labels, #|> filter(! drought_day_fakeYr == "1999-01-01"), 
               aes(x = drought_day_fakeYr, y = y_CONUS, label = label),
-             font = supporting_font, fontface = "bold") +
+             family = supporting_font, #fontface = "bold", 
+             size = 4.7, color = font_color) +
    scale_x_date(breaks = "3 month", date_labels = "%b", 
-                limits = as.Date(c("1999-01-01", "1999-12-31")),
-                expand = c(-0.015,0))+
+                limits = as.Date(c("1998-12-30", "2000-01-03")),
+                expand = c(-0.0141,0))+
    labs(fill = "Decade")+
    coord_polar()+
    theme_minimal()+
-   ylim(c(-1000, 6000))+
+   ylim(c(-1000, 8100))+
    scale_fill_viridis_c(begin = viridis_begin, end = viridis_end, 
                         direction = viridis_direction, option = viridis_palette)+
    theme(legend.position = "none",
@@ -434,8 +435,8 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   # the main plot
   draw_CASC_plots +
   draw_grob(legend_seasons,
-            y = -0.1,
-            x = -0.15)+
+            y = -.03,
+            x = -0.12)+
   draw_plot(map_plot,
             y = 0.44,
             x = 0.79,
@@ -443,13 +444,13 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             vjust = 0.5, 
             width = 0.2) +
   draw_plot(full_plot,
-            y = 0.4,
-            x = 0.04,
-            width = 0.25,
-            height = 0.5,
+            y = 0.45,
+            x = 0.025 ,
+            width = 0.3,
+            height = 0.53,
             vjust = 0.5)+
   # explainer text
-  draw_label("Chart by Althea A Archer. Data based on streamgage records from 3,196 gages assessed from 1920 to 2020.\nSevere streamflow drought events were defined with 2% variable 7-day thresholds. https://doi.org/10.5066/P92FAASD.",
+  draw_label("Severe streamflow drought events were defined with 2% variable 7-day thresholds (Hammond et al. 2022; doi.org/10.1029/2022WR031930).\nChart by Althea A. Archer. Data based on streamgage records from 3,196 gages assessed from 1920 to 2020: doi.org/10.5066/P92FAASD.",
              fontfamily = supporting_font,
              x = 1 - Xmargin,   
              y = Ymargin,
@@ -480,9 +481,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              color = font_color,
              size = support_size) +
   # Label for CONUS
-  draw_label("Conterminous United States",
-             x = 0.2, 
-             y = 0.7,
+  draw_label("Conterminous United States\n(Lower 48)",
+             x = 0.17, 
+             y = 0.8,
              hjust = 0.5,
              vjust = 0.5,
              fontface = "bold",
@@ -497,29 +498,29 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)+
   # Y-axis explainer
-  geom_segment(aes(x = Xbase - Xjitter*3 - 0.225, xend = Xbase - Xjitter*3 - 0.225, 
-                   y = Ybase + Yjitter + 0.1, yend = Ybase + Yjitter*2 + 0.02), 
+  geom_segment(aes(x = Xbase - Xjitter*3 - 0.2137, xend = Xbase - Xjitter*3 - 0.2137, 
+                   y = Ybase + Yjitter + 0.125, yend = Ybase + Yjitter*2 + 0.065), 
                arrow = arrow(length = unit(0.01, "npc")),
                color = background_color,
                lineend = 'round',
                linewidth = 2)+  
-  geom_segment(aes(x = Xbase - Xjitter*3 - 0.225, xend = Xbase - Xjitter*3 - 0.225, 
-                   y = Ybase + Yjitter + 0.1, yend = Ybase + Yjitter*2 + 0.02), 
+  geom_segment(aes(x = Xbase - Xjitter*3 - 0.2137, xend = Xbase - Xjitter*3 - 0.2137, 
+                   y = Ybase + Yjitter + 0.125, yend = Ybase + Yjitter*2 + 0.065), 
                arrow = arrow(length = unit(0.01, "npc")),
                color = pop_color,
                lineend = 'round',
                linewidth = 1.5)+
   draw_text("Number of\ndroughts",
             x = Xmargin + 0.02,
-            y = Ybase + Yjitter*2 + 0.02,
+            y = Ybase + Yjitter*2 + 0.12,
             color = pop_color, size = support_size, family = annotation_font,
             hjust = 0)+
   # Facts
   # X-axis explainer
-    geom_curve(aes(xend = Xbase - Xjitter*3 - 0.105, 
-                   x = Xbase - Xjitter*3 - 0.225,
-                   yend = Ybase + Yjitter + 0.1, 
-                   y = Ybase + Yjitter*2 + 0.04),
+    geom_curve(aes(xend = Xbase - Xjitter*3 - 0.09, 
+                   x = Xbase - Xjitter*3 - 0.2137,
+                   yend = Ybase + Yjitter + 0.14, 
+                   y = Ybase + Yjitter*2 + 0.09),
              arrow = grid::arrow(length = unit(0.75, 'lines')),
              curvature = -0.40,
              angle = -88,
@@ -528,7 +529,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              linewidth = 1.5)+
   draw_text("Day of\n   year",
             x = Xbase - Xjitter*3 - 0.15,
-            y = Ybase + Yjitter*2 + 0.00,
+            y = Ybase + Yjitter*2 + 0.12,
             color = pop_color, size = support_size, family = annotation_font,
             hjust = 0)
 
