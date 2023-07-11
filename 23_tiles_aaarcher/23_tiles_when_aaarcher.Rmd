@@ -245,10 +245,10 @@ support_size <- 20
 background_color = "#FFFAF4"
 font_color = "#431c5d"
 base_color =  "#431c5d"#"#73A9AD"
-pop_color = "#e05915"
+pop_color = "#36A19F"#"#73A9AD"#"#e05915"
 viridis_palette = "inferno"
 viridis_begin = 0.15
-viridis_end = 0.8
+viridis_end = 0.85
 viridis_direction = -1
 
 # The background canvas for your viz
@@ -281,28 +281,36 @@ month_labels <- tibble(
     geom_sf(data = mapping_data_regions, color = background_color, fill = NA, linewidth = 1.5)+
     geom_segment(aes(x = -125, xend = -127, # northwest
                      y = 50, yend = 52), 
-                 arrow = arrow(length = unit(0.03, "npc")))+
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = pop_color, linewidth = 2)+
     geom_segment(aes(x = -101, xend = -101, # north central
                      y = 50, yend = 52), 
-                 arrow = arrow(length = unit(0.03, "npc")))+
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = pop_color, linewidth = 2)+
     geom_segment(aes(x = -85, xend = -75, # midwest
                      y = 48, yend = 52), 
-                 arrow = arrow(length = unit(0.03, "npc")))+
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = pop_color, linewidth = 2)+
     geom_segment(aes(x = -74, xend = -70, # northeast
                      y = 39, yend = 39), 
-                 arrow = arrow(length = unit(0.03, "npc")))+
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = pop_color, linewidth = 2)+
     geom_segment(aes(x = -124, xend = -127, # california
                      y = 37, yend = 37), 
-                 arrow = arrow(length = unit(0.03, "npc")))+
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = pop_color, linewidth = 2)+
     geom_segment(aes(x = -113, xend = -127, # southwest
                      y = 30, yend = 24), 
-                 arrow = arrow(length = unit(0.03, "npc")))+
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = pop_color, linewidth = 2)+
     geom_segment(aes(x = -101, xend = -101, #south central
                      y = 26, yend = 24), 
-                 arrow = arrow(length = unit(0.03, "npc")))+
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = pop_color, linewidth = 2)+
     geom_segment(aes(x = -80, xend = -70, 
                      y = 30, yend = 24), 
-                 arrow = arrow(length = unit(0.03, "npc")))+
+                 arrow = arrow(length = unit(0.03, "npc")),
+                 color = pop_color, linewidth = 2)+
    theme_void() +
     theme(legend.position = "none")
 )
@@ -483,7 +491,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   # Label for CONUS
   draw_label("Conterminous United States\n(Lower 48)",
              x = 0.17, 
-             y = 0.8,
+             y = 0.786,
              hjust = 0.5,
              vjust = 0.5,
              fontface = "bold",
@@ -498,29 +506,29 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)+
   # Y-axis explainer
-  geom_segment(aes(x = Xbase - Xjitter*3 - 0.2137, xend = Xbase - Xjitter*3 - 0.2137, 
-                   y = Ybase + Yjitter + 0.125, yend = Ybase + Yjitter*2 + 0.065), 
-               arrow = arrow(length = unit(0.01, "npc")),
+  geom_segment(aes(x = 0.177, xend = 0.1763, 
+                   y = 0.455, yend = 0.645), 
+               arrow = grid::arrow(length = unit(0.75, 'lines')),
                color = background_color,
                lineend = 'round',
                linewidth = 2)+  
-  geom_segment(aes(x = Xbase - Xjitter*3 - 0.2137, xend = Xbase - Xjitter*3 - 0.2137, 
-                   y = Ybase + Yjitter + 0.125, yend = Ybase + Yjitter*2 + 0.065), 
-               arrow = arrow(length = unit(0.01, "npc")),
+  geom_segment(aes(x = 0.1763, xend = 0.1763, 
+                   y = 0.455, yend = 0.645), 
+               arrow = grid::arrow(length = unit(0.75, 'lines')),
                color = pop_color,
                lineend = 'round',
                linewidth = 1.5)+
   draw_text("Number of\ndroughts",
-            x = Xmargin + 0.02,
-            y = Ybase + Yjitter*2 + 0.12,
+            x = 0.05,
+            y = 0.685,
             color = pop_color, size = support_size, family = annotation_font,
             hjust = 0)+
   # Facts
   # X-axis explainer
-    geom_curve(aes(xend = Xbase - Xjitter*3 - 0.09, 
-                   x = Xbase - Xjitter*3 - 0.2137,
-                   yend = Ybase + Yjitter + 0.14, 
-                   y = Ybase + Yjitter*2 + 0.09),
+    geom_curve(aes(xend = 0.3, 
+                   x = 0.1763,
+                   yend = 0.47, 
+                   y = 0.67),
              arrow = grid::arrow(length = unit(0.75, 'lines')),
              curvature = -0.40,
              angle = -88,
@@ -528,8 +536,8 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              lineend = 'round',
              linewidth = 1.5)+
   draw_text("Day of\n   year",
-            x = Xbase - Xjitter*3 - 0.15,
-            y = Ybase + Yjitter*2 + 0.12,
+            x = 0.24,
+            y = 0.685,
             color = pop_color, size = support_size, family = annotation_font,
             hjust = 0)
 
