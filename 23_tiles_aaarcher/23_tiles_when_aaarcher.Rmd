@@ -244,8 +244,8 @@ support_size <- 20
 # Define colors
 background_color = "#FFFAF4"
 font_color = "#431c5d"
-base_color =  "#431c5d"#"#73A9AD"
-pop_color = "#36A19F"#"#73A9AD"#"#e05915"
+base_color = "#431c5d"#"#B4E4FF"  #"#FF6D60"#"#9384D1"#8BD0CF"#"#73A9AD"
+pop_color = "#431c5d"#"#B4E4FF" #"#FFD966"#"#FF6D60"#36A19F"#"#73A9AD"#"#e05915"
 viridis_palette = "inferno"
 viridis_begin = 0.15
 viridis_end = 0.85
@@ -287,40 +287,40 @@ month_labels_CASC <- tibble(
 
 ```{r map}
 (map_plot <- ggplot(data = states_CASC) +
-    geom_sf(fill = pop_color, color = background_color, linewidth = 0.4) +
+    geom_sf(fill = base_color, color = background_color, linewidth = 0.4) +
     geom_sf(data = mapping_data_regions, color = background_color, fill = NA, linewidth = 1.5)+
     geom_segment(aes(x = -125, xend = -127, # northwest
                      y = 50, yend = 52), 
                  arrow = arrow(length = unit(0.65, "lines")),
-                 color = pop_color, linewidth = 1.3, lineend = "round")+
+                 color = base_color, linewidth = 1.3, lineend = "round")+
     geom_segment(aes(x = -101, xend = -101, # north central
                      y = 50, yend = 52), 
                  arrow = arrow(length = unit(0.65, "lines")),
-                 color = pop_color, linewidth = 1.3, lineend = "round")+
+                 color = base_color, linewidth = 1.3, lineend = "round")+
     geom_segment(aes(x = -81, xend = -70, # midwest
                      y = 48, yend = 52), 
                  arrow = arrow(length = unit(0.65, "lines")),
-                 color = pop_color, linewidth = 1.3, lineend = "round")+
+                 color = base_color, linewidth = 1.3, lineend = "round")+
     geom_segment(aes(x = -74, xend = -70, # northeast
                      y = 39, yend = 39), 
                  arrow = arrow(length = unit(0.65, "lines")),
-                 color = pop_color, linewidth = 1.3, lineend = "round")+
+                 color = base_color, linewidth = 1.3, lineend = "round")+
     geom_segment(aes(x = -124, xend = -127, # california
                      y = 37, yend = 37), 
                  arrow = arrow(length = unit(0.65, "lines")),
-                 color = pop_color, linewidth = 1.3, lineend = "round")+
+                 color = base_color, linewidth = 1.3, lineend = "round")+
     geom_segment(aes(x = -113, xend = -127, # southwest
                      y = 30, yend = 24), 
                  arrow = arrow(length = unit(0.65, "lines")),
-                 color = pop_color, linewidth = 1.3, lineend = "round")+
+                 color = base_color, linewidth = 1.3, lineend = "round")+
     geom_segment(aes(x = -101, xend = -101, #south central
                      y = 26, yend = 24), 
                  arrow = arrow(length = unit(0.65, "lines")),
-                 color = pop_color, linewidth = 1.3, lineend = "round")+
+                 color = base_color, linewidth = 1.3, lineend = "round")+
     geom_segment(aes(x = -80, xend = -70, #southeast
                      y = 30, yend = 24), 
                  arrow = arrow(length = unit(0.65, "lines")),
-                 color = pop_color, linewidth = 1.3, lineend = "round")+
+                 color = base_color, linewidth = 1.3, lineend = "round")+
    theme_void() +
     theme(legend.position = "none")
 )
@@ -347,7 +347,8 @@ month_labels_CASC <- tibble(
    theme_minimal()+
    ylim(c(0, 2500))+
    scale_fill_viridis_d(begin = viridis_begin, end = viridis_end, 
-                        direction = viridis_direction, option = viridis_palette)+
+                        direction = viridis_direction, option = viridis_palette,
+                        guide = guide_legend(reverse = TRUE) )+
    theme(legend.title = element_blank(),
          legend.text = element_text(size = support_size,
                                     family = supporting_font),
@@ -518,7 +519,7 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontface = "bold") +
   
   # Title
-  draw_label("These are the 2000 most severe streamflow droughts at gages from 1920 to 2020 by time of year, decade, and region.",
+  draw_label("These are the 2000 most severe streamflow droughts at gages from 1920 to 2020 by day of year, decade, and region.",
              x = Xmargin,
              y = 1 - 3*Ymargin ,
              hjust = 0,
@@ -545,16 +546,16 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)+
   # Y-axis explainer
+  # geom_segment(aes(x = 0.1763, xend = 0.1763, 
+  #                  y = 0.455, yend = 0.649), 
+  #              arrow = grid::arrow(length = unit(0.75, 'lines')),
+  #              color = background_color,
+  #              lineend = 'round',
+  #              linewidth = 2)+  
   geom_segment(aes(x = 0.1763, xend = 0.1763, 
                    y = 0.455, yend = 0.649), 
                arrow = grid::arrow(length = unit(0.75, 'lines')),
-               color = background_color,
-               lineend = 'round',
-               linewidth = 2)+  
-  geom_segment(aes(x = 0.1763, xend = 0.1763, 
-                   y = 0.455, yend = 0.649), 
-               arrow = grid::arrow(length = unit(0.75, 'lines')),
-               color = pop_color,
+               color = "white",
                lineend = 'round',
                linewidth = 1.5)+
   draw_text("# of\ndroughts",
@@ -589,9 +590,74 @@ ggsave(filename = "out/20230711_16by9_whenDrought_aaarcher.png",
        width = 16, height = 9, dpi = 300)
 ```
 
-```{r cowplot, fig.width = 9, fig.height = 9}
+```{r casc_seasonsIG}
+# Chart settings
+Ymargin <-  0.03
+Xmargin <- 0.03
+
+# CASC Plots
+Xbase <- 1-Xmargin # from right
+Ybase <- Ymargin*3 # from bottom
+Yjitter <- (0.83 - 2*Ymargin)/3
+Xjitter <- (1 - 2*Xmargin)/3
+
+# Function to make regional plots
+draw_CASC_plots <- map(1:length(CASC_names), function(x){
+  # create temporary plot
+  plot_temp <- droughts_long |>
+    filter(CASC == CASC_names[x]) |> 
+    ggplot(aes(x = drought_day_fakeYr)) +
+    facet_wrap(~ CASC)+
+   geom_text(data = month_labels_CASC |> filter(CASC == CASC_names[x]),  
+              aes(x = drought_day_fakeYr, y = y_region, label = label),
+             family = supporting_font, #fontface = "bold", 
+             size = 4, color = font_color,
+             vjust = 0.5, hjust = 0.5) +
+    geom_histogram(aes(fill = decade, group = desc(decade)), 
+                   boundary = 0, bins = 36)+
+   scale_x_date(breaks = "3 month", date_labels = "%b", 
+                limits = as.Date(c("1998-12-30", "2000-01-03")),
+                expand = c(-0.0141,0))+
+    coord_polar()+
+    theme_minimal()+
+    ylim(c(-500, 2000))+
+    scale_fill_viridis_c(begin = viridis_begin, end = viridis_end, 
+                        direction = viridis_direction, option = viridis_palette)+
+    theme(legend.position = "none",
+          strip.text = element_text(size = support_size, color = font_color,
+                                    family = supporting_font, face = "bold"),
+          axis.text = element_blank(),
+          axis.title = element_blank())
+  
+  if(CASC_names[x] %in% c("Southwest", "Southeast", "South Central")){
+    Y_position <- Ybase
+  } else if(CASC_names[x] %in% c("California", "Northeast")){
+    Y_position <- Ybase + Yjitter
+  } else {
+    Y_position <- Ybase + 2*Yjitter
+  }
+  
+  if(CASC_names[x] %in% c("Northwest", "California", "Southwest")){
+    X_position <- Xbase - (2*Xjitter)
+  } else if(CASC_names[x] %in% c("North Central", "South Central")){
+    X_position <- Xbase - Xjitter
+  } else {
+    X_position <- Xbase
+  } 
+  
+  draw_plot(plot_temp,
+            x = X_position,
+            y = Y_position,
+            hjust = 1,
+            height = Yjitter,
+            width = Xjitter)
+})
+```
+
+```{r cowplot-a, fig.width = 9, fig.height = 9}
 
 title_size = 30
+support_size = 15
 ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
        xlim = c(0,1)) +
   # a background
@@ -600,26 +666,26 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
             height = 9, width = 9,
             hjust = 0, vjust = 1) +
   draw_grob(legend_seasons,
-            y = -.03,
-            x = -0.12)+
+            y = -0.0,
+            x = -0.4)+
   draw_plot(full_plot,
-            y = 0.5,
-            x = 0.5 ,
-            width = 0.3,
-            height = 0.53,
+            y = 0.42,
+            x = 0.6 ,
+            width = 0.75,
+            height = 0.75,
             vjust = 0.5, hjust = 0.5)+
   draw_plot(month_label_chart,
-            y = 0.5,
-            x = 0.5 ,
-            width = 0.8,
-            height = 1.1,
+            y = 0.42,
+            x = 0.6 ,
+            width = 1.58,
+            height = 1.58,
             vjust = 0.5, hjust = 0.5)+
   # explainer text
-  draw_label("Severe streamflow drought events were defined with 2% variable 7-day thresholds (Hammond et al. 2022; doi.org/10.1029/2022WR031930).\nChart by Althea A. Archer. Data based on streamgage records from 3,196 gages assessed from 1920 to 2020: doi.org/10.5066/P92FAASD.",
+  draw_label("Chart by Althea A. Archer.\nData based on streamgage records from 3,196 gages assessed from 1920 to 2020: doi.org/10.5066/P92FAASD.\nDrought events were defined by 2% variable 7-day thresholds (Hammond et al. 2022; doi.org/10.1029/2022WR031930).",
              fontfamily = supporting_font,
-             x = Xmargin,   
-             y = Ymargin,
-             size = 14,
+             x = 1 - Xmargin,   
+             y = 0.03,
+             size = 10,
              hjust = 1,
              vjust = 0,
              color = font_color)+
@@ -636,9 +702,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              fontface = "bold") +
   
   # Title
-  draw_label("These are the 2000 most severe streamflow droughts\nat gages from 1920 to 2020 by time of year, decade, and region.",
+  draw_label("These are the 2000 most severe streamflow droughts at gages from 1920 to 2020\nby day of year, region, and decade.",
              x = Xmargin,
-             y = 1 - 3*Ymargin ,
+             y = 1 - 2.5*Ymargin ,
              hjust = 0,
              vjust = 1,
              lineheight = 1.0,
@@ -646,9 +712,9 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              color = font_color,
              size = support_size) +
   # Label for CONUS
-  draw_label("Conterminous United States\n(Lower 48)",
-             x = 0.17, 
-             y = 0.786,
+  draw_label("Conterminous United States (Lower 48)",
+             x = 0.5, 
+             y = 0.8,
              hjust = 0.5,
              vjust = 0.5,
              fontface = "bold",
@@ -658,34 +724,34 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
   # Add logo
   draw_image(usgs_logo, 
              x = Xmargin,
-             y = Ymargin,
-             width = 0.1, 
+             y = 0.03,
+             width = 0.15, 
              hjust = 0, vjust = 0, 
              halign = 0, valign = 0)+
   # Y-axis explainer
-  geom_segment(aes(x = 0.1763, xend = 0.1763, 
-                   y = 0.455, yend = 0.649), 
+  # geom_segment(aes(x = 0.602, xend = 0.602, 
+  #                  y = 0.42, yend = 0.70), 
+  #              arrow = grid::arrow(length = unit(0.75, 'lines')),
+  #              color = background_color,
+  #              lineend = 'round',
+  #              linewidth = 2)+  
+  geom_segment(aes(x = 0.602, xend = 0.602, 
+                   y = 0.42, yend = 0.70), 
                arrow = grid::arrow(length = unit(0.75, 'lines')),
-               color = background_color,
-               lineend = 'round',
-               linewidth = 2)+  
-  geom_segment(aes(x = 0.1763, xend = 0.1763, 
-                   y = 0.455, yend = 0.649), 
-               arrow = grid::arrow(length = unit(0.75, 'lines')),
-               color = pop_color,
+               color = "white",
                lineend = 'round',
                linewidth = 1.5)+
   draw_text("# of\ndroughts",
-            x = 0.17,
-            y = 0.535,
+            x = 0.58,
+            y = 0.62,
             color = "white", size = support_size, family = annotation_font,
             hjust = 1)+
   # Facts
   # X-axis explainer
-    geom_curve(aes(xend = 0.285, 
-                   x = 0.1763,
+    geom_curve(aes(xend = 0.89, 
+                   x = 0.602,
                    yend = 0.47, 
-                   y = 0.66),
+                   y = 0.72),
              arrow = grid::arrow(length = unit(0.75, 'lines')),
              curvature = -0.40,
              angle = -88,
@@ -693,8 +759,8 @@ ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
              lineend = 'round',
              linewidth = 1.5)+
   draw_text("Day of\n   year",
-            x = 0.24,
-            y = 0.67,
+            x = 0.84,
+            y = 0.68,
             color = pop_color, size = support_size, family = annotation_font,
             hjust = 0)
 
@@ -707,6 +773,72 @@ ggsave(filename = "out/20230711_1to1a_whenDrought_aaarcher.png",
        width = 9, height = 9, dpi = 300)
 ```
 
+
+
+```{r cowplot-b, fig.width = 9, fig.height = 9}
+
+ggdraw(ylim = c(0,1), # 0-1 scale makes it easy to place viz items on canvas
+       xlim = c(0,1)) +
+  # a background
+  draw_grob(canvas,
+            x = 0, y = 1,
+            height = 9, width = 9,
+            hjust = 0, vjust = 1) +
+  # the main plot
+  draw_CASC_plots +
+  draw_plot(map_plot,
+            y = 0.48,
+            x = 0.52,
+            hjust = 0.5,
+            vjust = 0.5, 
+            width = 0.36) +
+  # explainer text
+  draw_label("Chart by Althea A. Archer.\nData based on streamgage records from 3,196 gages assessed from 1920 to 2020: doi.org/10.5066/P92FAASD.\nDrought events were defined by 2% variable 7-day thresholds (Hammond et al. 2022; doi.org/10.1029/2022WR031930).",
+             fontfamily = supporting_font,
+             x = 1 - Xmargin,   
+             y = 0.03,
+             size = 10,
+             hjust = 1,
+             vjust = 0,
+             color = font_color)+
+  # Title
+  draw_label("When do streamflow droughts occur?",
+             x = Xmargin,
+             y = 1 - Ymargin,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 1.0,
+             fontfamily = annotation_font,
+             color = font_color,
+             size = title_size,
+             fontface = "bold") +
+  
+  # Title
+  draw_label("These are the 2000 most severe streamflow droughts at gages from 1920 to 2020\nby day of year, region, and decade.",
+             x = Xmargin,
+             y = 1 - 2.5*Ymargin ,
+             hjust = 0,
+             vjust = 1,
+             lineheight = 1.0,
+             fontfamily = supporting_font,
+             color = font_color,
+             size = support_size) +
+  # Add logo
+  draw_image(usgs_logo, 
+             x = Xmargin,
+             y = 0.03,
+             width = 0.15, 
+             hjust = 0, vjust = 0, 
+             halign = 0, valign = 0)
+
+
+# Save the final image in Twitter's 16 by 9 format
+# !! Use format for saving with the date of your prompt: 
+#         YYYYMMDD_prompt_name ()
+# e.g. `20230101_part-to-whole-cnell.png`
+ggsave(filename = "out/20230711_1to1b_whenDrought_aaarcher.png", 
+       width = 9, height = 9, dpi = 300)
+```
 
 ## Supporting information
 
